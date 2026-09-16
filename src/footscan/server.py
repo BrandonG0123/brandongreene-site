@@ -159,12 +159,19 @@ def validate_submission(body: dict) -> dict:
     missing = [k for k in REQUIRED_ACKS if acks.get(k) is not True]
     if missing:
         raise BadRequest(f"all acknowledgments are required (missing {missing})")
+    try:
+        mat_check = float(body.get("mat_check_mm"))
+    except (TypeError, ValueError):
+        raise BadRequest("mat_check_mm: measure the 100 mm bar on the printed scan mat") from None
+    # Fit-to-page scaling is typically 3-6 %; ruler reading error is about 0.5 mm.
+    if abs(mat_check - 100) > 1:
+        raise BadRequest("mat_check_mm: the scan mat was printed at the wrong size; print at 100% / actual size")
     feet, answers, evaluation = evaluate_survey(body)
     if evaluation["blocked"]:
         # Screened out: refuse, and store nothing about this person.
         raise ScreenedOut(evaluation["blocked"])
     return dict(
-        name=name, feet=feet, survey=answers, flags=evaluation["flags"], plan=evaluation["plan"],
+        name=name, feet=feet, survey=answers, flags=evaluation["flags"], plan=evaluation["plan"], mat_check_mm=mat_check,
         acknowledgments={k: True for k in REQUIRED_ACKS}, device=str(body.get("device", ""))[:300],
     )
 

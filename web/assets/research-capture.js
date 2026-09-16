@@ -1,7 +1,7 @@
 // Studio research capture (Phase 0): condition + session metadata, full
 // quality readouts, frame review, save to the research library.
 import { CoverageMap } from "./coverage-map.js";
-import { Scanner, cameraErrorMessage, requestMotionPermission } from "./scanner.js";
+import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
 
 const TARGET_FRAMES = 60;
 const CONDITION_LABELS = {
@@ -73,9 +73,10 @@ async function startLive(simulated) {
   $("btn-start").hidden = false;
   $("btn-pause").hidden = true;
   const map = new CoverageMap($("map"), setup.foot);
+  const boards = await loadBoards();
 
   scanner = new Scanner({
-    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES,
+    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: true,
     onFrame: () => {
       $("flash").classList.add("on");
       requestAnimationFrame(() => $("flash").classList.remove("on"));
@@ -84,8 +85,9 @@ async function startLive(simulated) {
       setChip("chip-sharp", s.sharp.ok ? "ok" : "bad", s.sharp.ok ? "Sharp" : "Blurry");
       setChip("chip-exposure", s.exposure.ok ? "ok" : "bad",
         s.exposure.ok ? "Exposure OK" : s.exposure.issue === "overexposed" ? "Too bright" : "Too dark");
-      setChip("chip-sensor", s.hasSensor ? "ok" : "idle",
-        simulated ? "Sensors (simulated)" : s.hasSensor ? "Motion sensors" : "No motion sensors");
+      setChip("chip-mat", s.matVisible ? "ok" : "bad", s.matVisible ? `Mat: ${s.matMarkers} markers` : "Mat not in view");
+      const VIEW = { mat: "Position: from mat", sensors_aligned: "Position: sensors (mat-aligned)", sensors: "Position: sensors only" };
+      setChip("chip-sensor", s.viewSource === "mat" ? "ok" : s.hasView ? "idle" : "bad", VIEW[s.viewSource] || "Position unknown");
       $("frames-label").textContent = `${s.kept} / ${TARGET_FRAMES}`;
       $("frames-bar").style.width = `${Math.min(100, (100 * s.kept) / TARGET_FRAMES)}%`;
       $("coverage-label").textContent = s.completeness == null ? "no sensor" : `${Math.round(100 * s.completeness)}%`;
@@ -93,8 +95,8 @@ async function startLive(simulated) {
       $("stat-kept").textContent = s.kept;
       $("stat-blur").textContent = scanner.rejected.blur;
       $("stat-exposure").textContent = scanner.rejected.exposure;
-      $("map-note").textContent = simulated ? "simulated sensors" : s.hasSensor ? "approx. from motion sensors" : "unavailable";
-      map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasSensor, active: scanner.capturing });
+      $("map-note").textContent = { mat: "measured from mat", sensors_aligned: "sensors, mat-aligned", sensors: "approx. from sensors" }[s.viewSource] || "unavailable";
+      map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasView, active: scanner.capturing });
       $("guidance").textContent = s.guidance.text;
       $("guidance").className = `guidance ${s.guidance.tone}`;
       $("btn-finish").disabled = s.kept === 0;
@@ -138,13 +140,15 @@ $("btn-finish").addEventListener("click", () => {
 function renderReview() {
   const kept = scanner.keptFrames();
   const cov = scanner.recount();
-  const noSensor = scanner.orientationSource === "none";
+  const noSensor = !kept.some((f) => f.view);
   const stat = (label, value, hint = "") =>
     `<div class="card"><div class="hint">${label}</div><div class="mono" style="font-size:1.6rem;font-weight:700">${value}</div>${hint ? `<div class="hint">${hint}</div>` : ""}</div>`;
   $("review-stats").innerHTML =
     stat("Frames kept", kept.length, `target ${TARGET_FRAMES}`) +
     stat("Angles covered", noSensor ? "—" : `${Math.round(100 * cov.completeness())}%`, noSensor ? "no motion sensors" : "approximate") +
-    stat("Rejected", scanner.rejected.blur + scanner.rejected.exposure, `${scanner.rejected.blur} blur · ${scanner.rejected.exposure} exposure`) +
+    stat("Rejected", scanner.rejected.blur + scanner.rejected.exposure + scanner.rejected.no_mat,
+      `${scanner.rejected.blur} blur · ${scanner.rejected.exposure} exposure · ${scanner.rejected.no_mat} no mat`) +
+    stat("With mat", `${kept.filter((f) => f.mat).length}`, scanner.focalHint ? `focal ≈ ${Math.round(scanner.focalHint)} px` : "") +
     stat("Duration", `${Math.round(scanner.elapsedMs / 1000)} s`);
 
   $("sim-save-note").hidden = !scanner.simulated;

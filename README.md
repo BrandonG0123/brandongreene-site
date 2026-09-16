@@ -60,14 +60,24 @@ once.
 Try the scan flow on a laptop with a simulated camera (nothing is sent):
 http://localhost:8765/?demo=1
 
+**Scan mat.** Scans need the printed mat (`web/mat/`, Letter or A4) in view:
+its markers turn photos into millimetres and tell the scanner exactly where
+the camera is. People measure its 100 mm check bar before scanning, which
+catches printers that shrink the page. After changing the layout in
+`src/footscan/mat.py`, regenerate the served files:
+
+```bash
+.venv/bin/footscan mat
+```
+
 **Not built yet:** turning scans into a TPU print file. That needs
 reconstruction, landmarks and the generator (Phases 2–4), and the Phase 0
 repeatability gate has to pass first.
 
-JavaScript tests (frame quality and coverage logic):
+JavaScript tests (frame quality, coverage, and camera position from the mat):
 
 ```bash
-node --test tests/js/quality.test.mjs
+node --test "tests/js/*.test.mjs"
 ```
 
 ## Phase 0

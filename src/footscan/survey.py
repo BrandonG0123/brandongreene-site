@@ -217,7 +217,7 @@ def evaluate(answers: dict, feet: list[str]) -> dict:
                 reasons=stops,
                 message=(
                     f"We can't make an insole for you with this tool because of {join_words(stops)}. "
-                    "With this, an insole that doesn't fit perfectly can cause sores you might not feel, and they can "
+                    "An insole that doesn't fit perfectly can then cause sores you might not feel, and they can "
                     "become serious. A podiatrist can fit insoles safely for you."
                 ),
             ),

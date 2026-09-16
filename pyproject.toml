@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = ["numpy", "scipy", "trimesh"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "opencv-python-headless", "pymupdf"]  # mat generation and its detection tests
 
 [project.scripts]
 footscan = "footscan.cli:main"

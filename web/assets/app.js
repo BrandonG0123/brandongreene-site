@@ -2,7 +2,7 @@
 // The survey questions and the scan plan both come from the server
 // (src/footscan/survey.py), so this file only renders them.
 import { CoverageMap, MAP_CSS } from "./coverage-map.js";
-import { Scanner, cameraErrorMessage, requestMotionPermission } from "./scanner.js";
+import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -229,6 +229,7 @@ function renderPlan() {
     ? "You'll need someone to hold the phone for the standing scans. Allow about five minutes per scan."
     : "Allow about five minutes per scan.";
   $("plan-error").textContent = DEMO ? "Demo mode: nothing will be sent." : "";
+  if (DEMO && !$("mat-check").value) $("mat-check").value = "100";
   show("plan", "survey");
 }
 
@@ -237,13 +238,30 @@ $("btn-plan-back").addEventListener("click", () => {
   renderSection();
 });
 
+// A printer's "fit to page" typically shrinks by 3-6%, i.e. 3-6 mm on this bar.
+// Ruler reading error is about 0.5 mm, so 1 mm is the tolerance.
+function checkMatPrint() {
+  const v = Number($("mat-check").value);
+  if (!$("mat-check").value) return "Print the scan mat and enter the length of the black bar.";
+  if (Math.abs(v - 100) > 1)
+    return `Your bar measures ${v} mm, so the printer resized the mat. Print it again at 100% / "Actual size" (turn off "Fit to page"), then measure again.`;
+  return null;
+}
+
 $("btn-plan-start").addEventListener("click", async () => {
   const btn = $("btn-plan-start");
+  const matProblem = checkMatPrint();
+  if (matProblem) {
+    $("plan-error").textContent = matProblem;
+    $("mat-check").focus();
+    return;
+  }
+  flow.matCheck = Number($("mat-check").value);
   if (!DEMO && !flow.submission) {
     btn.disabled = true;
     try {
       const created = await api("/submissions", {
-        json: { name: flow.name, feet: flow.feet, acknowledgments: flow.acks, survey: flow.answers, device: navigator.userAgent },
+        json: { name: flow.name, feet: flow.feet, acknowledgments: flow.acks, survey: flow.answers, mat_check_mm: flow.matCheck, device: navigator.userAgent },
       });
       flow.submission = created;
       flow.evaluation = { plan: created.plan, flags: created.flags };
@@ -264,13 +282,13 @@ $("btn-plan-start").addEventListener("click", async () => {
 // =========================================================================
 const SETUP_STEPS = {
   swb: [
-    "<strong>Sit on a chair</strong> with your knee bent at a right angle and your bare foot flat on the floor. Roll trousers up above the ankle.",
+    "<strong>Sit on a chair</strong> with your knee bent at a right angle and your bare foot flat in the middle of the scan mat, heel toward sheet 1. Roll trousers up above the ankle.",
     "<strong>Find bright, even light</strong>, with no strong shadows on your foot.",
     "<strong>Ask someone to hold the phone</strong> if you can. It's much easier to get round the back of the heel.",
-    "<strong>Keep your foot still</strong> for the whole scan. The phone moves; the foot doesn't.",
+    "<strong>Keep your foot still</strong> for the whole scan, and keep the black squares in view. The phone moves; the foot doesn't.",
   ],
   fwb: [
-    "<strong>Stand up straight</strong>, barefoot, feet hip-width apart, with your weight evenly on both feet.",
+    "<strong>Stand up straight</strong>, barefoot, with this foot in the middle of the scan mat (heel toward sheet 1) and your weight evenly on both feet.",
     "<strong>Someone else holds the phone</strong> for this one. You need to stay standing still.",
     "<strong>Look straight ahead</strong> and don't lean or shift your weight while they scan.",
     "<strong>Bright, even light</strong>, with no strong shadows on your foot.",
@@ -302,10 +320,11 @@ async function startScan(simulated) {
   $("scan-eyebrow").textContent = scan.label;
   $("demo-ribbon").hidden = !simulated;
   const map = new CoverageMap($("map"), scan.foot, { labels: false });
+  const boards = await loadBoards();
   const scanner = new Scanner({
-    stage: $("stage"), simulated,
+    stage: $("stage"), simulated, boards, requireMat: true,
     onUpdate: (s) => {
-      map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasSensor, active: scanner.capturing });
+      map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasView, active: scanner.capturing });
       $("guidance").textContent = s.guidance.text;
       $("guidance").className = `guidance ${s.guidance.tone}`;
       $("progress-label").textContent = `${Math.round(100 * s.progress)}%`;

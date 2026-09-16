@@ -72,6 +72,14 @@ def cmd_repeatability(args) -> int:
     return 0
 
 
+def cmd_mat(args) -> int:
+    from .mat import write_static
+
+    for path in write_static():
+        print(f"wrote {path}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .server import serve
 
@@ -96,6 +104,9 @@ def main(argv=None) -> int:
     r.add_argument("--device-condition", help="condition the device would be built from (for --target)")
     r.add_argument("--scans-per-device", type=int, default=1)
     r.set_defaults(func=cmd_repeatability)
+
+    mt = sub.add_parser("mat", help="regenerate the printable scan mat PDFs and board definitions in web/mat/")
+    mt.set_defaults(func=cmd_mat)
 
     sv = sub.add_parser("serve", help="run the local website (capture, library, break-in tracker)")
     sv.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to reach it from your phone")

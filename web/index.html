@@ -57,6 +57,7 @@
     .confirm { display: flex; gap: 12px; align-items: flex-start; font-weight: 400; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; }
     .confirm input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--brand); flex: none; }
     #plan-list li p { margin: 0; }
+    .mat-card .howto { gap: 10px; }
     #plan-list .why { color: var(--muted); font-size: 0.93rem; }
     .big-check { width: 64px; height: 64px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; font-size: 2rem; font-weight: 800; }
   </style>
@@ -147,6 +148,26 @@
     </div>
     <ol class="card howto" id="plan-list"></ol>
     <p class="hint" id="plan-helper"></p>
+
+    <div class="card mat-card">
+      <h2 style="font-size:1.25rem;margin:0 0 6px">Print your scan mat</h2>
+      <p class="muted" style="margin:0 0 14px">The black squares let us measure your foot in real millimetres. Without
+        the mat, the scan can't be used.</p>
+      <div class="btn-row" style="margin-bottom:14px">
+        <a class="btn secondary" href="/mat/footscan-mat-letter.pdf" target="_blank" rel="noopener">US Letter PDF</a>
+        <a class="btn secondary" href="/mat/footscan-mat-a4.pdf" target="_blank" rel="noopener">A4 PDF</a>
+      </div>
+      <ol class="howto">
+        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is fine.</p></li>
+        <li><p><strong>Measure the black bar</strong> on sheet 1 with a ruler and enter it below.</p></li>
+        <li><p><strong>Tape the sheets together</strong> at the dashed edges, sheet 1 at the heel end, then tape the mat
+          flat to the floor.</p></li>
+      </ol>
+      <div class="field" style="margin-top:14px;max-width:260px">
+        <label for="mat-check">Black bar length (mm)</label>
+        <input id="mat-check" type="number" inputmode="decimal" min="80" max="120" step="0.5" placeholder="should be 100">
+      </div>
+    </div>
     <p class="error" id="plan-error" role="alert"></p>
     <div class="btn-row">
       <button class="btn secondary" id="btn-plan-back" type="button">Change answers</button>
@@ -234,6 +255,8 @@
     <a class="btn secondary" href="/care.html" style="justify-self:start">Read the break-in guide</a>
   </section>
 </main>
+<script src="/vendor/js-aruco2/cv.js"></script>
+<script src="/vendor/js-aruco2/aruco.js"></script>
 <script type="module" src="/assets/layout.js"></script>
 <script type="module" src="/assets/app.js"></script>
 </body>

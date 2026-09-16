@@ -16,7 +16,7 @@ SURVEY = {
     "use": "sport", "sport": "tennis", "sport_level": "competitive", "shoe_type": "court",
     "removable_insole": "yes", "current_insoles": "none", "goals": ["support", "stability"],
 }
-PERSON = {"name": "Test Person", "feet": ["right", "left"], "acknowledgments": ACKS, "survey": SURVEY}
+PERSON = {"name": "Test Person", "feet": ["right", "left"], "acknowledgments": ACKS, "survey": SURVEY, "mat_check_mm": 100}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -116,6 +116,8 @@ def test_restarting_a_foot_clears_old_frames(servers):
     ({"feet": []}, "feet"),
     ({"feet": ["right", "right"]}, "feet"),
     ({"feet": ["middle"]}, "feet"),
+    ({"mat_check_mm": None}, "mat_check_mm"),
+    ({"mat_check_mm": 96.5}, "wrong size"),
 ])
 def test_submission_validation(servers, patch, msg):
     _, phone, _ = servers

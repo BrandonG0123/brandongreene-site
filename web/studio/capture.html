@@ -137,10 +137,11 @@
             <li data-cond="load"><label><input type="checkbox"> Scale reading entered</label></li>
           </ul>
         </div>
-        <div class="callout warn">
-          <p><strong>No real-world scale yet.</strong> The printed marker board that turns these photos into millimetres
-            is the next build step. Captures saved now are good for testing coverage and image quality; they can't be
-            measured until frames include the board.</p>
+        <div class="callout brand">
+          <p><strong>Scan mat required.</strong> Frames are only kept while at least two mat markers are in view, so
+            every saved photo can be scaled to millimetres. Print it from
+            <a href="/mat/footscan-mat-letter.pdf" target="_blank">Letter</a> or
+            <a href="/mat/footscan-mat-a4.pdf" target="_blank">A4</a> at 100%, and check the bar measures 100 mm.</p>
         </div>
         <div class="callout">
           <p class="hint" style="margin:0"><strong>On your phone:</strong> run
@@ -171,7 +172,8 @@
         <div class="chips">
           <span class="chip idle" id="chip-sharp"><i></i>Sharpness</span>
           <span class="chip idle" id="chip-exposure"><i></i>Exposure</span>
-          <span class="chip idle" id="chip-sensor"><i></i>Motion sensors</span>
+          <span class="chip idle" id="chip-mat"><i></i>Mat</span>
+          <span class="chip idle" id="chip-sensor"><i></i>Position</span>
         </div>
         <div class="sim-ribbon" id="sim-ribbon" hidden>SIMULATED</div>
         <div class="guidance" id="guidance" aria-live="polite">Stand behind the heel, then press Start capturing.</div>
@@ -225,6 +227,8 @@
   </section>
 </main>
 
+<script src="/vendor/js-aruco2/cv.js"></script>
+<script src="/vendor/js-aruco2/aruco.js"></script>
 <script type="module" src="/assets/layout.js"></script>
 <script type="module" src="/assets/research-capture.js"></script>
 </body>
