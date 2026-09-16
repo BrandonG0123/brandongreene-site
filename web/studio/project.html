@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>footscan — measure first, print second</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .cov-ring { fill: none; stroke: var(--line); }
+    .cov-cell { stroke: var(--surface); stroke-width: 1.5; }
+    .hero-foot { fill: var(--surface-2); stroke: var(--muted); stroke-width: 1.2; }
+  </style>
+</head>
+<body data-area="studio">
+<main class="wrap">
+
+  <section class="hero" style="margin-top:8px">
+    <div>
+      <p class="eyebrow">Open research pipeline · first draft</p>
+      <h1>Measure first.<br>Print second.</h1>
+      <p class="lede">footscan turns phone photos of a foot into measurements, and eventually into a parametric,
+        3D-printed foot orthotic with zone-by-zone stiffness. It starts by proving the measurements repeat,
+        because a device built from noisy numbers is built from noise.</p>
+      <div class="btn-row">
+        <a class="btn" href="/studio/capture.html">Start a capture</a>
+        <a class="btn secondary" href="#safety">Read the safety rules</a>
+      </div>
+    </div>
+    <figure class="hero-visual" style="margin:0">
+      <svg id="hero-map" viewBox="0 0 200 200" role="img" aria-label="Illustration of a coverage map: sectors around a foot that fill in as photos are taken"></svg>
+      <figcaption>Coverage map: each wedge is a viewing angle around the foot (illustration).</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <p class="eyebrow">The pipeline</p>
+    <h2>Eight phases, and the first one isn't CAD</h2>
+    <ol class="pipeline">
+      <li><span class="num">00</span><div><h3>Measurement & repeatability</h3>
+        <p>Arch height index, navicular drop, rearfoot and forefoot angles, each scanned many times to see how much they wobble.</p></div>
+        <span class="badge ok">Built · awaiting data</span></li>
+      <li><span class="num">01</span><div><h3>Capture</h3>
+        <p>Guided phone capture with blur, exposure and coverage checks; printed marker board for real millimetres; LiDAR import as an option.</p></div>
+        <span class="badge warn">In progress</span></li>
+      <li><span class="num">02</span><div><h3>Reconstruction & accuracy</h3>
+        <p>Photos → mesh with a reproducible config, scaled from the board, checked against a printed object of known size.</p></div>
+        <span class="badge">Planned</span></li>
+      <li><span class="num">03</span><div><h3>Landmarks</h3>
+        <p>Click the navicular, met heads, calcaneus and malleoli on the 3D mesh. They drive everything downstream.</p></div>
+        <span class="badge">Planned</span></li>
+      <li><span class="num">04</span><div><h3>Parametric orthotic + zonal lattice</h3>
+        <p>Heel cup, arch fill relative to <em>your</em> scanned surface, posting, rolled edges, and lattice density graded by zone.</p></div>
+        <span class="badge">Planned</span></li>
+      <li><span class="num">05</span><div><h3>Coupon testing</h3>
+        <p>Print lattice samples, compress them, and measure the real density-to-stiffness curve.</p></div>
+        <span class="badge">Planned</span></li>
+      <li><span class="num">06</span><div><h3>Pressure validation</h3>
+        <p>Barefoot, shoe, and shoe with device, measured with a pressure array.</p></div>
+        <span class="badge">Planned</span></li>
+      <li><span class="num">07</span><div><h3>Fit iteration & writeup</h3>
+        <p>Every revision logged: what changed, how it felt, what failed.</p></div>
+        <span class="badge">Planned</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <p class="eyebrow">Three ways to stand</p>
+    <h2>The foot isn't one shape</h2>
+    <p class="muted" style="max-width:68ch">Clinicians disagree about which condition to capture an orthotic from.
+      footscan captures all three and measures how much the foot changes between them, and which condition gives the
+      most repeatable numbers.</p>
+    <div class="grid grid-3" style="margin-top:20px">
+      <article class="card condition-card">
+        <h3>Non-weight-bearing <span class="code">nwb</span></h3>
+        <dl><dt>Setup</dt><dd>Lying face down, a helper holds the joint below the ankle in "neutral".</dd>
+          <dt>Captures</dt><dd>Structural shape with no load. The only view of the sole.</dd>
+          <dt>The argument</dt><dd>Classic casting reference, but "neutral" is hard to reproduce.</dd></dl>
+      </article>
+      <article class="card condition-card">
+        <h3>Semi-weight-bearing <span class="code">swb</span></h3>
+        <dl><dt>Setup</dt><dd>Seated, foot resting on a bathroom scale. Record the reading.</dd>
+          <dt>Captures</dt><dd>Heel seated, forefoot in contact, arch not fully loaded.</dd>
+          <dt>The argument</dt><dd>Pragmatic middle ground; usually unmeasured, so here it's weighed.</dd></dl>
+      </article>
+      <article class="card condition-card">
+        <h3>Full weight-bearing <span class="code">fwb</span></h3>
+        <dl><dt>Setup</dt><dd>Relaxed standing, weight split evenly, one foot on the scale.</dd>
+          <dt>Captures</dt><dd>What the foot actually does under load.</dd>
+          <dt>The argument</dt><dd>For a flat foot, it also captures the collapse you want to address.</dd></dl>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <div class="grid grid-2" style="align-items:start">
+      <div>
+        <p class="eyebrow">The gate</p>
+        <h2>No device until the noise is smaller than the correction</h2>
+        <p class="muted">Scan the same foot ten times per condition. If arch height varies between scans by as much as
+          the change you want to make, a device built from one scan is partly built from chance.</p>
+      </div>
+      <div class="card">
+        <p style="margin-bottom:4px"><strong>Verdict per measurement</strong></p>
+        <p class="hint">noise = smallest real change detectable between two scans (MDC95)</p>
+        <div class="gate">
+          <div style="background:var(--ok-soft);color:var(--ok)"><strong>PASS</strong><br>noise &lt; ½ × effect</div>
+          <div style="background:var(--warn-soft);color:var(--warn)"><strong>MARGINAL</strong><br>noise &lt; effect</div>
+          <div style="background:var(--stop-soft);color:var(--stop)"><strong>FAIL</strong><br>noise ≥ effect: stop</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Capture options</p>
+    <h2>Built for an ordinary phone</h2>
+    <div class="grid grid-4" style="margin-top:16px">
+      <div class="card"><span class="badge warn">In progress</span><h3 style="margin-top:10px">Phone camera</h3>
+        <p class="muted" style="margin:0">Works on any modern phone. The main path.</p></div>
+      <div class="card"><span class="badge">Planned</span><h3 style="margin-top:10px">Speckle sock</h3>
+        <p class="muted" style="margin:0">Printed random dots on thin stretch fabric give bare-looking skin texture to track.</p></div>
+      <div class="card"><span class="badge">Planned</span><h3 style="margin-top:10px">Foam impression</h3>
+        <p class="muted" style="margin:0">Step in crushable foam, then scan the still, rigid impression of the sole.</p></div>
+      <div class="card"><span class="badge">Planned</span><h3 style="margin-top:10px">LiDAR import</h3>
+        <p class="muted" style="margin:0">Optional for iPhone Pro models: import from scanning apps as an independent scale check.</p></div>
+    </div>
+  </section>
+
+  <section id="safety">
+    <div class="card" style="border-width:2px;border-color:var(--ink)">
+      <p class="eyebrow">Safety — requirements, not suggestions</p>
+      <h2>This is not a medical device</h2>
+      <p class="muted" style="max-width:70ch">A foot orthotic changes how load travels through the whole leg. Posting an
+        arch wrong can move a problem to the knee, hip or back instead of solving it, and a sport like tennis compounds
+        that quickly. These rules apply to every device this project makes and are not removed in later versions.</p>
+      <ol class="rules">
+        <li><p><strong>A clinician reviews anything worn for sport.</strong> The pipeline produces a summary sheet with
+          the scan measurements, posting angles and shell stiffness for a podiatrist, sports-medicine clinician,
+          physical therapist or athletic trainer to sign. No sign-off, no sport.</p></li>
+        <li><p><strong>Break in slowly.</strong> One hour on day one, ramping over two weeks, walking only, with a skin
+          check after every wear. <a href="/care.html">Open the break-in tracker</a>.</p></li>
+        <li><p><strong>Stop on any new pain.</strong> Foot, ankle, shin, knee, hip or back. Numbness, tingling, or a
+          skin mark that hasn't faded by the next day also means stop until reviewed.</p></li>
+        <li><p><strong>No equivalence claims.</strong> A footscan device is never compared to, or described as a
+          substitute for, a prescribed orthotic.</p></li>
+        <li><p><strong>Honest evidence.</strong> One person, unblinded: results are a case study, not proof it works.</p></li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  import { footSvg } from "/assets/layout.js";
+  // Illustrative only: a fixed decorative pattern, not data from any capture.
+  const svg = document.getElementById("hero-map");
+  const cx = 100, cy = 100, rings = [[46, 70], [70, 94]];
+  const pattern = [
+    [1, 1, 1, 0.5, 0, 0, 0.5, 1, 1, 1, 1, 1],
+    [1, 1, 0.5, 0, 0, 0, 0, 0.5, 1, 1, 1, 1],
+  ];
+  const pt = (r, deg) => [cx + r * Math.sin(deg * Math.PI / 180), cy + r * Math.cos(deg * Math.PI / 180)];
+  let out = "";
+  rings.forEach(([r1, r2], b) => {
+    for (let i = 0; i < 12; i++) {
+      const a1 = i * 30, a2 = a1 + 30;
+      const [x1, y1] = pt(r2, a1), [x2, y2] = pt(r2, a2), [x3, y3] = pt(r1, a2), [x4, y4] = pt(r1, a1);
+      const f = pattern[b][i];
+      const fill = f ? `color-mix(in srgb, var(--brand) ${20 + 70 * f}%, var(--surface-2))` : "var(--surface-2)";
+      out += `<path class="cov-cell" fill="${fill}" d="M${x1} ${y1}A${r2} ${r2} 0 0 0 ${x2} ${y2}L${x3} ${y3}A${r1} ${r1} 0 0 1 ${x4} ${y4}Z"/>`;
+    }
+  });
+  out += `<circle cx="100" cy="100" r="45" fill="color-mix(in srgb, var(--accent) 55%, var(--surface))"/>`;
+  out += `<g transform="translate(70 70) scale(0.3)">${footSvg({ cls: "hero-foot" })}</g>`;
+  svg.innerHTML = out;
+</script>
+</body>
+</html>

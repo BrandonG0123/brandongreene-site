@@ -1,0 +1,22 @@
+[project]
+name = "footscan"
+version = "0.0.1"
+description = "Phone scan to 3D-printed foot orthotic research pipeline. Not a medical device."
+requires-python = ">=3.11"
+dependencies = ["numpy", "scipy", "trimesh"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+footscan = "footscan.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

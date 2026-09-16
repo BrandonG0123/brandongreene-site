@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scan your feet — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style id="map-css"></style>
+  <style>
+    main.wrap { max-width: 760px; }
+    .steps { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 22px; flex-wrap: wrap; }
+    .steps li { flex: 1; min-width: 70px; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+    .steps li::before { content: ""; display: block; height: 4px; border-radius: 4px; background: var(--line); margin-bottom: 6px; }
+    .steps li.done::before, .steps li.current::before { background: var(--brand); }
+    .steps li.current { color: var(--ink); }
+    .view { display: grid; gap: 18px; }
+    .view h1 { font-size: clamp(1.7rem, 5vw, 2.3rem); margin: 0; }
+    .lede { color: var(--muted); font-size: 1.05rem; margin: 0; }
+    .form { display: grid; gap: 18px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 480px) { .row-2 { grid-template-columns: 1fr; } }
+    .ack { display: grid; gap: 10px; }
+    .ack label { display: flex; gap: 12px; align-items: flex-start; font-weight: 400; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+    .ack input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+    .ack label:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+    .error { color: var(--stop); font-weight: 600; margin: 0; }
+    .howto { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 12px; }
+    .howto li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+    .howto li::before { content: counter(s); width: 30px; height: 30px; border-radius: 50%; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; font-weight: 700; }
+    .howto p { margin: 0; }
+
+    .stage { position: relative; background: #0b0f0f; border-radius: var(--radius); overflow: hidden; aspect-ratio: 3 / 4; max-height: 62vh; width: 100%; }
+    @media (min-width: 700px) { .stage { aspect-ratio: 4 / 3; } }
+    .stage .feed { width: 100%; height: 100%; object-fit: cover; }
+    .guidance { position: absolute; left: 10px; right: 10px; bottom: 10px; background: rgb(10 14 14 / 80%); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 650; font-size: 1.05rem; backdrop-filter: blur(6px); }
+    .guidance.bad { background: rgb(150 30 24 / 90%); }
+    .guidance.done { background: var(--accent); color: var(--accent-ink); }
+    .demo-ribbon { position: absolute; top: 10px; left: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 0.72rem; letter-spacing: 0.1em; padding: 5px 10px; border-radius: 6px; }
+    .mini-map { position: absolute; top: 10px; right: 10px; width: 112px; background: rgb(255 255 255 / 92%); border-radius: 12px; padding: 6px; }
+    @media (prefers-color-scheme: dark) { .mini-map { background: rgb(22 30 29 / 92%); } }
+    .mini-map .map text { display: none; }
+    .scan-bar { display: grid; gap: 8px; }
+    .bar { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+    .bar > div { height: 100%; width: 0; background: var(--brand); transition: width 0.3s; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--muted); }
+    .scan-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    .scan-controls .btn { flex: 1; min-width: 120px; }
+    .foot-rows { display: grid; gap: 10px; }
+    .foot-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; }
+    .q { display: grid; gap: 8px; }
+    fieldset.q { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .q legend, .q > label.q-label { font-weight: 650; padding: 0; margin-bottom: 4px; }
+    .q .choices { display: grid; gap: 8px; }
+    .q .choice { grid-template-columns: auto 1fr; }
+    .q.invalid .choices, .q.invalid input[type="text"], .q.invalid input[type="number"] { outline: 2px solid var(--stop); outline-offset: 3px; border-radius: var(--radius-sm); }
+    .q .q-error { color: var(--stop); font-size: 0.88rem; font-weight: 600; margin: 0; }
+    .confirm { display: flex; gap: 12px; align-items: flex-start; font-weight: 400; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer; }
+    .confirm input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+    #plan-list li p { margin: 0; }
+    #plan-list .why { color: var(--muted); font-size: 0.93rem; }
+    .big-check { width: 64px; height: 64px; border-radius: 50%; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; font-size: 2rem; font-weight: 800; }
+  </style>
+</head>
+<body data-area="customer">
+<main class="wrap">
+  <ol class="steps" id="steps" aria-label="Progress">
+    <li data-step="about">About you</li>
+    <li data-step="survey">Questions</li>
+    <li data-step="scan">Scans</li>
+    <li data-step="send">Send</li>
+  </ol>
+
+  <!-- 1. About you -->
+  <section class="view" id="v-about" style="margin:0">
+    <h1>Scan your feet for a 3D-printed insole</h1>
+    <p class="lede">It takes about five minutes per foot. Your phone takes photos while you move it around your foot,
+      and they're used to shape an insole to fit you.</p>
+
+    <form class="card form" id="about-form" novalidate>
+      <div class="field">
+        <label for="name">Your name</label>
+        <input id="name" type="text" maxlength="80" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <span style="font-weight:650">Which feet?</span>
+        <div class="segmented" role="radiogroup" aria-label="Which feet">
+          <label><input type="radio" name="feet" value="both" checked> Both</label>
+          <label><input type="radio" name="feet" value="right"> Right</label>
+          <label><input type="radio" name="feet" value="left"> Left</label>
+        </div>
+      </div>
+
+      <fieldset style="border:0;padding:0;margin:0;display:grid;gap:10px">
+        <legend style="font-weight:650;margin-bottom:8px">Please read and confirm</legend>
+        <div class="ack">
+          <label><input type="checkbox" name="not_medical_device">
+            <span><strong>This is not a medical device.</strong> It's a handmade insole, not a prescribed orthotic,
+              and it doesn't diagnose or treat anything.</span></label>
+          <label><input type="checkbox" name="clinician_review">
+            <span><strong>I'll have a clinician check it before sport.</strong> A podiatrist, physical therapist,
+              sports-medicine doctor or athletic trainer. A badly shaped insole can cause knee, hip or back problems.</span></label>
+          <label><input type="checkbox" name="break_in">
+            <span><strong>I'll break it in slowly and stop on any new pain.</strong> One hour on day one, building up
+              over two weeks. <a href="/care.html" target="_blank">Read the guide</a>.</span></label>
+          <label><input type="checkbox" name="photo_consent">
+            <span><strong>I agree to my foot photos being stored</strong> to make my insole.</span></label>
+        </div>
+      </fieldset>
+      <p class="error" id="about-error" role="alert"></p>
+      <button class="btn" type="submit">Continue</button>
+    </form>
+  </section>
+
+  <!-- 2. Survey -->
+  <section class="view" id="v-survey" hidden style="margin:0">
+    <p class="eyebrow" id="survey-eyebrow">Questions · 1 of 3</p>
+    <h1 id="survey-title">Safety check</h1>
+    <p class="lede" id="survey-intro"></p>
+    <form class="card form" id="survey-form" novalidate></form>
+    <p class="error" id="survey-error" role="alert"></p>
+    <div class="btn-row">
+      <button class="btn secondary" id="btn-survey-back" type="button">Back</button>
+      <button class="btn" id="btn-survey-next" type="button">Next</button>
+    </div>
+  </section>
+
+  <!-- 2b. Screened out -->
+  <section class="view" id="v-stopped" hidden style="margin:0">
+    <h1>Please see a podiatrist instead</h1>
+    <div class="callout stop"><p id="stopped-message"></p></div>
+    <div class="card">
+      <h3>What to do</h3>
+      <p>Book an appointment with a podiatrist and tell them you're looking for insoles. They can check your feet and
+        fit something that's safe for you.</p>
+      <p class="hint" style="margin:0">Nothing you entered has been saved.</p>
+    </div>
+    <button class="btn secondary" id="btn-stopped-back" type="button" style="justify-self:start">Back to the questions</button>
+  </section>
+
+  <!-- 2c. Scan plan -->
+  <section class="view" id="v-plan" hidden style="margin:0">
+    <h1>Your scans</h1>
+    <p class="lede">Based on your answers, here's what we'll scan.</p>
+    <div class="callout warn" id="plan-flags" hidden>
+      <p><strong>Please see a clinician before you wear your insole at all</strong>, not just before sport:</p>
+      <ul id="plan-flag-list" style="margin:0;padding-left:1.2em"></ul>
+    </div>
+    <ol class="card howto" id="plan-list"></ol>
+    <p class="hint" id="plan-helper"></p>
+    <p class="error" id="plan-error" role="alert"></p>
+    <div class="btn-row">
+      <button class="btn secondary" id="btn-plan-back" type="button">Change answers</button>
+      <button class="btn" id="btn-plan-start" type="button">Start scanning</button>
+    </div>
+  </section>
+
+  <!-- 3. Set up one scan -->
+  <section class="view" id="v-setup" hidden style="margin:0">
+    <p class="eyebrow" id="setup-eyebrow">Scan 1 of 2</p>
+    <h1 id="setup-title">Get ready to scan your right foot</h1>
+    <div class="card"><ol class="howto" id="setup-steps"></ol></div>
+    <div class="field card">
+      <label for="load">Bathroom scale reading <span class="hint" id="load-hint">optional: put a scale under this foot and enter what it shows</span></label>
+      <input id="load" type="number" inputmode="decimal" min="0" max="400" step="0.1" placeholder="kg">
+    </div>
+    <p class="error" id="setup-error" role="alert"></p>
+    <div class="btn-row">
+      <button class="btn" id="btn-open">Open camera</button>
+      <button class="btn secondary" id="btn-demo" hidden>Use simulated camera</button>
+    </div>
+  </section>
+
+  <!-- 3b. Scan -->
+  <section class="view" id="v-scan" hidden style="margin:0">
+    <div>
+      <p class="eyebrow" id="scan-eyebrow">Right foot</p>
+      <h1 style="font-size:1.5rem">Move slowly around your foot</h1>
+    </div>
+    <div class="stage" id="stage">
+      <div class="demo-ribbon" id="demo-ribbon" hidden>DEMO · NOTHING IS SENT</div>
+      <div class="mini-map"><svg class="map" id="map" role="img" aria-label="Which angles around your foot are done"></svg></div>
+      <div class="guidance" id="guidance" aria-live="polite">Stand behind the heel, then tap Start.</div>
+    </div>
+    <div class="scan-bar">
+      <div class="bar-label"><span>Scan progress</span><span class="mono" id="progress-label">0%</span></div>
+      <div class="bar"><div id="progress-bar"></div></div>
+    </div>
+    <div class="scan-controls">
+      <button class="btn" id="btn-start">Start</button>
+      <button class="btn secondary" id="btn-pause" hidden>Pause</button>
+      <button class="btn secondary" id="btn-finish" disabled>Finish</button>
+    </div>
+    <button class="btn secondary" id="btn-restart" type="button" style="justify-self:start">Start this foot over</button>
+  </section>
+
+  <!-- 3b. Saving a foot -->
+  <section class="view" id="v-saving" hidden style="margin:0">
+    <h1 id="saving-title">Saving your scan…</h1>
+    <div class="scan-bar">
+      <div class="bar-label"><span id="saving-label">Uploading photos</span><span class="mono" id="saving-count"></span></div>
+      <div class="bar"><div id="saving-bar"></div></div>
+    </div>
+    <p class="error" id="saving-error" role="alert"></p>
+    <div class="btn-row" id="saving-actions" hidden>
+      <button class="btn" id="btn-retry-upload">Try again</button>
+      <button class="btn secondary" id="btn-rescan">Scan this foot again</button>
+    </div>
+  </section>
+
+  <!-- 4. Send -->
+  <section class="view" id="v-send" hidden style="margin:0">
+    <h1>Ready to send</h1>
+    <p class="lede">Check every scan is done, then send them.</p>
+    <div class="foot-rows" id="foot-rows"></div>
+    <p class="error" id="send-error" role="alert"></p>
+    <button class="btn" id="btn-send">Send my scans</button>
+  </section>
+
+  <!-- 5. Done -->
+  <section class="view" id="v-done" hidden style="margin:0">
+    <div class="big-check" aria-hidden="true">✓</div>
+    <h1>Scans sent</h1>
+    <p class="lede">Thanks. Your reference is <strong class="mono" id="done-ref"></strong>.</p>
+    <div class="card">
+      <h3>What happens next</h3>
+      <ol class="howto">
+        <li><p>Your scans are checked. If a photo set didn't work, you'll be asked to scan again.</p></li>
+        <li><p>Your insole is designed and printed.</p></li>
+        <li><p><strong>Before sport:</strong> take it to a podiatrist, physical therapist, sports-medicine doctor or
+          athletic trainer to check.</p></li>
+        <li><p><strong>Break it in slowly</strong> and stop on any new pain.</p></li>
+      </ol>
+    </div>
+    <a class="btn secondary" href="/care.html" style="justify-self:start">Read the break-in guide</a>
+  </section>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module" src="/assets/app.js"></script>
+</body>
+</html>

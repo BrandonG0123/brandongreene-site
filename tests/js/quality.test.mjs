@@ -1,0 +1,77 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+
+import {
+  Coverage, SharpnessJudge, cellFor, exposureStats, judgeExposure,
+  laplacianVariance, nextMissing, shouldCapture, viewFromOrientation,
+} from "../../web/assets/quality.js";
+
+function checkerboard(w, h, size) {
+  const g = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++)
+    g[y * w + x] = ((Math.floor(x / size) + Math.floor(y / size)) % 2) * 200 + 25;
+  return g;
+}
+
+function boxBlur(g, w, h, r) {
+  const out = new Float32Array(g.length);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let s = 0, n = 0;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const yy = y + dy, xx = x + dx;
+      if (yy >= 0 && yy < h && xx >= 0 && xx < w) { s += g[yy * w + xx]; n++; }
+    }
+    out[y * w + x] = s / n;
+  }
+  return out;
+}
+
+test("laplacian variance: flat is zero, blur reduces it", () => {
+  const w = 64, h = 64;
+  assert.equal(laplacianVariance(new Float32Array(w * h).fill(120), w, h), 0);
+  const sharp = checkerboard(w, h, 4);
+  const blurred = boxBlur(sharp, w, h, 2);
+  assert.ok(laplacianVariance(blurred, w, h) < 0.2 * laplacianVariance(sharp, w, h));
+});
+
+test("exposure judgement", () => {
+  assert.equal(judgeExposure(exposureStats(new Float32Array(100).fill(128))).ok, true);
+  assert.equal(judgeExposure(exposureStats(new Float32Array(100).fill(255))).issue, "overexposed");
+  assert.equal(judgeExposure(exposureStats(new Float32Array(100).fill(3))).issue, "underexposed");
+});
+
+test("sharpness judge is relative to recent frames", () => {
+  const j = new SharpnessJudge();
+  for (let i = 0; i < 20; i++) j.judge(1000);
+  assert.equal(j.judge(900).ok, true);
+  assert.equal(j.judge(300).ok, false);
+  assert.equal(j.judge(5).message.startsWith("No detail"), true);
+});
+
+test("orientation to view and cells", () => {
+  assert.deepEqual(viewFromOrientation({ alpha: 30, beta: 90 }, 10), { azimuth: 20, elevation: 0 });
+  assert.equal(viewFromOrientation({ alpha: 5, beta: 0 }, 10).azimuth, 355);
+  assert.equal(cellFor({ azimuth: 0, elevation: 10 }), "low-0");
+  assert.equal(cellFor({ azimuth: 359, elevation: 40 }), "mid-11");
+  assert.equal(cellFor({ azimuth: 100, elevation: 80 }), "top");
+});
+
+test("coverage completeness and next missing", () => {
+  const c = new Coverage({ perSideCell: 1, topCell: 1 });
+  assert.equal(c.completeness(), 0);
+  for (const cell of c.counts.keys()) c.add(cell);
+  assert.equal(c.completeness(), 1);
+  assert.equal(nextMissing(c, { azimuth: 0, elevation: 10 }), null);
+  c.remove("mid-3");
+  assert.equal(nextMissing(c, { azimuth: 0, elevation: 10 }), "mid-3");
+});
+
+test("capture policy", () => {
+  const c = new Coverage();
+  const base = { sharpOk: true, exposureOk: true, now: 1000, lastCaptureAt: 0, cell: "low-0", coverage: c };
+  assert.equal(shouldCapture(base), true);
+  assert.equal(shouldCapture({ ...base, sharpOk: false }), false);
+  assert.equal(shouldCapture({ ...base, lastCaptureAt: 700 }), false);
+  for (let i = 0; i < 6; i++) c.add("low-0");
+  assert.equal(shouldCapture(base), false);
+});

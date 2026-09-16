@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wearing your insole — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; align-items: start; }
+    @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+    .days { display: grid; gap: 10px; }
+    .day { display: grid; grid-template-columns: 88px 1fr; gap: 14px; padding: 14px 16px; align-items: start; }
+    .day.today { outline: 2px solid var(--brand); }
+    .day.locked { opacity: 0.55; }
+    .day .num { font-weight: 700; }
+    .day .target { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); }
+    .day .inputs { display: grid; grid-template-columns: 110px 1fr 150px; gap: 10px; align-items: end; }
+    @media (max-width: 640px) { .day { grid-template-columns: 1fr; } .day .inputs { grid-template-columns: 1fr 1fr; } .day .inputs .skin { grid-column: 1 / -1; } }
+    .day .flag { grid-column: 1 / -1; margin: 0; font-size: 0.9rem; font-weight: 600; }
+    .stop-banner { display: grid; gap: 10px; }
+    .stop-banner h2 { color: var(--stop); margin: 0; }
+  </style>
+</head>
+<body data-area="customer">
+<main class="wrap">
+  <p class="eyebrow">Wearing your insole</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Break it in slowly</h1>
+  <p class="muted" style="max-width:66ch">Two weeks of walking only, starting with one hour. Check your skin after every wear. If a clinician gives you a
+    different schedule, follow theirs. Log each day below; it saves on this phone.</p>
+
+  <div id="stop" class="callout stop stop-banner" hidden role="alert" style="margin:20px 0">
+    <h2>Stop wearing the insole</h2>
+    <p id="stop-reason"></p>
+    <p>Take the insole out and don't wear it again until a clinician has looked at it and at your symptoms.
+      Let the person who made your insole know what happened, so it can be fixed.</p>
+    <details>
+      <summary style="cursor:pointer;font-weight:600">Resume after review</summary>
+      <div style="display:grid;gap:10px;margin-top:10px;max-width:420px">
+        <div class="field"><label for="reviewer">Reviewed by (name and credential)</label>
+          <input id="reviewer" type="text" autocomplete="off"></div>
+        <label style="display:flex;gap:10px;font-weight:400"><input type="checkbox" id="reviewed-ack">
+          The clinician has cleared me to start wearing it again.</label>
+        <button class="btn secondary" id="btn-resume" disabled>Resume tracking</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="layout" style="margin-top:20px">
+    <div>
+      <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+        <div class="field" style="flex:1;min-width:160px"><label for="revision">Insole reference</label>
+          <input id="revision" type="text" placeholder="from your scan confirmation" autocomplete="off"></div>
+        <div class="field" style="flex:1;min-width:160px"><label for="start">First day wearing it</label>
+          <input id="start" type="date"></div>
+        <button class="btn secondary" id="btn-reset" type="button">Reset tracker</button>
+      </div>
+      <div class="days" id="days"></div>
+    </div>
+
+    <aside style="display:grid;gap:14px">
+      <div class="card">
+        <h3>Skin check, every session</h3>
+        <p class="hint" style="margin-bottom:8px">Both feet. Look at the arch edge, heel cup rim and under the met heads.</p>
+        <ul class="checklist">
+          <li>Redness that hasn't faded after 20 minutes</li>
+          <li>Blisters or hot spots</li>
+          <li>New callus forming</li>
+          <li>Pressure marks along an edge</li>
+        </ul>
+      </div>
+      <div class="card" style="border:2px solid var(--stop)">
+        <h3 style="color:var(--stop)">Stop rule</h3>
+        <p style="margin:0">Stop immediately on <strong>any new pain</strong> in the foot, ankle, shin, knee, hip or back;
+          numbness, tingling or burning; a skin finding that hasn't resolved by the next day; or existing pain getting worse.</p>
+      </div>
+      <div class="card">
+        <h3>Day 15 and after</h3>
+        <p class="muted" style="margin:0">Only play sport in it once a podiatrist, physical therapist,
+          sports-medicine doctor or athletic trainer has checked it. Start with a short, easy session.</p>
+      </div>
+      <p class="hint">Your log is saved in this browser only. Nothing is sent.</p>
+    </aside>
+  </div>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  // Schedule mirrors docs/SAFETY.md. Keep them in sync.
+  const SCHEDULE = [
+    [1, 1, "1 h"], [2, 3, "2 h"], [4, 5, "3 h"], [6, 7, "4 h"], [8, 10, "6 h"], [11, 14, "All day"],
+  ];
+  const targetFor = (d) => SCHEDULE.find(([a, b]) => d >= a && d <= b);
+  const hoursCap = (label) => (label === "All day" ? 16 : parseFloat(label));
+  const SKIN = [
+    ["", "Skin check…"],
+    ["clear", "Clear"],
+    ["faded", "Redness, faded within 20 min"],
+    ["persistent", "Redness that didn't fade"],
+    ["blister", "Blister or hot spot"],
+    ["numb", "Numbness or tingling"],
+  ];
+  const STOP_SKIN = new Set(["blister", "numb"]);
+  const KEY = "footscan.breakin.v1";
+  const $ = (id) => document.getElementById(id);
+
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} };
+  let state = Object.assign({ revision: "", start: "", days: {}, stopped: null, reviews: [] }, load());
+
+  function dayNumber() {
+    if (!state.start) return null;
+    const ms = new Date().setHours(0, 0, 0, 0) - new Date(state.start + "T00:00").getTime();
+    return Math.floor(ms / 86400000) + 1;
+  }
+
+  function evaluateStop() {
+    for (let d = 1; d <= 14; d++) {
+      const e = state.days[d];
+      if (!e) continue;
+      if (e.pain === "yes") return `Day ${d}: new pain reported.`;
+      if (STOP_SKIN.has(e.skin)) return `Day ${d}: ${SKIN.find(([v]) => v === e.skin)[1].toLowerCase()}.`;
+      if (e.skin === "persistent" && state.days[d + 1]?.skin === "persistent")
+        return `Days ${d}–${d + 1}: redness persisted into the next day.`;
+    }
+    return null;
+  }
+
+  function render() {
+    $("revision").value = state.revision;
+    $("start").value = state.start;
+    const reason = state.stopped ?? evaluateStop();
+    if (reason && !state.stopped) { state.stopped = reason; save(); }
+    $("stop").hidden = !state.stopped;
+    $("stop-reason").textContent = state.stopped || "";
+    // A stop can only be cleared through the review step, never by resetting.
+    $("btn-reset").disabled = !!state.stopped;
+    $("btn-reset").title = state.stopped ? "Clear the stop through 'Resume after review' first" : "";
+
+    const today = dayNumber();
+    const html = [];
+    for (let d = 1; d <= 14; d++) {
+      const [, , label] = targetFor(d);
+      const e = state.days[d] || {};
+      const future = today != null && d > today;
+      const locked = !!state.stopped || future;
+      const over = e.hours != null && e.hours !== "" && Number(e.hours) > hoursCap(label);
+      const persistentOnce = e.skin === "persistent";
+      html.push(`<div class="card day${d === today ? " today" : ""}${locked ? " locked" : ""}">
+        <div><div class="num">Day ${d}${d === today ? ' <span class="badge brand">today</span>' : ""}</div>
+          <div class="target">target ${label}</div><div class="hint">walking only</div></div>
+        <div class="inputs">
+          <div class="field"><label for="h${d}">Hours worn</label>
+            <input id="h${d}" data-day="${d}" data-k="hours" type="number" min="0" max="24" step="0.25" inputmode="decimal" value="${e.hours ?? ""}" ${locked ? "disabled" : ""}></div>
+          <div class="field skin"><label for="s${d}">Skin check</label>
+            <select id="s${d}" data-day="${d}" data-k="skin" ${locked ? "disabled" : ""}>${SKIN.map(([v, t]) =>
+              `<option value="${v}"${e.skin === v ? " selected" : ""}>${t}</option>`).join("")}</select></div>
+          <div class="field"><label for="p${d}">Any new pain?</label>
+            <select id="p${d}" data-day="${d}" data-k="pain" ${locked ? "disabled" : ""}>
+              <option value=""${!e.pain ? " selected" : ""}>—</option>
+              <option value="no"${e.pain === "no" ? " selected" : ""}>No</option>
+              <option value="yes"${e.pain === "yes" ? " selected" : ""}>Yes</option></select></div>
+          ${over ? `<p class="flag" style="color:var(--warn)">More than today's target. Don't get ahead of the schedule.</p>` : ""}
+          ${persistentOnce && !state.stopped ? `<p class="flag" style="color:var(--warn)">Rest the device until the redness is gone. If it's still there tomorrow, that triggers the stop rule.</p>` : ""}
+        </div></div>`);
+    }
+    $("days").innerHTML = html.join("");
+  }
+
+  $("days").addEventListener("change", (ev) => {
+    const el = ev.target;
+    if (!el.dataset.day) return;
+    const d = el.dataset.day;
+    state.days[d] = { ...(state.days[d] || {}), [el.dataset.k]: el.value };
+    save(); render();
+  });
+  $("revision").addEventListener("input", (e) => { state.revision = e.target.value; save(); });
+  $("start").addEventListener("change", (e) => { state.start = e.target.value; save(); render(); });
+  $("btn-reset").addEventListener("click", () => {
+    if (state.stopped) return;
+    if (!confirm("Clear all entries?")) return;
+    state = { revision: "", start: "", days: {}, stopped: null, reviews: state.reviews };
+    save(); render();
+  });
+
+  const syncResume = () => ($("btn-resume").disabled = !($("reviewed-ack").checked && $("reviewer").value.trim()));
+  $("reviewer").addEventListener("input", syncResume);
+  $("reviewed-ack").addEventListener("change", syncResume);
+  $("btn-resume").addEventListener("click", () => {
+    state.reviews.push({ at: new Date().toISOString(), by: $("reviewer").value.trim(), reason: state.stopped });
+    // Resuming starts the protocol again from day 1: the flagged entries stay in the review log.
+    state = { ...state, days: {}, start: "", stopped: null };
+    save(); render();
+  });
+
+  render();
+</script>
+</body>
+</html>

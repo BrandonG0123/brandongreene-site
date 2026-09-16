@@ -1,0 +1,29 @@
+{
+  "scan_id": "2026-09-16_S1_C01_fwb",
+  "foot": "right",
+  "condition": "fwb",
+  "source": "scan",
+  "session": "S1",
+  "capture_id": "C01",
+  "pick": 1,
+  "load_kg": null,
+  "units": "mm",
+  "mesh": null,
+  "support_plane": null,
+  "landmarks": {
+    "navicular_tuberosity": null,
+    "mtpj1_medial": null,
+    "mtpj5_lateral": null,
+    "malleolus_medial": null,
+    "malleolus_lateral": null,
+    "calc_bisect_proximal": null,
+    "calc_bisect_distal": null,
+    "leg_bisect_proximal": null,
+    "leg_bisect_distal": null,
+    "calc_plantar": null,
+    "mth1_plantar": null,
+    "mth5_plantar": null,
+    "heel_posterior": null,
+    "toe_tip": null
+  }
+}
