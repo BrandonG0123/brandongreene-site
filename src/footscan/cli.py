@@ -83,7 +83,7 @@ def cmd_mat(args) -> int:
 def cmd_serve(args) -> int:
     from .server import serve
 
-    serve(args.host, args.port, args.https)
+    serve(args.host, args.port, args.https, args.public)
     return 0
 
 
@@ -112,6 +112,8 @@ def main(argv=None) -> int:
     sv.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to reach it from your phone")
     sv.add_argument("--port", type=int, default=8765)
     sv.add_argument("--https", action="store_true", help="self-signed HTTPS (phones require it for camera access)")
+    sv.add_argument("--public", action="store_true",
+                    help="behind a tunnel or proxy on the internet: trust nothing as local; studio needs the key")
     sv.set_defaults(func=cmd_serve)
 
     args = ap.parse_args(argv)

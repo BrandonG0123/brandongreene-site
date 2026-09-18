@@ -167,11 +167,36 @@
               <textarea id="note" rows="2"></textarea></div>
             <div class="btn-row">
               <button class="btn secondary" data-status="received">Mark new</button>
-              <button class="btn secondary" data-status="needs_rescan">Needs rescan</button>
               <button class="btn secondary" data-status="archived">Archive</button>
             </div>
-            <p class="hint" style="margin:10px 0 0">"Needs rescan" is a record for you. Tell the person yourself; there's
-              no rescan link yet.</p>
+          </section>
+
+          <section class="card">
+            <h3>Ask for new photos</h3>
+            ${s.rescan ? `<div class="callout warn" style="margin-bottom:12px"><p><strong>Waiting for a rescan</strong> of
+              ${s.rescan.scans.map((k) => esc(s.scans[k]?.label || k)).join(", ")} (asked ${fmtDate(s.rescan.requested_at)}).
+              Making a new link replaces the old one.</p></div>` : ""}
+            <p class="hint" style="margin:0 0 8px">Pick the scans to redo. The person gets a link that skips the questions
+              and goes straight to those scans. The old photos are kept.</p>
+            <div class="checklist" id="rescan-keys" style="margin-bottom:10px">${Object.entries(s.scans).map(([k, sc]) =>
+              `<label><input type="checkbox" value="${esc(k)}"> ${esc(sc.label || k)}</label>`).join("")}</div>
+            <div class="field" style="margin-bottom:10px"><label for="rescan-note">Why? <span class="hint">shown to them</span></label>
+              <input id="rescan-note" type="text" maxlength="500" placeholder="e.g. the heel was blurry"></div>
+            <button class="btn" id="btn-rescan" type="button">Make rescan link</button>
+            <div id="rescan-out" hidden style="margin-top:12px;display:grid;gap:8px">
+              <input id="rescan-link" type="text" readonly class="mono" style="font-size:0.8rem">
+              <div class="btn-row">
+                <button class="btn secondary" id="btn-copy-link" type="button">Copy link</button>
+                <button class="btn secondary" id="btn-share-link" type="button" hidden>Share…</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>Delete</h3>
+            <p class="hint" style="margin:0 0 10px">Removes every photo and answer for this person, for good. Do this if they
+              ask you to delete their data.</p>
+            <button class="btn danger" id="btn-delete" type="button">Delete this submission</button>
           </section>
 
           <section class="card">
@@ -190,6 +215,38 @@
       });
       if (r.ok) render(await r.json()); else { b.disabled = false; alert((await r.json()).error); }
     }));
+
+    document.getElementById("btn-rescan").addEventListener("click", async (e) => {
+      const keys = [...document.querySelectorAll("#rescan-keys input:checked")].map((i) => i.value);
+      if (!keys.length) return alert("Tick at least one scan to redo.");
+      e.target.disabled = true;
+      const r = await fetch(`/api/submissions/${encodeURIComponent(s.id)}/rescan`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scans: keys, note: document.getElementById("rescan-note").value }),
+      });
+      const data = await r.json();
+      if (!r.ok) { e.target.disabled = false; return alert(data.error); }
+      // Point the link at the address phones use, not at localhost.
+      const info = await fetch("/api/studio").then((x) => x.json()).catch(() => ({}));
+      const base = (info.scan_url || location.origin + "/").replace(/\/$/, "");
+      const link = base + data.path;
+      await load();
+      document.getElementById("rescan-out").hidden = false;
+      document.getElementById("rescan-link").value = link;
+      document.getElementById("btn-copy-link").onclick = async () => {
+        try { await navigator.clipboard.writeText(link); } catch { document.getElementById("rescan-link").select(); }
+        document.getElementById("btn-copy-link").textContent = "Copied";
+      };
+      const share = document.getElementById("btn-share-link");
+      share.hidden = !navigator.share;
+      share.onclick = () => navigator.share({ title: "Please scan again", text: "We need a few new photos for your insole.", url: link }).catch(() => {});
+    });
+
+    document.getElementById("btn-delete").addEventListener("click", async () => {
+      if (!confirm(`Delete everything for ${s.name}? This can't be undone.`)) return;
+      const r = await fetch(`/api/submissions/${encodeURIComponent(s.id)}`, { method: "DELETE" });
+      if (r.ok) location.href = "/studio/"; else alert((await r.json()).error);
+    });
   }
   load();
 </script>

@@ -84,6 +84,7 @@
 
   <!-- 1. About you -->
   <section class="view" id="v-about" style="margin:0">
+    <div class="callout warn" id="link-error" role="alert" hidden><p id="link-error-text" style="margin:0"></p></div>
     <h1>Make an insole that fits your foot</h1>
     <p class="lede">Your phone takes photos of your foot. Those photos are used to shape an insole for your shoe.
       It takes about five minutes per foot.</p>
@@ -157,8 +158,8 @@
 
   <!-- 2c. Scan plan -->
   <section class="view" id="v-plan" hidden style="margin:0">
-    <h1>Here is your plan</h1>
-    <p class="lede">From your answers, these are the scans to take.</p>
+    <h1 id="plan-title">Here is your plan</h1>
+    <p class="lede" id="plan-lede">From your answers, these are the scans to take.</p>
     <div class="callout warn" id="plan-flags" hidden>
       <p><strong>See a foot doctor before you wear the insole at all</strong>, not just before sport. Here is why:</p>
       <ul id="plan-flag-list" style="margin:0;padding-left:1.2em"></ul>
@@ -287,6 +288,7 @@
       </ol>
     </div>
     <a class="btn secondary" href="/care.html" style="justify-self:start">How to wear it</a>
+    <p class="hint">Want your photos deleted? Tell the person making your insole and give them your code.</p>
   </section>
 </main>
 <script src="/vendor/js-aruco2/cv.js"></script>

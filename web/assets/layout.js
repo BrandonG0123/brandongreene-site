@@ -17,6 +17,7 @@ const NAV = {
     ["/studio/", "Submissions"],
     ["/studio/capture.html", "Research capture"],
     ["/studio/captures.html", "Research library"],
+    ["/studio/import.html", "Import 3D"],
     ["/mat.html", "Scan mat"],
     ["/studio/project.html", "Project"],
   ],

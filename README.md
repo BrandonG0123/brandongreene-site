@@ -75,6 +75,19 @@ any object, no mat, no foot. It exercises the camera, quality checks and
 upload when a foot or a printed mat isn't available, and is marked
 unmeasurable so it never enters foot measurement data.
 
+**Rescans.** In the studio, open a submission and use *Ask for new photos*: pick
+the scans to redo and it makes a link. The person's link skips the questions,
+asks for the mat check again, and goes straight to those scans. Old photos are
+kept in `_previous/`.
+
+**3D model import.** *Import 3D* in the studio takes OBJ, PLY, STL, GLB or OFF
+files from scanning apps (e.g. LiDAR scans from Polycam or Scaniverse), detects
+metres vs millimetres, and stores the model in the research library for
+comparison with photo scans.
+
+**On the internet.** See [docs/HOSTING.md](docs/HOSTING.md): use `--public`
+behind a tunnel, and read the checklist first.
+
 **Not built yet:** turning scans into a TPU print file. That needs
 reconstruction, landmarks and the generator (Phases 2–4), and the Phase 0
 repeatability gate has to pass first.

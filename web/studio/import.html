@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import a 3D scan — footscan studio</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    main.wrap { max-width: 860px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--gap); align-items: start; }
+    @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } }
+    form { display: grid; gap: 18px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 480px) { .row-2 { grid-template-columns: 1fr; } }
+    .drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 26px; text-align: center; cursor: pointer; }
+    .drop:hover, .drop.over { border-color: var(--brand); background: var(--brand-soft); }
+    .drop input { display: none; }
+    .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 18px; margin: 0; }
+    .facts dt { font-size: 0.75rem; color: var(--muted); }
+    .facts dd { margin: 0; font-weight: 650; font-family: var(--mono); }
+    .errors { color: var(--stop); font-weight: 600; margin: 0; }
+  </style>
+</head>
+<body data-area="studio">
+<main class="wrap">
+  <p class="eyebrow">Studio · LiDAR and other 3D scans</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Import a 3D scan</h1>
+  <p class="muted">Bring in a 3D model made by a scanning app, for comparison with footscan's own photo scans. LiDAR
+    measures distance directly, so these models already have real size: no mat needed.</p>
+
+  <div class="layout" style="margin-top:20px">
+    <form class="card" id="form" novalidate>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept=".obj,.ply,.stl,.glb,.gltf,.off">
+        <strong id="drop-title">Choose a 3D file</strong>
+        <div class="hint" id="drop-hint">OBJ, PLY, STL, GLB or OFF · up to 150 MB</div>
+      </label>
+
+      <div class="row-2">
+        <div class="field">
+          <label for="condition">What was scanned?</label>
+          <select id="condition">
+            <option value="swb">Foot, seated (semi-weight-bearing)</option>
+            <option value="fwb">Foot, standing (full weight-bearing)</option>
+            <option value="nwb_relaxed">Foot, unloaded and relaxed</option>
+            <option value="nwb">Foot, subtalar neutral (helper)</option>
+            <option value="object">An object (test)</option>
+          </select>
+        </div>
+        <div class="field" id="foot-field">
+          <label for="foot">Which foot?</label>
+          <select id="foot"><option value="right">Right</option><option value="left">Left</option></select>
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="session">Session</label>
+          <input id="session" type="text" value="LIDAR" maxlength="20">
+        </div>
+        <div class="field" id="load-field">
+          <label for="load">Scale reading (kg) <span class="hint">needed when loaded</span></label>
+          <input id="load" type="number" inputmode="decimal" min="0" max="400" step="0.1">
+        </div>
+      </div>
+      <div class="field">
+        <label for="notes">Notes <span class="hint">which app, which phone, anything unusual</span></label>
+        <input id="notes" type="text" maxlength="500" placeholder="e.g. Polycam LiDAR mode, iPhone 15 Pro">
+      </div>
+      <p class="errors" id="errors" role="alert"></p>
+      <button class="btn" type="submit" id="btn-import">Import</button>
+    </form>
+
+    <aside style="display:grid;gap:var(--gap)">
+      <div class="card">
+        <h3>Which phones</h3>
+        <p class="muted" style="margin:0">LiDAR is on iPhone Pro and Pro Max models from the 12 Pro onward, and on
+          iPad Pro. Other phones can still make photo-based 3D models in the same apps, but without LiDAR's scale.</p>
+      </div>
+      <div class="card">
+        <h3>Exporting</h3>
+        <ul class="checklist">
+          <li><strong>Polycam:</strong> Export → OBJ or PLY</li>
+          <li><strong>Scaniverse:</strong> Share → Export Model → OBJ or PLY</li>
+          <li><strong>3d Scanner App:</strong> Export → OBJ</li>
+        </ul>
+        <p class="hint" style="margin:10px 0 0">USDZ can't be read here; pick OBJ or PLY instead.</p>
+      </div>
+    </aside>
+  </div>
+
+  <section id="result" hidden style="margin-top:var(--gap-l)">
+    <div class="card">
+      <h2 style="margin:0 0 12px">Imported</h2>
+      <dl class="facts" id="facts"></dl>
+      <p class="hint" id="units-note" style="margin:14px 0 0"></p>
+      <div class="btn-row" style="margin-top:16px">
+        <a class="btn" href="/studio/captures.html" id="to-library">See it in the library</a>
+        <button class="btn secondary" type="button" onclick="location.reload()">Import another</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  let file = null;
+
+  function sync() {
+    const c = $("condition").value;
+    $("foot-field").hidden = c === "object";
+    $("load-field").hidden = c !== "swb" && c !== "fwb";
+  }
+  $("condition").addEventListener("change", sync);
+  sync();
+
+  function pick(f) {
+    file = f;
+    $("drop-title").textContent = f ? f.name : "Choose a 3D file";
+    $("drop-hint").textContent = f ? `${(f.size / 1048576).toFixed(1)} MB` : "OBJ, PLY, STL, GLB or OFF · up to 150 MB";
+  }
+  $("file").addEventListener("change", (e) => pick(e.target.files[0]));
+  const drop = $("drop");
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); pick(e.dataTransfer.files[0]); });
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ext = file?.name.split(".").pop().toLowerCase();
+    const cond = $("condition").value;
+    const errors = [];
+    if (!file) errors.push("Choose a 3D file first.");
+    else if (!["obj", "ply", "stl", "glb", "gltf", "off"].includes(ext)) errors.push("That file type can't be read. Export as OBJ or PLY.");
+    if ((cond === "swb" || cond === "fwb") && !$("load").value) errors.push("Enter the scale reading for a loaded scan.");
+    $("errors").textContent = errors.join(" ");
+    if (errors.length) return;
+
+    const btn = $("btn-import");
+    btn.disabled = true;
+    btn.textContent = "Importing…";
+    try {
+      const r = await fetch("/api/captures", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          condition: cond, foot: cond === "object" ? null : $("foot").value, session: $("session").value.trim(),
+          load_kg: $("load").value || null, method: "imported_mesh", notes: $("notes").value,
+        }),
+      });
+      const created = await r.json();
+      if (!r.ok) throw new Error(created.error);
+      const up = await fetch(`/api/captures/${created.id}/mesh?ext=${ext}`, {
+        method: "PUT", headers: { "Content-Type": "application/octet-stream" }, body: file,
+      });
+      const data = await up.json();
+      if (!up.ok) throw new Error(data.error);
+      const m = data.mesh;
+      $("facts").innerHTML = [
+        ["Length", `${m.extents_mm[0]} mm`], ["Width", `${m.extents_mm[1]} mm`], ["Height", `${m.extents_mm[2]} mm`],
+        ["Vertices", m.vertices.toLocaleString()], ["Faces", m.faces.toLocaleString()], ["Closed surface", m.watertight ? "yes" : "no"],
+      ].map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("");
+      $("units-note").textContent = `The file looked like it was in ${m.units_detected === "m" ? "metres" : m.units_detected === "cm" ? "centimetres" : "millimetres"}, `
+        + `so it was scaled by ${m.scale_to_mm} to millimetres. A foot is usually 220–320 mm long: if the length above is far off, the units guess was wrong.`;
+      $("to-library").href = `/studio/captures.html#${created.id}`;
+      $("result").hidden = false;
+      $("result").scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+      $("errors").textContent = `Import failed: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Import";
+    }
+  });
+</script>
+</body>
+</html>

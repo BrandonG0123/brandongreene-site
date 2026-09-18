@@ -27,6 +27,7 @@ const flow = {
   results: {},            // scan key -> photo count
   scanner: null,
   stageView: null,
+  rescan: false,          // true when following a "please scan again" link
 };
 const currentScan = () => flow.evaluation.plan[flow.scanIndex];
 
@@ -244,6 +245,35 @@ function renderPlan() {
 
 document.querySelectorAll("input[name=mat-unit]").forEach((r) =>
   r.addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); }));
+
+// ---- Rescan links: /?rescan=<submission>&t=<token> ----------------------------
+// The person already answered the questions and agreed to the safety points.
+// They only redo the scans the operator asked for, and check the mat again.
+async function startRescan(id, token) {
+  flow.submission = { id, upload_token: token };
+  try {
+    const info = await api(`/submissions/${encodeURIComponent(id)}/rescan`, { method: "GET" });
+    flow.rescan = true;
+    flow.name = info.name;
+    flow.evaluation = { plan: info.plan, flags: [] };
+    renderPlan();
+    $("plan-title").textContent = `Hi ${info.name.split(" ")[0]}, we need a few new photos`;
+    $("plan-lede").textContent = info.note
+      ? `Here's why: "${info.note}". Only these scans need doing again.`
+      : "Only these scans need doing again.";
+    $("btn-plan-back").hidden = true;
+    document.querySelectorAll("#steps li").forEach((li, i) => (li.className = i < 2 ? "done" : i === 2 ? "current" : ""));
+  } catch (err) {
+    flow.submission = null;
+    $("link-error-text").textContent = err.status === 403 || err.status === 404
+      ? "That link has already been used, or it has expired. Ask the person making your insole for a new one."
+      : `Couldn't open that link: ${err.message}`;
+    $("link-error").hidden = false;
+  }
+}
+
+const params = new URLSearchParams(location.search);
+if (params.get("rescan") && params.get("t")) startRescan(params.get("rescan"), params.get("t"));
 
 $("btn-plan-back").addEventListener("click", () => {
   flow.sectionIndex = flow.sections.length - 1;
@@ -475,7 +505,8 @@ function openSend() {
 $("btn-send").addEventListener("click", async () => {
   $("btn-send").disabled = true;
   try {
-    await api(`/submissions/${flow.submission.id}/submit`);
+    await api(`/submissions/${flow.submission.id}/submit`,
+      flow.rescan ? { json: { mat_check_value: flow.matCheck.value, mat_check_unit: flow.matCheck.unit } } : {});
   } catch (err) {
     $("send-error").textContent = `Couldn't send: ${err.message}`;
     $("btn-send").disabled = false;

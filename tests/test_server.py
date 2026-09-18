@@ -237,3 +237,141 @@ def test_static_traversal_blocked(servers):
     assert call(f"{op}/../pyproject.toml")[0] == 404
     assert call(f"{op}/assets/%2e%2e/%2e%2e/pyproject.toml")[0] == 404
     assert call(f"{op}/api/submissions/..%2F..%2Fx")[0] in (400, 404)
+
+
+# ---- hosting safety -------------------------------------------------------
+
+def test_proxy_headers_are_never_treated_as_local(tmp_path):
+    """A tunnel on this machine connects from loopback; it must not unlock the studio."""
+    from footscan.server import is_loopback
+
+    class Fake:
+        def __init__(self, headers):
+            self.client_address = ("127.0.0.1", 5000)
+            self.headers = headers
+
+    assert is_loopback(Fake({})) is True
+    for h in ("X-Forwarded-For", "CF-Connecting-IP", "Forwarded", "X-Real-IP", "True-Client-IP"):
+        assert is_loopback(Fake({h: "203.0.113.9"})) is False, h
+
+
+def test_tunnelled_request_cannot_open_studio(tmp_path):
+    from footscan.server import is_loopback
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(WEB_DIR, tmp_path, local_check=is_loopback, studio_key=KEY))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        assert call(f"{url}/api/submissions")[0] == 200  # genuinely local
+        assert call(f"{url}/api/submissions", headers={"CF-Connecting-IP": "198.51.100.7"})[0] == 403
+        assert call(f"{url}/studio/", headers={"X-Forwarded-For": "198.51.100.7"})[0] == 403
+        # ...but the studio key still works through the tunnel
+        assert call(f"{url}/api/submissions", headers={"X-Forwarded-For": "198.51.100.7",
+                                                       "Cookie": f"footscan_studio={KEY}"})[0] == 200
+    finally:
+        httpd.shutdown()
+
+
+def test_security_headers_on_every_response(servers):
+    op, phone, _ = servers
+    for url in (f"{phone}/", f"{phone}/api/survey", f"{phone}/api/submissions"):
+        _, _, headers = call(url)
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        assert headers["Referrer-Policy"] == "no-referrer"
+        assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
+
+
+def test_submission_creation_is_rate_limited(tmp_path):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(WEB_DIR, tmp_path, local_check=lambda h: False,
+                                                               studio_key=KEY, submissions_per_hour=2))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        codes = [call(f"{url}/api/submissions", "POST", PERSON)[0] for _ in range(3)]
+        assert codes == [201, 201, 429]
+    finally:
+        httpd.shutdown()
+
+
+# ---- rescan ------------------------------------------------------------------
+
+def finish_scan(phone, sid, key, tok, n=2):
+    base = f"{phone}/api/submissions/{sid}/scans/{key}"
+    assert call(f"{base}/start", "POST", {}, tok)[0] == 200
+    for i in range(1, n + 1):
+        assert call(f"{base}/frames/{i}", "PUT", JPEG, {**tok, "Content-Type": "image/jpeg"})[0] == 200
+    assert call(f"{base}/complete", "POST", {"frames": []}, tok)[0] == 200
+
+
+def test_rescan_round_trip(servers):
+    op, phone, data = servers
+    sub = body(call(f"{phone}/api/submissions", "POST", {**PERSON, "feet": ["right"]}))
+    tok = {"X-Upload-Token": sub["upload_token"]}
+    for p in sub["plan"]:
+        finish_scan(phone, sub["id"], p["key"], tok)
+    assert call(f"{phone}/api/submissions/{sub['id']}/submit", "POST", {}, tok)[0] == 200
+
+    # the phone can't ask for a rescan, and bad scan keys are refused
+    assert call(f"{phone}/api/submissions/{sub['id']}/rescan", "POST", {"scans": ["right-swb"]})[0] == 403
+    assert call(f"{op}/api/submissions/{sub['id']}/rescan", "POST", {"scans": ["left-swb"]})[0] == 400
+
+    link = body(call(f"{op}/api/submissions/{sub['id']}/rescan", "POST",
+                     {"scans": ["right-swb"], "note": "heel was blurry"}))
+    assert link["path"].startswith(f"/?rescan={sub['id']}&t=")
+    new_tok = {"X-Upload-Token": link["path"].split("&t=")[1]}
+    # the old photos are kept, not deleted
+    assert any((data / "submissions" / sub["id"] / "_previous").glob("right-swb-*"))
+
+    info = body(call(f"{phone}/api/submissions/{sub['id']}/rescan", headers=new_tok))
+    assert info["note"] == "heel was blurry" and [p["key"] for p in info["plan"]] == ["right-swb"]
+    assert call(f"{phone}/api/submissions/{sub['id']}/rescan", headers=tok)[0] == 403  # old token is dead
+
+    # can't send until the redone scan is complete, and a rescan needs a fresh mat check
+    assert call(f"{phone}/api/submissions/{sub['id']}/submit", "POST", {}, new_tok)[0] == 400
+    finish_scan(phone, sub["id"], "right-swb", new_tok, n=3)
+    assert call(f"{phone}/api/submissions/{sub['id']}/submit", "POST", {}, new_tok)[0] == 400
+    ok = call(f"{phone}/api/submissions/{sub['id']}/submit", "POST",
+              {"mat_check_value": 4, "mat_check_unit": "in"}, new_tok)
+    assert ok[0] == 200
+
+    detail = body(call(f"{op}/api/submissions/{sub['id']}"))
+    assert detail["status"] == "received" and "rescan" not in detail
+    assert detail["rescans"][0]["mat_check"]["unit"] == "in"
+    assert len(detail["scans"]["right-swb"]["frame_files"]) == 3
+    assert call(f"{phone}/api/submissions/{sub['id']}/rescan", headers=new_tok)[0] == 403  # link closed
+
+
+def test_operator_can_delete_a_submission(servers):
+    op, phone, data = servers
+    sub = body(call(f"{phone}/api/submissions", "POST", PERSON))
+    assert call(f"{phone}/api/submissions/{sub['id']}", "DELETE")[0] == 403
+    assert call(f"{op}/api/submissions/{sub['id']}", "DELETE")[0] == 200
+    assert not (data / "submissions" / sub["id"]).exists()
+
+
+# ---- imported 3D models ------------------------------------------------------------
+
+@pytest.mark.parametrize("scale,units", [(0.001, "m"), (1.0, "mm")])
+def test_mesh_import_detects_units(servers, tmp_path, scale, units):
+    import trimesh
+
+    op, _, data = servers
+    foot_ish = trimesh.creation.box(extents=[260 * scale, 100 * scale, 70 * scale])
+    obj = foot_ish.export(file_type="obj").encode()
+    cid = body(call(f"{op}/api/captures", "POST", {"condition": "fwb", "foot": "right", "session": "L1",
+                                                    "load_kg": 30, "method": "imported_mesh"}))["id"]
+    status, raw, _ = call(f"{op}/api/captures/{cid}/mesh?ext=obj", "PUT", obj, {"Content-Type": "application/octet-stream"})
+    assert status == 200, raw
+    mesh = json.loads(raw)["mesh"]
+    assert mesh["units_detected"] == units
+    assert mesh["extents_mm"] == pytest.approx([260, 100, 70], abs=0.5)
+    assert (data / "captures" / cid / "mesh.ply").exists()
+
+
+def test_mesh_import_rejects_bad_files(servers):
+    op, _, _ = servers
+    cid = body(call(f"{op}/api/captures", "POST", {"condition": "object", "session": "L1"}))["id"]
+    assert call(f"{op}/api/captures/{cid}/mesh?ext=usdz", "PUT", b"x", {"Content-Type": "application/octet-stream"})[0] == 400
+    status, raw, _ = call(f"{op}/api/captures/{cid}/mesh?ext=obj", "PUT", b"not a mesh",
+                          {"Content-Type": "application/octet-stream"})
+    assert status == 400 and "couldn't read" in json.loads(raw)["error"]

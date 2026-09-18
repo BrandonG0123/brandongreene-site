@@ -68,16 +68,36 @@ DATA_DIR = ROOT / "data"
 # to millimetres, so it never counts as foot measurement data.
 CONDITIONS = {"nwb", "nwb_relaxed", "swb", "fwb", "object"}
 UNSCALED_CONDITIONS = {"object"}
-METHODS = {"bare_skin", "speckle_sock", "marker_dots", "foam_impression"}
+METHODS = {"bare_skin", "speckle_sock", "marker_dots", "foam_impression", "imported_mesh"}
 FEET = ("left", "right")
 REQUIRED_ACKS = ("not_medical_device", "clinician_review", "break_in", "photo_consent")
 OPERATOR_STATUSES = {"received", "needs_rescan", "archived"}
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{1,20}$")
-MAX_FRAME_BYTES = 15 * 1024 * 1024
+# A 1920x1080 JPEG from the scanner is ~0.3-1 MB and a scan keeps ~60 frames.
+# These caps leave generous headroom while stopping one visitor filling the disk.
+MAX_FRAME_BYTES = 8 * 1024 * 1024
 MAX_JSON_BYTES = 2 * 1024 * 1024
-MAX_FRAMES = 500
+MAX_FRAMES = 200
+MAX_MESH_BYTES = 150 * 1024 * 1024
+MESH_TYPES = {"obj", "ply", "stl", "glb", "gltf", "off"}
+# New submissions per client per hour. Stops a script flooding the disk; a
+# real person makes one or two.
+SUBMISSIONS_PER_HOUR = 20
 LOOPBACK = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+# Headers a reverse proxy or tunnel adds. If any is present the request came
+# from somewhere else, whatever the socket address says.
+PROXY_HEADERS = ("X-Forwarded-For", "Forwarded", "CF-Connecting-IP", "X-Real-IP", "True-Client-IP")
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",  # studio keys and rescan tokens travel in URLs
+    "X-Frame-Options": "DENY",
+    "Permissions-Policy": "camera=(self), accelerometer=(self), gyroscope=(self), magnetometer=(self)",
+    "Content-Security-Policy": (
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self'; frame-ancestors 'none'"
+    ),
+}
 
 
 class BadRequest(Exception):
@@ -207,7 +227,36 @@ def new_id(prefix: str, data_dir: Path) -> str:
 # ---- handler ---------------------------------------------------------------
 
 def is_loopback(handler) -> bool:
+    """True only for a request made directly on this computer.
+
+    A tunnel or reverse proxy running on this machine connects from loopback
+    too, so any proxy header means the real client is elsewhere.
+    """
+    if any(handler.headers.get(h) for h in PROXY_HEADERS):
+        return False
     return handler.client_address[0] in LOOPBACK
+
+
+def never_local(handler) -> bool:
+    return False
+
+
+class RateLimiter:
+    def __init__(self, per_hour: int):
+        self.per_hour = per_hour
+        self.hits: dict[str, list[float]] = {}
+
+    def allow(self, client: str) -> bool:
+        import time
+
+        now = time.monotonic()
+        recent = [t for t in self.hits.get(client, []) if now - t < 3600]
+        if len(recent) >= self.per_hour:
+            self.hits[client] = recent
+            return False
+        recent.append(now)
+        self.hits[client] = recent
+        return True
 
 
 def load_studio_key(path: Path) -> str:
@@ -221,9 +270,11 @@ def load_studio_key(path: Path) -> str:
 
 
 def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check=is_loopback,
-                 studio_key: str | None = None, secure_cookie: bool = False):
+                 studio_key: str | None = None, secure_cookie: bool = False,
+                 submissions_per_hour: int = SUBMISSIONS_PER_HOUR):
     captures_dir = data_dir / "captures"
     submissions_dir = data_dir / "submissions"
+    limiter = RateLimiter(submissions_per_hour)
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "footscan"
@@ -231,6 +282,19 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
         def log_message(self, fmt, *args):  # skip static asset noise
             if args and "/api/" in str(args[0]):
                 super().log_message(fmt, *args)
+
+        def end_headers(self):
+            for k, v in SECURITY_HEADERS.items():
+                self.send_header(k, v)
+            super().end_headers()
+
+        def client_id(self) -> str:
+            for h in ("CF-Connecting-IP", "X-Real-IP"):
+                if v := self.headers.get(h):
+                    return v.strip()
+            if v := self.headers.get("X-Forwarded-For"):
+                return v.split(",")[0].strip()
+            return self.client_address[0]
 
         # -- helpers --------------------------------------------------------
         def send_json(self, obj, status=HTTPStatus.OK):
@@ -386,6 +450,9 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             if not p:
                 if method == "POST":
                     info = validate_submission(self.json_body())
+                    if not limiter.allow(self.client_id()):
+                        return self.send_json({"error": "too many new scans from here; try again later"},
+                                              HTTPStatus.TOO_MANY_REQUESTS)
                     submissions_dir.mkdir(parents=True, exist_ok=True)
                     sid = new_id("sub-", submissions_dir)
                     (submissions_dir / sid).mkdir()
@@ -413,6 +480,44 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                 self.require_local()
                 return self.send_json(public_meta(meta))
 
+            if rest == [] and method == "DELETE":
+                # Privacy: the person can ask for their photos to be removed.
+                self.require_local()
+                shutil.rmtree(d)
+                return self.send_json({"ok": True, "deleted": meta["id"]})
+
+            if rest == ["rescan"] and method == "POST":
+                self.require_local()
+                body = self.json_body()
+                keys = body.get("scans")
+                if not isinstance(keys, list) or not keys or not set(keys) <= set(meta["scans"]):
+                    raise BadRequest("scans: choose which of this submission's scans to redo")
+                token = secrets.token_urlsafe(24)
+                stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+                for key in keys:
+                    # Keep the old photos for comparison rather than deleting them.
+                    if (d / key).exists():
+                        (d / "_previous").mkdir(exist_ok=True)
+                        (d / key).rename(d / "_previous" / f"{key}-{stamp}")
+                    ident = {k: meta["scans"][key][k] for k in ("foot", "condition", "label")}
+                    meta["scans"][key] = dict(**ident, status="pending", rescan_requested=now_iso())
+                note = str(body.get("note", "")).strip()[:500]
+                meta.update(status="needs_rescan", upload_token=token,
+                            rescan=dict(scans=keys, note=note, requested_at=now_iso()))
+                meta["history"].append(dict(at=now_iso(), status="needs_rescan",
+                                            note=f"rescan requested: {', '.join(keys)}" + (f" · {note}" if note else "")))
+                write_json(d / "submission.json", meta)
+                return self.send_json({"ok": True, "path": f"/?rescan={meta['id']}&t={token}", "scans": keys})
+
+            if rest == ["rescan"] and method == "GET":
+                # The person following a rescan link: only what they need to redo it.
+                self.require_token(meta)
+                if not meta.get("rescan"):
+                    raise FileNotFoundError
+                plan = [dict(key=k, **{f: meta["scans"][k][f] for f in ("foot", "condition", "label")},
+                             why="We need new photos for this one.") for k in meta["rescan"]["scans"]]
+                return self.send_json(dict(name=meta["name"], note=meta["rescan"]["note"], plan=plan))
+
             if rest == ["status"] and method == "POST":
                 self.require_local()
                 body = self.json_body()
@@ -429,8 +534,15 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                 incomplete = [f for f, s in meta["scans"].items() if s.get("status") != "complete"]
                 if incomplete:
                     raise BadRequest(f"scan not finished for: {', '.join(incomplete)}")
+                note = "sent by customer"
+                if meta.get("rescan"):
+                    # The mat may have been reprinted since: check it again.
+                    body = json.loads(self.read_body(MAX_JSON_BYTES)) if int(self.headers.get("Content-Length") or 0) else {}
+                    done = dict(meta.pop("rescan"), mat_check=validate_mat_check(body), sent=now_iso())
+                    meta.setdefault("rescans", []).append(done)
+                    note = f"rescan sent: {', '.join(done['scans'])}"
                 meta.update(status="received", submitted=now_iso(), upload_token=None)
-                meta["history"].append(dict(at=now_iso(), status="received", note="sent by customer"))
+                meta["history"].append(dict(at=now_iso(), status="received", note=note))
                 write_json(d / "submission.json", meta)
                 return self.send_json({"ok": True})
 
@@ -506,6 +618,21 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     if not f.is_file():
                         raise FileNotFoundError
                     return self.send_file(f, "image/jpeg")
+            if p[1:] == ["mesh"] and method == "PUT":
+                ext = (query_param(self.path, "ext") or "").lower()
+                if ext not in MESH_TYPES:
+                    raise BadRequest(f"3D file must be one of {sorted(MESH_TYPES)} (export from your scanning app)")
+                raw = d / f"original.{ext}"
+                raw.write_bytes(self.read_body(MAX_MESH_BYTES))
+                try:
+                    stats = import_mesh(raw, d / "mesh.ply")
+                except Exception as e:  # noqa: BLE001 - any parse failure is the file's fault
+                    raw.unlink(missing_ok=True)
+                    raise BadRequest(f"couldn't read that 3D file: {e}") from None
+                meta = read_json(d / "capture.json")
+                meta.update(status="complete", mesh=stats, frame_files=[])
+                write_json(d / "capture.json", meta)
+                return self.send_json({"ok": True, "mesh": stats})
             if p[1:] == ["complete"] and method == "POST":
                 body = self.json_body()
                 frames = body.get("frames", [])
@@ -527,7 +654,46 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
         def do_PUT(self):
             self.route("PUT")
 
+        def do_DELETE(self):
+            self.route("DELETE")
+
     return Handler
+
+
+def query_param(path: str, name: str) -> str | None:
+    from urllib.parse import parse_qs, urlsplit
+
+    return (parse_qs(urlsplit(path).query).get(name) or [None])[0]
+
+
+def import_mesh(src: Path, dst: Path) -> dict:
+    """Load a 3D scan exported from a phone app and save it as PLY in millimetres.
+
+    LiDAR apps (Polycam, Scaniverse, 3d Scanner App) export in metres; other
+    tools use millimetres. A foot is roughly 0.2-0.35 m long, so the largest
+    dimension tells the units apart unambiguously.
+    """
+    import trimesh
+
+    loaded = trimesh.load(src, force="mesh")
+    if not isinstance(loaded, trimesh.Trimesh) or len(loaded.faces) == 0:
+        raise ValueError("no triangles found")
+    extent = float(loaded.extents.max())
+    if extent < 5:
+        units, factor = "m", 1000.0
+    elif extent < 50:
+        units, factor = "cm", 10.0
+    else:
+        units, factor = "mm", 1.0
+    mesh = loaded.copy()
+    mesh.apply_scale(factor)
+    mesh.export(dst)
+    ext = [round(float(v), 1) for v in sorted(mesh.extents, reverse=True)]
+    return dict(
+        source_file=src.name, vertices=int(len(mesh.vertices)), faces=int(len(mesh.faces)),
+        units_detected=units, scale_to_mm=factor, extents_mm=ext, watertight=bool(mesh.is_watertight),
+        file="mesh.ply",
+    )
 
 
 def public_meta(meta: dict) -> dict:
@@ -580,23 +746,32 @@ def lan_ip() -> str | None:
         return None
 
 
-def serve(host: str = "127.0.0.1", port: int = 8765, https: bool = False) -> None:
-    key = load_studio_key(ROOT / ".studio_key")
-    httpd = ThreadingHTTPServer((host, port), make_handler(studio_key=key, secure_cookie=https))
+def serve(host: str = "127.0.0.1", port: int = 8765, https: bool = False, public: bool = False) -> None:
+    """Run the site. ``public``: reachable from the internet through a tunnel or
+    proxy, so nothing is trusted for being "local" and only the studio key
+    opens the studio."""
+    studio_key = load_studio_key(ROOT / ".studio_key")
+    handler = make_handler(studio_key=studio_key, secure_cookie=https or public,
+                           local_check=never_local if public else is_loopback)
+    httpd = ThreadingHTTPServer((host, port), handler)
     scheme = "http"
     if https:
-        cert, key = ensure_cert(ROOT / ".certs")
+        cert_path, key_path = ensure_cert(ROOT / ".certs")
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ctx.load_cert_chain(cert, key)
+        ctx.load_cert_chain(cert_path, key_path)
         httpd.socket = ctx.wrap_socket(httpd.socket, server_side=True)
         scheme = "https"
-    print("footscan - NOT a medical device")
-    print(f"studio on this computer: {scheme}://localhost:{port}/studio/")
+    print("footscan - NOT a medical device", flush=True)
+    if public:
+        print("PUBLIC MODE: the studio opens only with the studio key, even on this computer.")
+        print(f"studio link (keep private): <your public address>/studio/?key={studio_key}")
+    print(f"studio on this computer: {scheme}://localhost:{port}/studio/" + (f"?key={studio_key}" if public else ""))
     if host == "0.0.0.0" and (ip := lan_ip()):
         print(f"scan page for phones on this Wi-Fi: {scheme}://{ip}:{port}/")
-        print(f"studio on YOUR phone (keep this private): {scheme}://{ip}:{port}/studio/?key={key}")
+        print(f"studio on YOUR phone (keep this private): {scheme}://{ip}:{port}/studio/?key={studio_key}")
     else:
         print(f"scan page: {scheme}://localhost:{port}/")
+    print("", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

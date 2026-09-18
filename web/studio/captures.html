@@ -66,7 +66,9 @@
 
   function render() {
     const cond = $("f-cond").value, foot = $("f-foot").value;
-    const complete = all.filter((c) => c.status === "complete");
+    // Phase 0 counts photo scans only: LiDAR imports and object tests are a
+    // different method and would muddy the repeatability numbers.
+    const complete = all.filter((c) => c.status === "complete" && c.method !== "imported_mesh" && c.measurable !== false);
     $("counts").innerHTML = ["nwb", "nwb_relaxed", "swb", "fwb"].map((k) => {
       const n = complete.filter((c) => c.condition === k && (!foot || c.foot === foot)).length;
       const sessions = new Set(complete.filter((c) => c.condition === k && (!foot || c.foot === foot)).map((c) => c.session)).size;
@@ -83,7 +85,9 @@
     }
     $("list").innerHTML = rows.map((c) => {
       const s = c.summary || {};
-      const thumb = c.frame_files?.length
+      const thumb = c.mesh
+        ? `<div class="noimg" style="display:grid;place-items:center;font-weight:700;color:var(--brand)">3D</div>`
+        : c.frame_files?.length
         ? `<img src="/api/captures/${esc(c.capture_id)}/frames/1.jpg" alt="First frame of ${esc(c.capture_id)}" loading="lazy">`
         : `<div class="noimg"></div>`;
       const status = c.status === "complete" ? `<span class="badge ok">complete</span>` : `<span class="badge warn">${esc(c.status)}</span>`;
@@ -95,7 +99,9 @@
         <dl>
           <div><dt>Session</dt><dd>${esc(c.session)}</dd></div>
           <div><dt>Load</dt><dd>${c.load_kg == null ? "—" : esc(c.load_kg) + " kg"}</dd></div>
-          <div><dt>Frames</dt><dd>${c.frame_files?.length ?? 0}</dd></div>
+          ${c.mesh
+            ? `<div><dt>3D model</dt><dd>${c.mesh.extents_mm[0]} × ${c.mesh.extents_mm[1]} × ${c.mesh.extents_mm[2]} mm</dd></div>`
+            : `<div><dt>Frames</dt><dd>${c.frame_files?.length ?? 0}</dd></div>`}
           <div><dt>Coverage</dt><dd>${cov}</dd></div>
           <div><dt>Texture</dt><dd>${esc(c.method)}</dd></div>
           <div><dt>Created</dt><dd>${esc(c.created?.replace("T", " "))}</dd></div>

@@ -2,7 +2,7 @@
 export const STATUS = {
   uploading: { label: "Unfinished", cls: "" },
   received: { label: "New", cls: "brand" },
-  needs_rescan: { label: "Needs rescan", cls: "warn" },
+  needs_rescan: { label: "Waiting for rescan", cls: "warn" },
   archived: { label: "Archived", cls: "" },
 };
 
