@@ -22,6 +22,8 @@ const NAV = {
   ],
 };
 
+import { addPageGlow, initReveal } from "./reveal.js";
+
 function mountLayout() {
   const area = document.body.dataset.area || "customer";
   const here = location.pathname.replace(/index\.html$/, "");
@@ -55,6 +57,8 @@ function mountLayout() {
   document.body.prepend(header);
   document.body.prepend(strip);
   document.body.append(footer);
+  addPageGlow();
+  initReveal();
 }
 
 mountLayout();

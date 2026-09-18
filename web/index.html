@@ -34,7 +34,8 @@
     /* While scanning on a phone, the controls must stay on screen without scrolling. */
     @media (max-width: 520px) {
       #v-scan { gap: 12px; }
-      #v-scan .stage { max-height: 46vh; }
+      /* only the in-page camera is short; fullscreen and mini size themselves */
+      #v-scan .stage:not(.is-full):not(.is-mini) { max-height: 46vh; }
       #v-scan h1 { font-size: 1.2rem; }
       #v-scan .eyebrow { margin-bottom: 4px; }
       .guidance { font-size: 0.95rem; padding: 10px 12px; }
@@ -86,7 +87,7 @@
     <h1>Make an insole that fits your foot</h1>
     <p class="lede">Your phone takes photos of your foot. Those photos are used to shape an insole for your shoe.
       It takes about five minutes per foot.</p>
-    <ol class="howto card">
+    <ol class="howto card stagger">
       <li><p><strong>Print the paper mat</strong> and put it on the floor.</p></li>
       <li><p><strong>Move your phone around your foot</strong> while it takes photos.</p></li>
       <li><p><strong>Send the photos</strong>, and your insole gets made.</p></li>
@@ -162,7 +163,7 @@
       <p><strong>See a foot doctor before you wear the insole at all</strong>, not just before sport. Here is why:</p>
       <ul id="plan-flag-list" style="margin:0;padding-left:1.2em"></ul>
     </div>
-    <ol class="card howto" id="plan-list"></ol>
+    <ol class="card howto stagger" id="plan-list"></ol>
     <p class="hint" id="plan-helper"></p>
 
     <div class="card mat-card">
@@ -207,7 +208,7 @@
   <section class="view" id="v-setup" hidden style="margin:0">
     <p class="eyebrow" id="setup-eyebrow">Scan 1 of 2</p>
     <h1 id="setup-title">Get ready to scan your right foot</h1>
-    <div class="card"><ol class="howto" id="setup-steps"></ol></div>
+    <div class="card"><ol class="howto stagger" id="setup-steps"></ol></div>
     <div class="diagram" id="path-diagram"></div>
     <div class="field card">
       <label for="load">Bathroom scale number <span class="hint" id="load-hint">You can skip this. If you have a
@@ -264,7 +265,7 @@
   <section class="view" id="v-send" hidden style="margin:0">
     <h1>All done scanning</h1>
     <p class="lede">Check the list, then send your photos.</p>
-    <div class="foot-rows" id="foot-rows"></div>
+    <div class="foot-rows stagger" id="foot-rows"></div>
     <p class="error" id="send-error" role="alert"></p>
     <button class="btn" id="btn-send">Send my scans</button>
   </section>
