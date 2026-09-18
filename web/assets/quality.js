@@ -161,11 +161,21 @@ export class Coverage {
   }
 }
 
-export function describeCell(cell) {
-  if (cell === "top") return "from directly above";
+/**
+ * Where to stand, in words a child can follow. Azimuth 0 is behind the heel
+ * and grows counter-clockwise seen from above, which passes the foot's outer
+ * side first, so the names match the labels on the coverage map.
+ */
+export function describeCell(cell, foot = "right") {
+  if (cell === "top") return "right above the foot, looking down";
   const [band, idx] = cell.split("-");
-  const from = Number(idx) * (360 / AZ_SECTORS);
-  return `${band} angle, ${from}–${from + 360 / AZ_SECTORS}° around from the start`;
+  const az = (Number(idx) + 0.5) * (360 / AZ_SECTORS);
+  const [first, second] = foot === "right" ? ["outer", "inner"] : ["inner", "outer"];
+  const where = az < 30 || az >= 330 ? "behind the heel"
+    : az < 150 ? `by the ${first} side of the foot`
+      : az < 210 ? "in front of the toes"
+        : `by the ${second} side of the foot`;
+  return `${where}, ${band === "low" ? "down low" : "a bit higher up"}`;
 }
 
 /** Nearest under-covered cell to where the camera is now. */

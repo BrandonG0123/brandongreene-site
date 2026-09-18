@@ -85,7 +85,7 @@ async function startLive(simulated) {
   const needsMat = setup.condition !== "object";
 
   scanner = new Scanner({
-    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: needsMat,
+    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: needsMat, foot: setup.foot ?? "right",
     onFrame: () => {
       $("flash").classList.add("on");
       requestAnimationFrame(() => $("flash").classList.remove("on"));

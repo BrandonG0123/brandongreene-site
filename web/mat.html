@@ -27,10 +27,11 @@
 <body data-area="customer">
 <main class="wrap">
   <p class="eyebrow">Scan mat</p>
-  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0 0 10px">Print the scan mat</h1>
-  <p class="muted" style="max-width:62ch;font-size:1.05rem">Photos show a foot's shape but not its size. The black
-    squares on the mat have a known size, and that's what turns your scan into real millimetres. Two pages, plain
-    paper, black and white is fine.</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0 0 10px">Print the paper mat</h1>
+  <p class="muted" style="max-width:62ch;font-size:1.05rem">A photo can show the shape of your foot, but not how big
+    it is. The black squares are a known size, so they work like a ruler in the picture. You print two pages on plain
+    paper. Black and white is fine.</p>
+  <div class="diagram" id="mat-diagram" style="max-width:200px;margin:18px auto 0"></div>
 
   <div class="download">
     <a href="/mat/footscan-mat-letter.pdf">
@@ -43,52 +44,53 @@
     <ol class="howto">
       <li><div>
         <p><strong>Print both pages at 100%.</strong></p>
-        <p class="muted">Set scale to "100%" or "Actual size" and turn <strong>off</strong> "Fit to page" or "Scale to
-          fit". That setting is the single most common way a scan goes wrong: it shrinks the page by a few percent and
-          every measurement is then quietly wrong.</p></div></li>
+        <p class="muted">In the print box, find where it says size or scale, and set it to <strong>100%</strong> (it
+          may say "Actual size"). Turn <strong>off</strong> "Fit to page". If you forget, the printer shrinks the mat a
+          little, and then every measurement is wrong.</p></div></li>
       <li><div>
-        <p><strong>Measure a check bar on sheet 1.</strong></p>
-        <p class="muted">There are two: one is exactly <strong>10 cm</strong>, the other exactly
-          <strong>4 inches</strong>. Measure whichever matches your ruler, end to end, and enter it before scanning.
-          If it's off, fix the scale setting and print again.</p></div></li>
+        <p><strong>Check it with a ruler.</strong></p>
+        <p class="muted">Sheet 1 has two black bars. One should be exactly <strong>10 cm</strong> long. The other
+          should be exactly <strong>4 inches</strong>. Pick the one that matches your ruler. Put the ruler's 0 at the
+          start of the bar and look at the number where the bar stops. Type that number into the app before you scan.
+          If the number is wrong, print the pages again.</p></div></li>
       <li><div>
         <p><strong>Tape the two sheets together.</strong></p>
-        <p class="muted">Sheet 1 (the heel end) goes below, sheet 2 (toes) above, with the dashed edges meeting. Butt
-          the edges together rather than overlapping. Tape can cover anything except the black squares.</p></div></li>
+        <p class="muted">Put sheet 1 (heel) at the bottom and sheet 2 (toes) at the top, so the dashed lines meet. Let
+          the edges touch, don't overlap them. Tape can go anywhere except on the black squares.</p></div></li>
       <li><div>
         <p><strong>Tape the mat flat to a hard floor.</strong></p>
-        <p class="muted">Not carpet: paper that curls or slides spoils the measurement. Keep it clean and unfolded, and
-          avoid lights reflecting off the paper.</p></div></li>
+        <p class="muted">Not carpet. If the paper curls or slides, the measurement goes wrong. Keep it flat and clean,
+          and try not to let a bright light shine off the paper.</p></div></li>
       <li><div>
-        <p><strong>Put your bare foot in the middle</strong>, heel toward sheet 1.</p>
-        <p class="muted">Your foot should sit inside the black squares without covering them.</p></div></li>
+        <p><strong>Put your bare foot in the middle</strong>, with your heel at the sheet 1 end.</p>
+        <p class="muted">Your foot goes inside the ring of black squares, without covering any of them.</p></div></li>
     </ol>
   </div>
 
   <section>
-    <h2>If something looks wrong</h2>
+    <h2>If something goes wrong</h2>
     <table>
       <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
       <tbody>
-        <tr><td>The bar measures about 9.6 cm instead of 10</td><td>Classic "fit to page". Print again at 100% /
-          Actual size.</td></tr>
-        <tr><td>Tapping a PDF does nothing</td><td>Use the "Save the ... PDF" links above, or open this page on a
-          computer. On a phone the PDF opens in this same tab, so use the back button to return.</td></tr>
-        <tr><td>"Keep the scan mat in view" keeps appearing</td><td>Step back so more squares are in frame, reduce
-          glare, and flatten the mat. A faint or grey print is harder to detect: print darker.</td></tr>
-        <tr><td>The squares look grey or blurry on paper</td><td>Use a higher print quality setting, or another
-          printer. Sharp black edges are what the camera looks for.</td></tr>
-        <tr><td>Only one paper size available</td><td>Either size works. Print whichever your printer takes; the
-          scanner recognises both.</td></tr>
+        <tr><td>The bar stops at about 9.6 cm, not 10</td><td>The printer shrank the page. Print again with size set
+          to 100% ("Actual size").</td></tr>
+        <tr><td>Tapping a PDF does nothing</td><td>Try the "Save" links lower down, or open this page on a computer.
+          On a phone the PDF opens in this same tab, so tap the back arrow to come back.</td></tr>
+        <tr><td>The app keeps asking you to move back</td><td>Hold the phone further away so more black squares show,
+          move any shiny light, and flatten the mat. If the squares printed grey instead of black, print again.</td></tr>
+        <tr><td>The squares look grey or fuzzy</td><td>Print again at a better quality, or use a different printer.
+          The camera looks for sharp black edges.</td></tr>
+        <tr><td>You only have one paper size</td><td>Either size is fine. Print the one your printer takes. The app
+          knows both.</td></tr>
       </tbody>
     </table>
   </section>
 
   <section>
     <h2>Printing from a phone</h2>
-    <p class="muted" style="max-width:66ch">Tap a PDF above: it opens right here in the browser. Then use the share
-      button and choose <strong>Print</strong> (or AirPrint), and set scale to 100%. If your phone won't print, open
-      the same address on a computer instead, or save the file:</p>
+    <p class="muted" style="max-width:66ch">Tap a PDF above and it opens right here. Then tap the share button and
+      choose <strong>Print</strong>, and set size to 100%. If your phone can't print, open this page on a computer
+      instead, or save the file first:</p>
     <p><a href="/mat/footscan-mat-letter.pdf?download=1">Save the Letter PDF</a> ·
        <a href="/mat/footscan-mat-a4.pdf?download=1">Save the A4 PDF</a></p>
   </section>
@@ -96,5 +98,10 @@
   <p><a class="btn" href="/">Back to scanning</a></p>
 </main>
 <script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  import { DIAGRAM_CSS, matDiagram } from "/assets/diagrams.js";
+  document.head.insertAdjacentHTML("beforeend", `<style>${DIAGRAM_CSS}</style>`);
+  document.getElementById("mat-diagram").innerHTML = matDiagram();
+</script>
 </body>
 </html>

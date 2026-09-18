@@ -4,6 +4,7 @@
 import { CoverageMap, MAP_CSS } from "./coverage-map.js";
 import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
 import { createStageView } from "./stage-view.js";
+import { DIAGRAM_CSS, matDiagram, phonePathDiagram } from "./diagrams.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -13,7 +14,9 @@ let matTolerance = null;
 // never creates a submission or uploads anything.
 const DEMO = new URLSearchParams(location.search).has("demo");
 
-$("map-css").textContent = MAP_CSS;
+$("map-css").textContent = MAP_CSS + DIAGRAM_CSS;
+$("mat-diagram").innerHTML = matDiagram();
+$("path-diagram").innerHTML = phonePathDiagram();
 
 const flow = {
   name: "", feet: [], acks: {},
@@ -59,8 +62,8 @@ $("about-form").addEventListener("submit", async (e) => {
   flow.acks = Object.fromEntries(
     ["not_medical_device", "clinician_review", "break_in", "photo_consent"].map((k) => [k, f[k].checked]));
   const errors = [];
-  if (!flow.name) errors.push("Enter your name.");
-  if (!Object.values(flow.acks).every(Boolean)) errors.push("Please confirm all four points to continue.");
+  if (!flow.name) errors.push("Please type your name.");
+  if (!Object.values(flow.acks).every(Boolean)) errors.push("Please tick all four boxes to carry on.");
   $("about-error").textContent = errors.join(" ");
   if (errors.length) return;
 
@@ -156,7 +159,7 @@ function sectionErrors() {
     if (!applies(q)) continue;
     const a = flow.answers[q.id];
     const empty = a === undefined || (Array.isArray(a) && !a.length);
-    if (q.required && empty) errors[q.id] = q.type === "confirm" ? "Please confirm to continue." : "Please answer this.";
+    if (q.required && empty) errors[q.id] = q.type === "confirm" ? "Please tick this to carry on." : "Please answer this one.";
     else if (q.type === "number" && !empty && !(a >= q.min && a <= q.max)) errors[q.id] = `Enter a number between ${q.min} and ${q.max}.`;
   }
   return errors;
@@ -185,7 +188,7 @@ $("btn-survey-next").addEventListener("click", async () => {
   const errors = sectionErrors();
   showErrors(errors);
   if (Object.keys(errors).length) {
-    $("survey-error").textContent = "Please answer the highlighted questions.";
+    $("survey-error").textContent = "Please answer the questions marked in red.";
     return;
   }
   if (flow.sectionIndex < flow.sections.length - 1) {
@@ -229,8 +232,8 @@ function renderPlan() {
     `<li><div><p><strong>${esc(p.label)}</strong></p><p class="why">${esc(p.why)}</p></div></li>`).join("");
   const standing = plan.some((p) => p.condition === "fwb");
   $("plan-helper").textContent = standing
-    ? "You'll need someone to hold the phone for the standing scans. Allow about five minutes per scan."
-    : "Allow about five minutes per scan.";
+    ? "Ask someone to hold the phone for the standing scans. Each scan takes about five minutes."
+    : "Each scan takes about five minutes.";
   $("plan-error").textContent = DEMO ? "Demo mode: nothing will be sent." : "";
   loadMatBars().then(() => {
     describeExpected();
@@ -239,7 +242,8 @@ function renderPlan() {
   show("plan", "survey");
 }
 
-$("mat-unit").addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); });
+document.querySelectorAll("input[name=mat-unit]").forEach((r) =>
+  r.addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); }));
 
 $("btn-plan-back").addEventListener("click", () => {
   flow.sectionIndex = flow.sections.length - 1;
@@ -257,22 +261,24 @@ async function loadMatBars() {
   }
   return matBars;
 }
-const currentBar = () => matBars?.find((b) => b.unit === $("mat-unit").value);
+const matUnit = () => document.querySelector("input[name=mat-unit]:checked").value;
+const currentBar = () => matBars?.find((b) => b.unit === matUnit());
 
 function describeExpected() {
   const bar = currentBar();
-  $("mat-expect").textContent = bar ? `The ${bar.unit === "cm" ? "cm" : "inch"} bar should measure ${bar.label}.` : "";
+  $("mat-expect").textContent = bar ? `It should end at ${bar.value} ${bar.unit === "cm" ? "cm" : "inches"}.` : "";
 }
 
 function checkMatPrint() {
   const bar = currentBar();
   if (!bar) return "Couldn't load the mat details. Reload the page and try again.";
   const raw = $("mat-check").value;
-  if (!raw) return `Print the scan mat, measure the ${bar.label.replace(" exactly", "")} bar, and enter it.`;
+  const unit = bar.unit === "cm" ? "cm" : "inches";
+  if (!raw) return `Print the mat, measure the ${unit} bar with a ruler, and type the number it ends at.`;
   const value = Number(raw);
   const mm = value * (bar.length_mm / bar.value);
   if (Math.abs(mm - bar.length_mm) > (matTolerance ?? 1.5))
-    return `You measured ${value} ${bar.unit}, but that bar should be ${bar.label}. The printer resized the mat: print again at 100% / "Actual size" (turn off "Fit to page"), then measure again.`;
+    return `Your bar ends at ${value} ${unit}, but it should end at ${bar.value}. The printer made the mat the wrong size. Print it again with size set to 100% ("Actual size"), then measure again.`;
   return null;
 }
 
@@ -284,7 +290,7 @@ $("btn-plan-start").addEventListener("click", async () => {
     $("mat-check").focus();
     return;
   }
-  flow.matCheck = { value: Number($("mat-check").value), unit: $("mat-unit").value };
+  flow.matCheck = { value: Number($("mat-check").value), unit: matUnit() };
   if (!DEMO && !flow.submission) {
     btn.disabled = true;
     try {
@@ -313,16 +319,17 @@ $("btn-plan-start").addEventListener("click", async () => {
 // =========================================================================
 const SETUP_STEPS = {
   swb: [
-    "<strong>Sit on a chair</strong> with your knee bent at a right angle and your bare foot flat in the middle of the scan mat, heel toward sheet 1. Roll trousers up above the ankle.",
-    "<strong>Find bright, even light</strong>, with no strong shadows on your foot.",
-    "<strong>Ask someone to hold the phone</strong> if you can. It's much easier to get round the back of the heel.",
-    "<strong>Keep your foot still</strong> for the whole scan, and keep the black squares in view. The phone moves; the foot doesn't.",
+    "<strong>Sit on a chair.</strong> Bend your knee so your lower leg points straight down.",
+    "<strong>Put your bare foot flat in the middle of the mat</strong>, heel at the sheet 1 end. Roll trousers up past your ankle.",
+    "<strong>Turn the lights on</strong> or open a curtain, so your foot is bright with no dark shadows.",
+    "<strong>Ask someone to hold the phone</strong> if you can. It is much easier to reach behind your heel.",
+    "<strong>Keep your foot still</strong> the whole time. Only the phone moves.",
   ],
   fwb: [
-    "<strong>Stand up straight</strong>, barefoot, with this foot in the middle of the scan mat (heel toward sheet 1) and your weight evenly on both feet.",
-    "<strong>Someone else holds the phone</strong> for this one. You need to stay standing still.",
-    "<strong>Look straight ahead</strong> and don't lean or shift your weight while they scan.",
-    "<strong>Bright, even light</strong>, with no strong shadows on your foot.",
+    "<strong>Stand up straight and barefoot</strong>, with this foot in the middle of the mat, heel at the sheet 1 end.",
+    "<strong>Put the same weight on both feet</strong>, feet a little apart, and look straight ahead.",
+    "<strong>Someone else holds the phone</strong> for this one, because you need to stand still.",
+    "<strong>Turn the lights on</strong> so your foot is bright with no dark shadows.",
   ],
 };
 
@@ -353,7 +360,7 @@ async function startScan(simulated) {
   const map = new CoverageMap($("map"), scan.foot, { labels: false });
   const boards = await loadBoards();
   const scanner = new Scanner({
-    stage: $("stage"), simulated, boards, requireMat: true,
+    stage: $("stage"), simulated, boards, requireMat: true, foot: scan.foot,
     onUpdate: (s) => {
       map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasView, active: scanner.capturing });
       $("guidance").textContent = s.guidance.text;
@@ -440,7 +447,7 @@ async function saveScan() {
     flow.scanIndex++;
     setTimeout(() => (flow.scanIndex < flow.evaluation.plan.length ? openSetup() : openSend()), 500);
   } catch (err) {
-    $("saving-error").textContent = `Upload failed: ${err.message}. Check your connection.`;
+    $("saving-error").textContent = `The photos did not send (${err.message}). Check your Wi-Fi, then tap Try again.`;
     $("saving-actions").hidden = false;
   }
 }

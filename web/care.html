@@ -23,24 +23,25 @@
 </head>
 <body data-area="customer">
 <main class="wrap">
-  <p class="eyebrow">Wearing your insole</p>
-  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Break it in slowly</h1>
-  <p class="muted" style="max-width:66ch">Two weeks of walking only, starting with one hour. Check your skin after every wear. If a clinician gives you a
-    different schedule, follow theirs. Log each day below; it saves on this phone.</p>
+  <p class="eyebrow">After you get your insole</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem)">Wearing your insole</h1>
+  <p class="muted" style="max-width:66ch">Wear it a little at a time for the first two weeks, walking only. Start
+    with one hour on day one. Look at your feet after you take it out. If a doctor gives you a different plan, do what
+    they say. Fill in each day below. It saves on this phone only.</p>
 
   <div id="stop" class="callout stop stop-banner" hidden role="alert" style="margin:20px 0">
-    <h2>Stop wearing the insole</h2>
+    <h2>Take the insole out</h2>
     <p id="stop-reason"></p>
-    <p>Take the insole out and don't wear it again until a clinician has looked at it and at your symptoms.
-      Let the person who made your insole know what happened, so it can be fixed.</p>
+    <p>Don't wear it again until a foot doctor has looked at your feet and at the insole. Tell the person who made
+      it what happened, so they can fix it.</p>
     <details>
-      <summary style="cursor:pointer;font-weight:600">Resume after review</summary>
+      <summary style="cursor:pointer;font-weight:600">I saw a doctor and can start again</summary>
       <div style="display:grid;gap:10px;margin-top:10px;max-width:420px">
-        <div class="field"><label for="reviewer">Reviewed by (name and credential)</label>
+        <div class="field"><label for="reviewer">Who checked it? (name and job)</label>
           <input id="reviewer" type="text" autocomplete="off"></div>
         <label style="display:flex;gap:10px;font-weight:400"><input type="checkbox" id="reviewed-ack">
-          The clinician has cleared me to start wearing it again.</label>
-        <button class="btn secondary" id="btn-resume" disabled>Resume tracking</button>
+          A doctor said I can start wearing it again.</label>
+        <button class="btn secondary" id="btn-resume" disabled>Start again</button>
       </div>
     </details>
   </div>
@@ -48,37 +49,39 @@
   <div class="layout" style="margin-top:20px">
     <div>
       <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
-        <div class="field" style="flex:1;min-width:160px"><label for="revision">Insole reference</label>
+        <div class="field" style="flex:1;min-width:160px"><label for="revision">Your code</label>
           <input id="revision" type="text" placeholder="from your scan confirmation" autocomplete="off"></div>
-        <div class="field" style="flex:1;min-width:160px"><label for="start">First day wearing it</label>
+        <div class="field" style="flex:1;min-width:160px"><label for="start">The day you started</label>
           <input id="start" type="date"></div>
-        <button class="btn secondary" id="btn-reset" type="button">Reset tracker</button>
+        <button class="btn secondary" id="btn-reset" type="button">Start the list again</button>
       </div>
       <div class="days" id="days"></div>
     </div>
 
     <aside style="display:grid;gap:14px">
       <div class="card">
-        <h3>Skin check, every session</h3>
-        <p class="hint" style="margin-bottom:8px">Both feet. Look at the arch edge, heel cup rim and under the met heads.</p>
+        <h3>Check your feet every time</h3>
+        <p class="hint" style="margin-bottom:8px">Look at both feet after you take the insole out: the arch, around the
+          heel, and the ball of the foot.</p>
         <ul class="checklist">
-          <li>Redness that hasn't faded after 20 minutes</li>
-          <li>Blisters or hot spots</li>
-          <li>New callus forming</li>
-          <li>Pressure marks along an edge</li>
+          <li>Red marks still there 20 minutes later</li>
+          <li>Blisters, or a spot that feels hot</li>
+          <li>Hard skin starting to build up</li>
+          <li>Lines pressed into your skin along an edge</li>
         </ul>
       </div>
       <div class="card" style="border:2px solid var(--stop)">
         <h3 style="color:var(--stop)">Stop rule</h3>
-        <p style="margin:0">Stop immediately on <strong>any new pain</strong> in the foot, ankle, shin, knee, hip or back;
-          numbness, tingling or burning; a skin finding that hasn't resolved by the next day; or existing pain getting worse.</p>
+        <p style="margin:0">Take the insole out straight away if <strong>anything new hurts</strong>: foot, ankle,
+          shin, knee, hip or back. Same if a foot feels numb, tingly or burning, if a red mark is still there the next
+          day, or if a pain you already had gets worse.</p>
       </div>
       <div class="card">
-        <h3>Day 15 and after</h3>
-        <p class="muted" style="margin:0">Only play sport in it once a podiatrist, physical therapist,
-          sports-medicine doctor or athletic trainer has checked it. Start with a short, easy session.</p>
+        <h3>After two weeks</h3>
+        <p class="muted" style="margin:0">Only play sport in it after a foot doctor, physical therapist, sports
+          doctor or athletic trainer has checked it. Then start with one short, easy session.</p>
       </div>
-      <p class="hint">Your log is saved in this browser only. Nothing is sent.</p>
+      <p class="hint">This list is saved on this phone only. Nothing is sent anywhere.</p>
     </aside>
   </div>
 </main>
@@ -91,12 +94,12 @@
   const targetFor = (d) => SCHEDULE.find(([a, b]) => d >= a && d <= b);
   const hoursCap = (label) => (label === "All day" ? 16 : parseFloat(label));
   const SKIN = [
-    ["", "Skin check…"],
-    ["clear", "Clear"],
-    ["faded", "Redness, faded within 20 min"],
-    ["persistent", "Redness that didn't fade"],
-    ["blister", "Blister or hot spot"],
-    ["numb", "Numbness or tingling"],
+    ["", "Choose one…"],
+    ["clear", "All fine"],
+    ["faded", "A red mark that went away"],
+    ["persistent", "A red mark that stayed"],
+    ["blister", "A blister or hot spot"],
+    ["numb", "Numb or tingly"],
   ];
   const STOP_SKIN = new Set(["blister", "numb"]);
   const KEY = "footscan.breakin.v1";
@@ -116,10 +119,10 @@
     for (let d = 1; d <= 14; d++) {
       const e = state.days[d];
       if (!e) continue;
-      if (e.pain === "yes") return `Day ${d}: new pain reported.`;
+      if (e.pain === "yes") return `Day ${d}: something hurt.`;
       if (STOP_SKIN.has(e.skin)) return `Day ${d}: ${SKIN.find(([v]) => v === e.skin)[1].toLowerCase()}.`;
       if (e.skin === "persistent" && state.days[d + 1]?.skin === "persistent")
-        return `Days ${d}–${d + 1}: redness persisted into the next day.`;
+        return `Day ${d} and day ${d + 1}: a red mark was still there the next day.`;
     }
     return null;
   }
@@ -133,7 +136,7 @@
     $("stop-reason").textContent = state.stopped || "";
     // A stop can only be cleared through the review step, never by resetting.
     $("btn-reset").disabled = !!state.stopped;
-    $("btn-reset").title = state.stopped ? "Clear the stop through 'Resume after review' first" : "";
+    $("btn-reset").title = state.stopped ? "See a doctor first, then use the button above" : "";
 
     const today = dayNumber();
     const html = [];
@@ -150,16 +153,16 @@
         <div class="inputs">
           <div class="field"><label for="h${d}">Hours worn</label>
             <input id="h${d}" data-day="${d}" data-k="hours" type="number" min="0" max="24" step="0.25" inputmode="decimal" value="${e.hours ?? ""}" ${locked ? "disabled" : ""}></div>
-          <div class="field skin"><label for="s${d}">Skin check</label>
+          <div class="field skin"><label for="s${d}">How did your feet look?</label>
             <select id="s${d}" data-day="${d}" data-k="skin" ${locked ? "disabled" : ""}>${SKIN.map(([v, t]) =>
               `<option value="${v}"${e.skin === v ? " selected" : ""}>${t}</option>`).join("")}</select></div>
-          <div class="field"><label for="p${d}">Any new pain?</label>
+          <div class="field"><label for="p${d}">Did anything hurt?</label>
             <select id="p${d}" data-day="${d}" data-k="pain" ${locked ? "disabled" : ""}>
               <option value=""${!e.pain ? " selected" : ""}>—</option>
               <option value="no"${e.pain === "no" ? " selected" : ""}>No</option>
               <option value="yes"${e.pain === "yes" ? " selected" : ""}>Yes</option></select></div>
-          ${over ? `<p class="flag" style="color:var(--warn)">More than today's target. Don't get ahead of the schedule.</p>` : ""}
-          ${persistentOnce && !state.stopped ? `<p class="flag" style="color:var(--warn)">Rest the device until the redness is gone. If it's still there tomorrow, that triggers the stop rule.</p>` : ""}
+          ${over ? `<p class="flag" style="color:var(--warn)">That is more than today's plan. Going faster can hurt.</p>` : ""}
+          ${persistentOnce && !state.stopped ? `<p class="flag" style="color:var(--warn)">Leave the insole out until the red mark is gone. If it is still there tomorrow, stop and see a doctor.</p>` : ""}
         </div></div>`);
     }
     $("days").innerHTML = html.join("");

@@ -32,7 +32,7 @@ function mountLayout() {
   strip.innerHTML = `<div class="wrap"><strong>NOT A MEDICAL DEVICE</strong>
     <span>${area === "studio"
       ? "Nothing leaves the studio for sport without clinician sign-off."
-      : "A handmade 3D-printed insole, not a prescribed orthotic. Have a clinician check it before you play sport in it."}</span></div>`;
+      : "This insole is homemade, not from a doctor. Show it to a foot doctor before you play sport in it."}</span></div>`;
 
   const header = document.createElement("header");
   header.className = "site-header";
@@ -47,10 +47,10 @@ function mountLayout() {
   const footer = document.createElement("footer");
   footer.className = "site-footer";
   footer.innerHTML = `<div class="wrap">
-    <p><strong>footscan is not a medical device</strong> and does not diagnose or treat anything. Its insoles are not
-    equivalent to, comparable with, or a substitute for a prescribed orthotic. A badly shaped insole can move problems
-    to the knee, hip or back. Have a podiatrist, physical therapist, sports-medicine doctor or athletic trainer check it
-    before sport, follow the break-in guide, and stop on any new pain.</p></div>`;
+    <p><strong>footscan is not a medical device.</strong> It does not treat any illness or injury. These insoles are
+    not the same as insoles a doctor prescribes, and are not a replacement for them. The wrong shape under a foot can
+    cause knee, hip or back problems. Show it to a foot doctor (podiatrist), physical therapist, sports doctor or
+    athletic trainer before sport. Wear it a little at a time, and stop if anything hurts.</p></div>`;
 
   document.body.prepend(header);
   document.body.prepend(strip);

@@ -75,25 +75,30 @@
 <body data-area="customer">
 <main class="wrap">
   <ol class="steps" id="steps" aria-label="Progress">
-    <li data-step="about">About you</li>
+    <li data-step="about">You</li>
     <li data-step="survey">Questions</li>
-    <li data-step="scan">Scans</li>
+    <li data-step="scan">Scan</li>
     <li data-step="send">Send</li>
   </ol>
 
   <!-- 1. About you -->
   <section class="view" id="v-about" style="margin:0">
-    <h1>Scan your feet for a 3D-printed insole</h1>
-    <p class="lede">It takes about five minutes per foot. Your phone takes photos while you move it around your foot,
-      and they're used to shape an insole to fit you.</p>
+    <h1>Make an insole that fits your foot</h1>
+    <p class="lede">Your phone takes photos of your foot. Those photos are used to shape an insole for your shoe.
+      It takes about five minutes per foot.</p>
+    <ol class="howto card">
+      <li><p><strong>Print the paper mat</strong> and put it on the floor.</p></li>
+      <li><p><strong>Move your phone around your foot</strong> while it takes photos.</p></li>
+      <li><p><strong>Send the photos</strong>, and your insole gets made.</p></li>
+    </ol>
 
     <form class="card form" id="about-form" novalidate>
       <div class="field">
-        <label for="name">Your name</label>
+        <label for="name">What is your name?</label>
         <input id="name" type="text" maxlength="80" autocomplete="name" required>
       </div>
       <div class="field">
-        <span style="font-weight:650">Which feet?</span>
+        <span style="font-weight:650">Which foot?</span>
         <div class="segmented" role="radiogroup" aria-label="Which feet">
           <label><input type="radio" name="feet" value="both" checked> Both</label>
           <label><input type="radio" name="feet" value="right"> Right</label>
@@ -102,19 +107,20 @@
       </div>
 
       <fieldset style="border:0;padding:0;margin:0;display:grid;gap:10px">
-        <legend style="font-weight:650;margin-bottom:8px">Please read and confirm</legend>
+        <legend style="font-weight:650;margin-bottom:8px">Please read these and tick all four</legend>
         <div class="ack">
           <label><input type="checkbox" name="not_medical_device">
-            <span><strong>This is not a medical device.</strong> It's a handmade insole, not a prescribed orthotic,
-              and it doesn't diagnose or treat anything.</span></label>
+            <span><strong>This is not a medical device.</strong> It is homemade. A doctor did not prescribe it, and it
+              does not treat any illness or injury.</span></label>
           <label><input type="checkbox" name="clinician_review">
-            <span><strong>I'll have a clinician check it before sport.</strong> A podiatrist, physical therapist,
-              sports-medicine doctor or athletic trainer. A badly shaped insole can cause knee, hip or back problems.</span></label>
+            <span><strong>Before I play sport in it, I will show it to a foot doctor</strong> (a podiatrist), a
+              physical therapist, a sports doctor or an athletic trainer. The wrong shape under a foot can hurt your
+              knees, hips or back.</span></label>
           <label><input type="checkbox" name="break_in">
-            <span><strong>I'll break it in slowly and stop on any new pain.</strong> One hour on day one, building up
-              over two weeks. <a href="/care.html" target="_blank">Read the guide</a>.</span></label>
+            <span><strong>I will wear it a little at a time.</strong> One hour on the first day, then a bit more each
+              day for two weeks. If anything starts to hurt, I stop wearing it. <a href="/care.html">See how</a>.</span></label>
           <label><input type="checkbox" name="photo_consent">
-            <span><strong>I agree to my foot photos being stored</strong> to make my insole.</span></label>
+            <span><strong>You can keep the photos of my feet</strong> so you can make my insole.</span></label>
         </div>
       </fieldset>
       <p class="error" id="about-error" role="alert"></p>
@@ -150,45 +156,45 @@
 
   <!-- 2c. Scan plan -->
   <section class="view" id="v-plan" hidden style="margin:0">
-    <h1>Your scans</h1>
-    <p class="lede">Based on your answers, here's what we'll scan.</p>
+    <h1>Here is your plan</h1>
+    <p class="lede">From your answers, these are the scans to take.</p>
     <div class="callout warn" id="plan-flags" hidden>
-      <p><strong>Please see a clinician before you wear your insole at all</strong>, not just before sport:</p>
+      <p><strong>See a foot doctor before you wear the insole at all</strong>, not just before sport. Here is why:</p>
       <ul id="plan-flag-list" style="margin:0;padding-left:1.2em"></ul>
     </div>
     <ol class="card howto" id="plan-list"></ol>
     <p class="hint" id="plan-helper"></p>
 
     <div class="card mat-card">
-      <h2 style="font-size:1.25rem;margin:0 0 6px">Print your scan mat</h2>
-      <p class="muted" style="margin:0 0 14px">The black squares let us measure your foot in real millimetres. Without
-        the mat, the scan can't be used.</p>
+      <h2 style="font-size:1.25rem;margin:0 0 6px">Print the paper mat</h2>
+      <p class="muted" style="margin:0 0 14px">Photos can't tell how big your foot is. The black squares are a known
+        size, so they work like a ruler. Without the mat, the scan can't be used.</p>
+      <div class="diagram" id="mat-diagram" style="max-width:180px;margin:0 auto 14px"></div>
       <div class="btn-row" style="margin-bottom:14px">
         <a class="btn secondary" href="/mat/footscan-mat-letter.pdf">US Letter PDF</a>
         <a class="btn secondary" href="/mat/footscan-mat-a4.pdf">A4 PDF</a>
         <a class="btn secondary" href="/mat.html">Printing help</a>
       </div>
       <ol class="howto">
-        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is fine.</p></li>
-        <li><p><strong>Measure one check bar</strong> on sheet 1 with a ruler: the 10 cm bar or the 4 inch bar,
-          whichever your ruler uses. Enter what you measured below.</p></li>
-        <li><p><strong>Tape the sheets together</strong> at the dashed edges, sheet 1 at the heel end, then tape the mat
-          flat to the floor.</p></li>
+        <li><p><strong>Print both pages.</strong> In the print box, set size to <strong>100%</strong> (sometimes
+          called "Actual size"). Turn off "Fit to page". Black and white is fine.</p></li>
+        <li><p><strong>Check the size with a ruler.</strong> Sheet 1 has two black bars. Pick the one that matches
+          your ruler, line the ruler's 0 up with the start of the bar, and see what number the bar ends at.</p></li>
+        <li><p><strong>Tape the two sheets together</strong> along the dashed lines, then tape the mat flat to the
+          floor. Sheet 1 is the heel end.</p></li>
       </ol>
-      <div style="margin-top:14px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
-        <div class="field" style="flex:1;min-width:150px">
-          <label for="mat-check">Bar length you measured</label>
-          <input id="mat-check" type="number" inputmode="decimal" min="1" max="30" step="0.1">
-        </div>
-        <div class="field" style="width:130px">
-          <label for="mat-unit">Ruler</label>
-          <select id="mat-unit">
-            <option value="cm">cm bar</option>
-            <option value="in">inch bar</option>
-          </select>
+      <div class="field" style="margin-top:16px">
+        <span style="font-weight:650">Which bar did you measure?</span>
+        <div class="segmented" role="radiogroup" aria-label="Which bar did you measure">
+          <label><input type="radio" name="mat-unit" value="cm" checked> The cm bar</label>
+          <label><input type="radio" name="mat-unit" value="in"> The inch bar</label>
         </div>
       </div>
-      <p class="hint" id="mat-expect" style="margin:8px 0 0"></p>
+      <div class="field" style="margin-top:12px;max-width:280px">
+        <label for="mat-check">What number does the bar end at?</label>
+        <input id="mat-check" type="number" inputmode="decimal" min="1" max="30" step="0.1">
+        <span class="hint" id="mat-expect"></span>
+      </div>
     </div>
     <p class="error" id="plan-error" role="alert"></p>
     <div class="btn-row">
@@ -202,8 +208,10 @@
     <p class="eyebrow" id="setup-eyebrow">Scan 1 of 2</p>
     <h1 id="setup-title">Get ready to scan your right foot</h1>
     <div class="card"><ol class="howto" id="setup-steps"></ol></div>
+    <div class="diagram" id="path-diagram"></div>
     <div class="field card">
-      <label for="load">Bathroom scale reading <span class="hint" id="load-hint">optional: put a scale under this foot and enter what it shows</span></label>
+      <label for="load">Bathroom scale number <span class="hint" id="load-hint">You can skip this. If you have a
+        bathroom scale, put it under this foot and type what it says.</span></label>
       <input id="load" type="number" inputmode="decimal" min="0" max="400" step="0.1" placeholder="kg">
     </div>
     <p class="error" id="setup-error" role="alert"></p>
@@ -254,8 +262,8 @@
 
   <!-- 4. Send -->
   <section class="view" id="v-send" hidden style="margin:0">
-    <h1>Ready to send</h1>
-    <p class="lede">Check every scan is done, then send them.</p>
+    <h1>All done scanning</h1>
+    <p class="lede">Check the list, then send your photos.</p>
     <div class="foot-rows" id="foot-rows"></div>
     <p class="error" id="send-error" role="alert"></p>
     <button class="btn" id="btn-send">Send my scans</button>
@@ -264,19 +272,20 @@
   <!-- 5. Done -->
   <section class="view" id="v-done" hidden style="margin:0">
     <div class="big-check" aria-hidden="true">✓</div>
-    <h1>Scans sent</h1>
-    <p class="lede">Thanks. Your reference is <strong class="mono" id="done-ref"></strong>.</p>
+    <h1>Sent. Thank you!</h1>
+    <p class="lede">Your code is <strong class="mono" id="done-ref"></strong>. Keep it, so you know which insole is
+      yours.</p>
     <div class="card">
-      <h3>What happens next</h3>
+      <h3>What happens now</h3>
       <ol class="howto">
-        <li><p>Your scans are checked. If a photo set didn't work, you'll be asked to scan again.</p></li>
-        <li><p>Your insole is designed and printed.</p></li>
-        <li><p><strong>Before sport:</strong> take it to a podiatrist, physical therapist, sports-medicine doctor or
-          athletic trainer to check.</p></li>
-        <li><p><strong>Break it in slowly</strong> and stop on any new pain.</p></li>
+        <li><p>Someone checks your photos. If they didn't work, you'll be asked to scan again.</p></li>
+        <li><p>Your insole gets designed and printed.</p></li>
+        <li><p><strong>Before you play sport in it,</strong> show it to a foot doctor, physical therapist, sports
+          doctor or athletic trainer.</p></li>
+        <li><p><strong>Wear it a little at a time</strong> and stop if anything hurts.</p></li>
       </ol>
     </div>
-    <a class="btn secondary" href="/care.html" style="justify-self:start">Read the break-in guide</a>
+    <a class="btn secondary" href="/care.html" style="justify-self:start">How to wear it</a>
   </section>
 </main>
 <script src="/vendor/js-aruco2/cv.js"></script>

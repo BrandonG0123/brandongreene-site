@@ -34,28 +34,28 @@ SECTIONS = [
     {
         "id": "safety",
         "title": "Safety check",
-        "intro": "A few questions to make sure a 3D-printed insole is safe for you to try.",
+        "intro": "A few questions first, to check an insole is safe for you to try.",
         "questions": [
             {"id": "adult", "type": "single", "label": "Are you 18 or older?", "required": True,
              "options": [["yes", "Yes"], ["no", "No"]]},
             {"id": "guardian", "type": "confirm", "required": True, "show_if": {"adult": ["no"]},
-             "label": "A parent or guardian has read the safety points and agrees to this scan."},
+             "label": "A parent or guardian has read the four points above and says this scan is OK."},
             {"id": "conditions", "type": "multi", "required": True, "exclusive": "none",
-             "label": "Do any of these apply to you?",
+             "label": "Do any of these sound like you?",
              "options": [
                  ["diabetes", "Diabetes"],
-                 ["numbness", "Numbness, tingling or reduced feeling in your feet"],
-                 ["circulation", "Poor circulation in your legs or feet"],
-                 ["wounds", "Open wounds, ulcers or sores on your feet"],
-                 ["arthritis", "Rheumatoid or other inflammatory arthritis"],
-                 ["recent_injury", "Foot or ankle surgery, a fracture, or a bad sprain in the last 12 months"],
+                 ["numbness", "My feet often feel numb or tingly, or I can't feel them well"],
+                 ["circulation", "A doctor told me I have poor blood flow in my legs or feet"],
+                 ["wounds", "I have a cut, sore or wound on my foot that has not healed"],
+                 ["arthritis", "I have arthritis that a doctor treats (like rheumatoid arthritis)"],
+                 ["recent_injury", "In the last year I broke, badly sprained, or had surgery on a foot or ankle"],
                  ["none", "None of these"],
              ]},
             {"id": "pain", "type": "single", "required": True,
-             "label": "Do you have foot, leg or back pain at the moment?",
-             "options": [["none", "No"], ["occasional", "Mild, now and then"], ["regular", "Regularly, or it's getting worse"]]},
+             "label": "Do your feet, legs or back hurt right now?",
+             "options": [["none", "No"], ["occasional", "A little, now and then"], ["regular", "Yes, often, or it is getting worse"]]},
             {"id": "pain_where", "type": "multi", "required": True, "show_if": {"pain": ["occasional", "regular"]},
-             "label": "Where?",
+             "label": "Where does it hurt?",
              "options": [["heel", "Heel"], ["arch", "Arch"], ["forefoot", "Ball of the foot or toes"], ["ankle", "Ankle"],
                          ["shin", "Shin"], ["knee", "Knee"], ["hip", "Hip"], ["back", "Back"]]},
         ],
@@ -63,50 +63,50 @@ SECTIONS = [
     {
         "id": "feet",
         "title": "Your feet",
-        "intro": "Your best guess is fine. The scan measures the real shape; these answers decide which scans to take.",
+        "intro": "Just guess if you are not sure. The scan measures the real shape. Your answers only decide which scans to take.",
         "questions": [
             {"id": "arch", "type": "single", "required": True,
-             "label": "How would you describe your arches?",
-             "hint": "Quick check: wet your foot and stand on paper or dry pavement. A print of nearly the whole sole "
-                     "suggests a low arch; a thin strip along the outside suggests a high arch.",
-             "options": [["flat", "Flat or low"], ["normal", "Normal"], ["high", "High"], ["unsure", "Not sure"]]},
+             "label": "What are your arches like?",
+             "hint": "Not sure? Wet your foot and stand on paper or dry ground, then look at the footprint. Nearly the "
+                     "whole sole means a low arch. A thin strip along the outside means a high arch.",
+             "options": [["flat", "Flat or low"], ["normal", "Normal"], ["high", "High (a big gap under the middle)"], ["unsure", "Not sure"]]},
             {"id": "tiptoe", "type": "single", "required": True, "show_if": {"arch": ["flat", "unsure"]},
-             "label": "Stand up and rise onto your toes. Does an arch appear under your foot?",
-             "options": [["appears", "Yes, an arch appears"], ["stays_flat", "No, it stays flat"], ["cant_tell", "Can't tell"]]},
+             "label": "Stand up and go on tiptoes. Does a gap appear under the middle of your foot?",
+             "options": [["appears", "Yes, a gap appears"], ["stays_flat", "No, it stays flat"], ["cant_tell", "I can't tell"]]},
             {"id": "arch_change", "type": "single", "required": True, "show_if": {"arch": ["flat", "unsure"]},
-             "label": "Has one foot become noticeably flatter in the last year or two?",
+             "label": "Has one foot got flatter in the last year or two?",
              "options": [["no", "No"], ["yes", "Yes"], ["unsure", "Not sure"]]},
         ],
     },
     {
         "id": "use",
         "title": "How you'll use it",
-        "intro": "This helps choose the insole's length, thickness and firmness.",
+        "intro": "This helps pick how long, thick and firm your insole should be.",
         "questions": [
-            {"id": "use", "type": "single", "required": True, "label": "What will you mostly wear it for?",
-             "options": [["everyday", "Everyday comfort"], ["on_feet", "Long days on my feet (work or school)"], ["sport", "Sport"]]},
+            {"id": "use", "type": "single", "required": True, "label": "What will you mostly use it for?",
+             "options": [["everyday", "Everyday comfort"], ["on_feet", "Long days standing or walking (school or work)"], ["sport", "Sport"]]},
             {"id": "sport", "type": "text", "required": True, "max": 60, "show_if": {"use": ["sport"]},
              "label": "Which sport?"},
             {"id": "sport_level", "type": "single", "required": True, "show_if": {"use": ["sport"]},
-             "label": "How much do you play?",
-             "options": [["casual", "Casually"], ["regular", "Regular training"], ["competitive", "Competitively"]]},
-            {"id": "shoe_type", "type": "single", "required": True, "label": "What kind of shoe will it go in?",
+             "label": "How often do you play it?",
+             "options": [["casual", "Just for fun"], ["regular", "I train most weeks"], ["competitive", "I compete"]]},
+            {"id": "shoe_type", "type": "single", "required": True, "label": "What shoe will it go in?",
              "options": [["court", "Court shoes (tennis, basketball…)"], ["running", "Running shoes"],
-                         ["everyday", "Everyday trainers or casual shoes"], ["boots", "Work boots"], ["other", "Something else"]]},
+                         ["everyday", "Everyday trainers or school shoes"], ["boots", "Work boots"], ["other", "Something else"]]},
             {"id": "removable_insole", "type": "single", "required": True,
-             "label": "Does that shoe's existing insole lift out?",
+             "label": "Can you pull the insole out of that shoe?",
              "options": [["yes", "Yes"], ["no", "No"], ["unsure", "Not sure"]]},
-            {"id": "shoe_size", "type": "text", "required": False, "max": 20, "label": "Shoe size",
-             "hint": "Optional, e.g. US 10 or EU 44"},
+            {"id": "shoe_size", "type": "text", "required": False, "max": 20, "label": "What shoe size are you?",
+             "hint": "You can skip this. For example US 10 or EU 44."},
             {"id": "current_insoles", "type": "single", "required": True,
-             "label": "Do you wear insoles or orthotics now?",
-             "options": [["none", "No"], ["store", "Store-bought insoles"], ["prescribed", "Orthotics from a podiatrist or clinician"]]},
+             "label": "Do you use insoles now?",
+             "options": [["none", "No"], ["store", "Yes, ones I bought in a shop"], ["prescribed", "Yes, ones a foot doctor made for me"]]},
             {"id": "goals", "type": "multi", "required": True, "max_select": 2,
-             "label": "What do you most want from it?", "hint": "Pick up to two.",
-             "options": [["comfort", "Comfort"], ["support", "Arch support"], ["fatigue", "Less tired feet after long days"],
+             "label": "What do you want most from it?", "hint": "Pick one or two.",
+             "options": [["comfort", "Comfort"], ["support", "Arch support"], ["fatigue", "Feet that feel less tired"],
                          ["fit", "Better fit in my shoe"], ["stability", "Stability in sport"]]},
             {"id": "weight_kg", "type": "number", "required": False, "min": 20, "max": 300,
-             "label": "Body weight (kg)", "hint": "Optional. Helps choose how firm the insole should be."},
+             "label": "How much do you weigh? (kg)", "hint": "You can skip this. It helps pick how firm the insole should be."},
         ],
     },
 ]
@@ -217,8 +217,8 @@ def evaluate(answers: dict, feet: list[str]) -> dict:
                 reasons=stops,
                 message=(
                     f"We can't make an insole for you with this tool because of {join_words(stops)}. "
-                    "An insole that doesn't fit perfectly can then cause sores you might not feel, and they can "
-                    "become serious. A podiatrist can fit insoles safely for you."
+                    "An insole that does not fit perfectly can rub and make a sore you might not feel, and that can "
+                    "get bad. A foot doctor (podiatrist) can fit insoles safely for you."
                 ),
             ),
             flags=[], plan=[],
@@ -229,30 +229,30 @@ def evaluate(answers: dict, feet: list[str]) -> dict:
     note = lambda code, studio: flags.append(Flag("note", code, "", studio))  # noqa: E731
 
     if answers.get("adult") == "no":
-        before("minor", "Because you're under 18, have a clinician check the insole before you wear it. Growing feet change quickly.",
+        before("minor", "You are under 18, so your feet are still growing. Show the insole to a foot doctor before you wear it.",
                "Under 18 (guardian confirmed). Clinician before any wear.")
     if "arthritis" in conditions:
-        before("arthritis", "With inflammatory arthritis, a clinician should approve the insole before you wear it.",
+        before("arthritis", "Because of your arthritis, a foot doctor should say yes before you wear the insole.",
                "Inflammatory arthritis. Clinician before any wear.")
     if "recent_injury" in conditions:
-        before("recent_injury", "After a recent foot or ankle injury or surgery, check with your clinician before wearing it.",
+        before("recent_injury", "You hurt your foot or ankle recently, so ask your doctor before you wear the insole.",
                "Foot/ankle surgery, fracture or bad sprain in the last 12 months. Clinician before any wear.")
     if answers.get("pain") == "regular":
-        before("pain", "You have regular or worsening pain. Please see a clinician about it. An insole isn't a treatment for pain.",
+        before("pain", "Something hurts often, or is getting worse. Please see a doctor about it. An insole is not a cure for pain.",
                f"Regular or worsening pain ({join_words(answers.get('pain_where', []))}). Clinician before any wear.")
     elif answers.get("pain") == "occasional":
         note("pain_occasional", f"Occasional mild pain: {join_words(answers.get('pain_where', []))}.")
     if answers.get("tiptoe") == "stays_flat":
-        before("rigid_arch", "Your arch stayed flat on tiptoe. That's worth a clinician checking before you wear an insole.",
+        before("rigid_arch", "Your foot stayed flat on tiptoes. A foot doctor should look at that before you wear an insole.",
                "Self-check: arch stays flat on tiptoe (possible rigid flat foot, unconfirmed). Clinician before any wear.")
     elif answers.get("tiptoe") == "appears":
         note("tiptoe_arch", "Self-check: arch appears on tiptoe (consistent with a flexible flat foot, unconfirmed). "
                             "Seated vs standing scans will measure it.")
     if answers.get("arch_change") == "yes":
-        before("arch_change", "A foot that has recently become flatter should be checked by a clinician first.",
+        before("arch_change", "A foot that has got flatter lately should be checked by a foot doctor first.",
                "One foot flattened recently (can indicate a tendon problem). Clinician before any wear.")
     if answers.get("current_insoles") == "prescribed":
-        before("prescribed", "You already have orthotics from a clinician. Don't swap them for this insole without asking them.",
+        before("prescribed", "You already have insoles from a foot doctor. Ask them before you swap to this one.",
                "Already has prescribed orthotics. Their clinician must agree before any wear.")
     if answers.get("removable_insole") == "no":
         note("fixed_insole", "Shoe's insole doesn't come out: added insole may make the shoe too tight.")

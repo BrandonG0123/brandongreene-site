@@ -59,8 +59,8 @@ const median = (xs) => {
 };
 
 export class Scanner {
-  constructor({ stage, simulated = false, targetFrames = 60, boards = [], requireMat = false, onUpdate = () => {}, onFrame = () => {} }) {
-    Object.assign(this, { stage, simulated, targetFrames, onUpdate, onFrame });
+  constructor({ stage, simulated = false, targetFrames = 60, boards = [], requireMat = false, foot = "right", onUpdate = () => {}, onFrame = () => {} }) {
+    Object.assign(this, { stage, simulated, targetFrames, foot, onUpdate, onFrame });
     this.boards = boards.map((b) => ({ board: b, index: indexBoard(b) }));
     this.detector = globalThis.AR && this.boards.length
       ? new globalThis.AR.Detector({ dictionaryName: "ARUCO_MIP_36h12", maxHammingDistance: MAX_HAMMING })
@@ -315,20 +315,20 @@ export class Scanner {
   guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now }) {
     if (!this.started) {
       return this.requireMat && !matVisible
-        ? { text: "Point the phone at the scan mat so the black squares are in view, then tap Start.", tone: "" }
-        : { text: "Stand behind the heel, then tap Start.", tone: "" };
+        ? { text: "Point the phone at the mat so you can see the black squares, then tap Start.", tone: "" }
+        : { text: "Start behind the heel, then tap Start.", tone: "" };
     }
     if (!this.capturing) return { text: "Paused.", tone: "" };
     if (!exposure.ok) return { text: exposure.message, tone: "bad" };
     if (!sharp.ok) return { text: sharp.message, tone: "bad" };
     if (this.requireMat && this.matLostSince != null && now - this.matLostSince > 800)
-      return { text: "Keep the scan mat in view. Step back until you can see the black squares around the foot.", tone: "bad" };
-    if (done) return { text: "That's everything. Tap Finish.", tone: "done" };
+      return { text: "Move back a bit, until you can see the black squares around the foot.", tone: "bad" };
+    if (done) return { text: "All done! Tap Finish.", tone: "done" };
     if (!hasView)
-      return { text: `Walk slowly all the way around the foot, low down, then again from higher up, then a few from above. ${this.targetFrames - kept} photos to go.`, tone: "" };
-    if (next && next !== cell) return { text: `Now move to: ${describeCell(next)}.`, tone: "" };
-    if (next) return { text: "Good. Hold this angle a moment.", tone: "" };
-    return { text: `All angles covered. ${Math.max(0, this.targetFrames - kept)} more photos.`, tone: "" };
+      return { text: `Walk slowly around the foot: low down, then higher up, then from above. ${this.targetFrames - kept} photos to go.`, tone: "" };
+    if (next && next !== cell) return { text: `Now move here: ${describeCell(next, this.foot)}.`, tone: "" };
+    if (next) return { text: "Good. Hold still here for a moment.", tone: "" };
+    return { text: `You have been all the way around. ${Math.max(0, this.targetFrames - kept)} more photos.`, tone: "" };
   }
 
   grabFrame(src, w, h, info) {
