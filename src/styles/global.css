@@ -1,0 +1,550 @@
+@import './fonts.css';
+
+/* ==========================================================================
+   Tokens. Light theme is defined on bare :root so no color has its only
+   definition inside a media query. Dark is a separate design, not an inversion.
+   All pairs verified against WCAG 2.2 AA — see content/notes/design-brief.md.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  --vellum:   #FAF7F2;  /* page ground        */
+  --surface:  #F3EEE6;  /* raised panels      */
+  --graphite: #1A1C1E;  /* body text  15.99:1 */
+  --slate:    #4A4F55;  /* secondary   7.73:1 */
+  --section:  #005F73;  /* links/focus 6.81:1 */
+  --markup:   #A4321E;  /* failures    6.44:1 */
+  --rule:     #8C857A;  /* boundaries  3.42:1 */
+  --hairline: color-mix(in srgb, var(--rule) 38%, transparent);
+
+  --bg: var(--vellum);
+  --fg: var(--graphite);
+  --fg-muted: var(--slate);
+  --accent: var(--section);
+
+  /* Type */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Atkinson Hyperlegible Next', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 1.25 major third off an 18px body */
+  --step--1: 0.9rem;
+  --step-0: 1.125rem;
+  --step-1: 1.406rem;
+  --step-2: 1.758rem;
+  --step-3: 2.197rem;
+  --step-4: clamp(2rem, 1.25rem + 3.2vw, 3.43rem);
+
+  --measure: 65ch;
+  --rail: 13rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2.5rem;
+  --space-7: 4rem;
+  --space-8: 6rem;
+}
+
+:root:not([data-theme='light']) {
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+    --bg: #15171A;
+    --surface: #1D2025;
+    --fg: #E9E5DD;
+    --fg-muted: #A5AAB2;
+    --accent: #6FD2E2;
+    --markup: #F08A72;
+    --rule: #67707B;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15171A;
+  --surface: #1D2025;
+  --fg: #E9E5DD;
+  --fg-muted: #A5AAB2;
+  --accent: #6FD2E2;
+  --markup: #F08A72;
+  --rule: #67707B;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  font-size: 100%;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: var(--step-0);
+  line-height: 1.65;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: 0 0 var(--space-4);
+  letter-spacing: -0.015em;
+}
+
+h1 { font-size: var(--step-4); }
+h2 { font-size: var(--step-2); margin-top: var(--space-7); }
+h3 { font-size: var(--step-1); margin-top: var(--space-6); }
+h4 { font-size: var(--step-0); margin-top: var(--space-5); }
+
+p, ul, ol, dl, blockquote, figure, table { margin: 0 0 var(--space-5); }
+p { text-wrap: pretty; }
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+a:hover { text-decoration-thickness: 2px; }
+
+/* Focus is visible at every stop, in both themes, and never removed. */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+img, video, svg { max-width: 100%; height: auto; }
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+pre {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  padding: var(--space-4);
+  overflow-x: auto;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--hairline);
+  margin: var(--space-7) 0;
+}
+
+blockquote {
+  border-left: 3px solid var(--rule);
+  margin-left: 0;
+  padding-left: var(--space-4);
+  color: var(--fg-muted);
+}
+
+::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+.visually-hidden:not(:focus):not(:active) {
+  clip-path: inset(50%);
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: var(--space-4);
+  z-index: 100;
+  background: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--accent);
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip-link:focus { transform: translateY(0); }
+
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.measure { max-width: var(--measure); }
+
+/* ==========================================================================
+   Page frame
+   ========================================================================== */
+
+.wrap {
+  width: 100%;
+  max-width: 76rem;
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+}
+
+/* The drawing sheet: a reading column beside a margin rail of callouts. */
+.sheet {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  padding-block: var(--space-6) var(--space-8);
+}
+
+@media (min-width: 56.25rem) {
+  .sheet {
+    grid-template-columns: var(--rail) minmax(0, var(--measure));
+    gap: var(--space-7);
+  }
+  /* Rail sits after the content in the DOM for reading order; grid paints it
+     on the left. Both live in row 1. */
+  .sheet > .rail { grid-column: 1; grid-row: 1; }
+  .sheet > .column { grid-column: 2; grid-row: 1; }
+}
+
+.column { max-width: var(--measure); }
+
+/* Below 900px the rail becomes a labelled block above the content rather than
+   disappearing — no information is viewport-dependent. */
+.rail {
+  border-top: 1px solid var(--rule);
+  padding-top: var(--space-3);
+}
+
+.rail dl { margin: 0; display: grid; gap: var(--space-3); }
+.rail dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+.rail dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  line-height: 1.4;
+}
+
+@media (min-width: 56.25rem) {
+  .rail { position: sticky; top: var(--space-5); align-self: start; }
+}
+
+/* ==========================================================================
+   Header / footer
+   ========================================================================== */
+
+.site-header {
+  border-bottom: 1px solid var(--hairline);
+}
+.site-header > .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-5);
+  padding-block: var(--space-4);
+}
+
+.site-header .brand {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  text-decoration: none;
+  color: var(--fg);
+  margin-right: auto;
+}
+
+.site-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-5);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.site-nav a {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--fg);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+.site-nav a:hover { border-bottom-color: var(--rule); }
+.site-nav a[aria-current='page'] {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.site-footer {
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--space-8);
+}
+.site-footer > .wrap {
+  padding-block: var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  justify-content: space-between;
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+}
+
+/* ==========================================================================
+   Status badge — shape + label + color. Never color alone.
+   Legible in greyscale, with color vision differences, and on paper.
+   ========================================================================== */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5ch;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status::before {
+  content: '';
+  width: 0.7em;
+  height: 0.7em;
+  flex: none;
+  border: 1.5px solid currentColor;
+}
+
+.status--shipped { color: var(--fg); }
+.status--shipped::before { background: currentColor; }
+
+.status--in-progress { color: var(--accent); }
+.status--in-progress::before {
+  background: linear-gradient(to right, currentColor 50%, transparent 50%);
+}
+
+.status--planned { color: var(--fg-muted); }
+.status--planned::before { background: transparent; }
+
+/* ==========================================================================
+   Title block — the fixed-field header on every project page
+   ========================================================================== */
+
+.title-block {
+  border: 1px solid var(--rule);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.title-block dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+.title-block dt {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  margin-bottom: var(--space-1);
+}
+.title-block dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+}
+
+/* ==========================================================================
+   Project list
+   ========================================================================== */
+
+.project-list { list-style: none; margin: 0; padding: 0; }
+
+.project-list > li {
+  border-top: 1px solid var(--hairline);
+  padding-block: var(--space-5);
+}
+.project-list > li:last-child { border-bottom: 1px solid var(--hairline); }
+
+.project-entry h3 { margin: var(--space-2) 0 var(--space-3); font-size: var(--step-1); }
+.project-entry h3 a { color: var(--fg); text-decoration: none; }
+.project-entry h3 a:hover { color: var(--accent); text-decoration: underline; }
+.project-entry p { margin-bottom: var(--space-3); max-width: var(--measure); }
+
+.project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+}
+
+.areas { display: inline-flex; gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+.areas li {
+  border: 1px solid var(--hairline);
+  padding: 0 var(--space-2);
+  font-size: 0.75rem;
+}
+
+/* Planned projects: one line, no page, not in the main grid. */
+.planned-list { list-style: none; margin: 0; padding: 0; }
+.planned-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding-block: var(--space-2);
+  color: var(--fg-muted);
+}
+
+/* Narrow screens only: the rail has moved below the content, so status stays
+   visible near the title. Exactly one copy is shown at any viewport. */
+.project-inline-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+}
+
+@media (min-width: 56.25rem) {
+  .project-inline-meta { display: none; }
+}
+
+/* ==========================================================================
+   Home
+   ========================================================================== */
+
+.hero { padding-block: var(--space-8) var(--space-7); }
+.hero h1 { max-width: 20ch; margin-bottom: var(--space-5); }
+.hero .lede {
+  font-size: var(--step-1);
+  line-height: 1.5;
+  max-width: 48ch;
+  color: var(--fg);
+}
+.hero .lede + p { max-width: 55ch; color: var(--fg-muted); }
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.section-head h2 { margin: 0; font-size: var(--step-2); }
+
+/* ==========================================================================
+   Build log
+   ========================================================================== */
+
+.log-list { list-style: none; margin: 0; padding: 0; }
+.log-entry {
+  border-top: 1px solid var(--hairline);
+  padding-block: var(--space-5);
+}
+.log-entry time {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--fg-muted);
+}
+.log-entry h3 { margin: var(--space-2) 0 var(--space-3); font-size: var(--step-1); }
+.log-entry .body > :last-child { margin-bottom: 0; }
+
+/* ==========================================================================
+   Draft banner — loud on purpose
+   ========================================================================== */
+
+.draft-banner {
+  border: 2px solid var(--markup);
+  color: var(--markup);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+}
+.draft-banner strong { display: block; margin-bottom: var(--space-2); }
+
+/* The one place Markup red appears in body copy: the failure section. */
+.failure-section {
+  border-left: 3px solid var(--markup);
+  padding-left: var(--space-4);
+}
+.failure-section > h2 { color: var(--markup); margin-top: 0; }
+
+/* ==========================================================================
+   Theme toggle
+   ========================================================================== */
+
+.theme-toggle {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid var(--rule);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ==========================================================================
+   Print — the résumé must come out as one clean page
+   ========================================================================== */
+
+@media print {
+  :root {
+    --bg: #fff; --fg: #000; --fg-muted: #333;
+    --accent: #000; --rule: #999; --hairline: #ccc;
+  }
+  .site-header, .site-footer, .skip-link, .theme-toggle, .no-print { display: none !important; }
+  body { font-size: 10.5pt; line-height: 1.4; }
+  .sheet { display: block; padding: 0; }
+  .column, .measure { max-width: none; }
+  h1 { font-size: 20pt; }
+  h2 { font-size: 13pt; margin-top: 1.2em; }
+  h3 { font-size: 11pt; margin-top: 0.8em; }
+  a { text-decoration: none; color: #000; }
+  a[href^='http']::after { content: ' (' attr(href) ')'; font-size: 8pt; color: #555; }
+  .resume a[href^='http']::after { content: ''; }
+  @page { margin: 12mm; }
+}

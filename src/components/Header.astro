@@ -1,0 +1,60 @@
+---
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const nav = [
+  { href: '/projects', label: 'Projects' },
+  { href: '/log', label: 'Build log' },
+  { href: '/about', label: 'About' },
+  { href: '/resume', label: 'Résumé' },
+];
+const isCurrent = (href: string) => path === href || path.startsWith(href + '/');
+---
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/">Brandon Greene</a>
+    <nav class="site-nav" aria-label="Main">
+      <ul>
+        {
+          nav.map((item) => (
+            <li>
+              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
+      <span data-theme-label>Dark theme</span>
+    </button>
+  </div>
+</header>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  const label = document.querySelector<HTMLElement>('[data-theme-label]');
+  const root = document.documentElement;
+
+  const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : systemDark());
+
+  const sync = () => {
+    const dark = isDark();
+    btn?.setAttribute('aria-pressed', String(dark));
+    if (label) label.textContent = dark ? 'Light theme' : 'Dark theme';
+  };
+
+  btn?.addEventListener('click', () => {
+    const next = isDark() ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try {
+      localStorage.setItem('theme', next);
+    } catch (e) {
+      /* storage blocked — the toggle still works for this page view */
+    }
+    sync();
+  });
+
+  sync();
+</script>

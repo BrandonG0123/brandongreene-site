@@ -1,0 +1,149 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import StatusBadge from '../../components/StatusBadge.astro';
+
+export async function getStaticPaths() {
+  // Planned projects never get a page. That is the whole point of the status.
+  const projects = await getCollection('projects', (p) => p.data.status !== 'planned');
+  return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+const d = project.data;
+
+const logEntries = (await getCollection('log', (e) => !e.data.draft))
+  .filter((e) => e.data.project === project.id)
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const fmt = (date: Date) =>
+  date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+const lastUpdated = d.updated ?? logEntries[0]?.data.date ?? d.started;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CreativeWork',
+  name: d.title,
+  abstract: d.summary,
+  dateCreated: d.started.toISOString().slice(0, 10),
+  dateModified: lastUpdated.toISOString().slice(0, 10),
+  creativeWorkStatus: d.status === 'shipped' ? 'Published' : 'Draft',
+  author: { '@type': 'Person', name: 'Brandon Greene' },
+};
+---
+
+<Base title={d.title} description={d.summary} noindex={d.draft} jsonLd={jsonLd}>
+  <div class="wrap sheet">
+
+    <article class="column">
+      {
+        d.draft && (
+          <div class="draft-banner">
+            <strong>Unpublished draft</strong>
+            This page is not finished and is excluded from the site index, the sitemap and search
+            engines. Remove <code>draft: true</code> from the markdown file to publish it.
+          </div>
+        )
+      }
+
+      <h1>{d.title}</h1>
+      <p class="project-inline-meta">
+        <StatusBadge status={d.status} />
+        <span>Started {fmt(d.started)}</span>
+      </p>
+
+      <p class="lede" style="font-size:var(--step-1);line-height:1.5">{d.summary}</p>
+
+      {
+        d.hero && (
+          <figure>
+            <img
+              src={d.hero.src}
+              alt={d.hero.alt}
+              width={d.hero.width}
+              height={d.hero.height}
+              loading="eager"
+              decoding="async"
+            />
+            {d.hero.caption && <figcaption class="mono-label">{d.hero.caption}</figcaption>}
+          </figure>
+        )
+      }
+
+      {
+        d.aiAssisted && (
+          <p class="mono-label" style="border:1px solid var(--hairline);padding:var(--space-3)">
+            AI assistance: {d.aiAssisted}
+          </p>
+        )
+      }
+
+      <Content />
+
+      {
+        logEntries.length > 0 && (
+          <section aria-labelledby="project-log">
+            <h2 id="project-log">Build log</h2>
+            <p>
+              Dated entries for this project. {logEntries.length}{' '}
+              {logEntries.length === 1 ? 'entry' : 'entries'} so far.
+            </p>
+            <ul class="log-list">
+              {logEntries.map((e) => (
+                <li class="log-entry">
+                  <time datetime={e.data.date.toISOString().slice(0, 10)}>{fmt(e.data.date)}</time>
+                  <h3>
+                    <a href={`/log#${e.id}`}>{e.data.title}</a>
+                  </h3>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <p style="margin-top:var(--space-7)"><a href="/projects">← All projects</a></p>
+    </article>
+
+    <aside class="rail" aria-labelledby="rail-heading">
+      <h2 id="rail-heading" class="visually-hidden">Project details</h2>
+      <dl>
+        <dt>Status</dt>
+        <dd><StatusBadge status={d.status} /></dd>
+
+        <dt>Started</dt>
+        <dd><time datetime={d.started.toISOString().slice(0, 10)}>{fmt(d.started)}</time></dd>
+
+        <dt>Last updated</dt>
+        <dd><time datetime={lastUpdated.toISOString().slice(0, 10)}>{fmt(lastUpdated)}</time></dd>
+
+        <dt>Worked</dt>
+        <dd>{d.collaboration === 'group' ? 'Group project' : 'Solo'}</dd>
+
+        {d.role && (<dt>My part</dt><dd>{d.role}</dd>)}
+
+        <dt>Areas</dt>
+        <dd>{d.areas.join(', ')}</dd>
+
+        {
+          d.links.length > 0 && (
+            <>
+              <dt>Links</dt>
+              <dd>
+                <ul style="list-style:none;margin:0;padding:0;display:grid;gap:0.35rem">
+                  {d.links.map((l) => (
+                    <li>
+                      <a href={l.href}>{l.label}</a>
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+            </>
+          )
+        }
+      </dl>
+    </aside>
+  </div>
+</Base>

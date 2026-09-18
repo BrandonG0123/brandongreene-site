@@ -1,0 +1,79 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+const entries = (await getCollection('log', (e) => !e.data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+
+const rendered = await Promise.all(
+  entries.map(async (entry) => ({ entry, Content: (await render(entry)).Content }))
+);
+
+const projects = await getCollection('projects');
+const projectTitle = (slug?: string) => projects.find((p) => p.id === slug)?.data.title;
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+---
+
+<Base
+  title="Build log"
+  description="Dated entries showing work in progress across Brandon Greene's projects."
+>
+  <div class="wrap sheet">
+    <div class="rail">
+      <dl>
+        <dt>Entries</dt>
+        <dd>{entries.length}</dd>
+        {
+          entries.length > 0 && (
+            <>
+              <dt>Latest</dt>
+              <dd>{fmt(entries[0].data.date)}</dd>
+            </>
+          )
+        }
+        <dt>Feed</dt>
+        <dd><a href="/rss.xml">RSS</a></dd>
+      </dl>
+    </div>
+
+    <div class="column">
+      <h1>Build log</h1>
+      <p>
+        What I actually did, dated as it happened. This includes the approaches that didn't work,
+        because those are the parts that took the time.
+      </p>
+
+      {
+        rendered.length > 0 ? (
+          <ul class="log-list">
+            {rendered.map(({ entry, Content }) => (
+              <li class="log-entry" id={entry.id}>
+                <time datetime={entry.data.date.toISOString().slice(0, 10)}>
+                  {fmt(entry.data.date)}
+                </time>
+                <h2 style="font-size:var(--step-1);margin-top:var(--space-2)">
+                  {entry.data.title}
+                </h2>
+                {entry.data.project && projectTitle(entry.data.project) && (
+                  <p class="mono-label">
+                    <a href={`/projects/${entry.data.project}`}>
+                      {projectTitle(entry.data.project)}
+                    </a>
+                  </p>
+                )}
+                <div class="body">
+                  <Content />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No entries yet.</p>
+        )
+      }
+    </div>
+  </div>
+</Base>

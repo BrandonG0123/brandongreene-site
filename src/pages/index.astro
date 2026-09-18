@@ -1,0 +1,114 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import StatusBadge from '../components/StatusBadge.astro';
+
+const all = await getCollection('projects', (p) => !p.data.draft);
+const logEntries = await getCollection('log', (e) => !e.data.draft);
+
+const featured = all
+  .filter((p) => p.data.featured && p.data.status !== 'planned')
+  .sort((a, b) => b.data.started.valueOf() - a.data.started.valueOf())
+  .slice(0, 3);
+
+const entryCount = (slug: string) => logEntries.filter((e) => e.data.project === slug).length;
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Brandon Greene',
+  url: Astro.site?.href,
+  jobTitle: 'Student',
+  knowsAbout: ['Software engineering', 'Machine learning', 'Mathematics', '3D printing'],
+};
+---
+
+<Base
+  title="Brandon Greene"
+  description="High school student building software and hardware. Projects are labelled by status and backed by a dated build log."
+  jsonLd={jsonLd}
+>
+  <!-- DRAFT COPY: written from the Phase 0 interview. Brandon, edit this in your
+       own words — it is the first thing an admissions reader sees. -->
+  <div class="wrap">
+    <section class="hero">
+      <h1>I build hardware and software that has to work on something real.</h1>
+      <p class="lede">
+        I'm a high school student in the class of 2029. Right now I'm building a foot scanner
+        that aims to make custom orthopedic insoles cheaper to produce, as part of a year-long
+        independent study in AI and machine learning.
+      </p>
+      <p>
+        Everything here is labelled by status and dated. If something isn't finished, the page
+        says so and shows the work in progress instead of a promise.
+      </p>
+    </section>
+
+    <section aria-labelledby="featured-heading">
+      <div class="section-head">
+        <h2 id="featured-heading">What I'm building</h2>
+        <a href="/projects">All projects →</a>
+      </div>
+
+      {
+        featured.length > 0 ? (
+          <ul class="project-list">
+            {featured.map((p) => (
+              <li>
+                <article class="project-entry">
+                  <div class="project-meta">
+                    <StatusBadge
+                      status={p.data.status}
+                      detail={
+                        p.data.status === 'in-progress' && entryCount(p.id) > 0
+                          ? `${entryCount(p.id)} log ${entryCount(p.id) === 1 ? 'entry' : 'entries'}`
+                          : undefined
+                      }
+                    />
+                    <span>Started {fmt(p.data.started)}</span>
+                  </div>
+                  <h3>
+                    <a href={`/projects/${p.id}`}>{p.data.title}</a>
+                  </h3>
+                  <p>{p.data.summary}</p>
+                  <ul class="areas">
+                    {p.data.areas.map((a) => (
+                      <li>{a}</li>
+                    ))}
+                  </ul>
+                </article>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No projects are published yet.</p>
+        )
+      }
+    </section>
+
+    <section aria-labelledby="log-heading">
+      <div class="section-head">
+        <h2 id="log-heading">Latest from the build log</h2>
+        <a href="/log">Full log →</a>
+      </div>
+      <ul class="log-list">
+        {
+          logEntries
+            .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+            .slice(0, 3)
+            .map((e) => (
+              <li class="log-entry">
+                <time datetime={e.data.date.toISOString().slice(0, 10)}>{fmt(e.data.date)}</time>
+                <h3>
+                  <a href={`/log#${e.id}`}>{e.data.title}</a>
+                </h3>
+              </li>
+            ))
+        }
+      </ul>
+    </section>
+  </div>
+</Base>

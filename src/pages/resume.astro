@@ -1,0 +1,102 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base
+  title="Résumé"
+  description="Brandon Greene — résumé."
+>
+  <div class="wrap">
+    <div class="resume">
+      <!-- DRAFT: only verified facts are here. Brandon — fill the marked gaps.
+           Nothing on this page may be an estimate or a guess. -->
+
+      <header class="resume-head">
+        <h1>Brandon Greene</h1>
+        <p class="mono-label">
+          Class of 2029 · Software, machine learning, hardware ·
+          <a href="https://brandongreene.dev">brandongreene.dev</a>
+        </p>
+      </header>
+
+      <section aria-labelledby="r-focus">
+        <h2 id="r-focus">Focus</h2>
+        <p>
+          Software engineering and machine learning, with hands-on hardware work — CAD, 3D printing,
+          and building things that have to physically fit.
+        </p>
+      </section>
+
+      <section aria-labelledby="r-projects">
+        <h2 id="r-projects">Projects</h2>
+        <dl class="resume-items">
+          <dt>Foot scanner for custom orthopedic insoles <span class="mono-label">2026 — present</span></dt>
+          <dd>
+            Building a scanning and fabrication pipeline with the goal of making custom orthopedic
+            insoles cheaper to produce. In progress; work is documented in a dated
+            <a href="/log">build log</a>.
+          </dd>
+        </dl>
+      </section>
+
+      <section aria-labelledby="r-academics">
+        <h2 id="r-academics">Academics</h2>
+        <dl class="resume-items">
+          <dt>Independent study: AI and machine learning <span class="mono-label">2026 — 2027</span></dt>
+          <dd>Year-long independent study supervised by my computer science teacher.</dd>
+        </dl>
+        <!-- TODO Brandon: coursework worth naming, maths competitions and results,
+             test scores if you want them here. Real numbers only. -->
+      </section>
+
+      <section aria-labelledby="r-activities">
+        <h2 id="r-activities">Activities</h2>
+        <dl class="resume-items">
+          <dt>Tennis</dt>
+          <dd><em>[To fill in: level, team or club, years, time commitment, results.]</em></dd>
+          <dt>Chess — competitive</dt>
+          <dd><em>[To fill in: federation, format, years, results.]</em></dd>
+        </dl>
+      </section>
+
+      <section aria-labelledby="r-skills">
+        <h2 id="r-skills">Skills</h2>
+        <!-- Plain list, deliberately. No percentage bars: they encode a claim
+             nobody can verify and they fail as accessible content. -->
+        <p>
+          Programming, mathematics, machine learning, CAD and 3D printing.
+          <em>[To fill in: specific languages and tools you'd be comfortable being asked about in an
+          interview.]</em>
+        </p>
+      </section>
+
+      <p class="no-print" style="margin-top:var(--space-7)">
+        <a href="/">← Back to the site</a> · This page prints to one sheet.
+      </p>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .resume { max-width: 46rem; margin-inline: auto; padding-block: var(--space-7) var(--space-8); }
+  .resume-head { border-bottom: 2px solid var(--rule); padding-bottom: var(--space-4); margin-bottom: var(--space-5); }
+  .resume-head h1 { margin-bottom: var(--space-2); }
+  .resume h2 {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: var(--space-2);
+    margin-top: var(--space-6);
+  }
+  .resume-items { margin: 0; }
+  .resume-items dt { font-weight: 700; margin-top: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; justify-content: space-between; }
+  .resume-items dd { margin: var(--space-1) 0 0; }
+  @media print {
+    .resume { padding-block: 0; max-width: none; }
+    .resume h2 { margin-top: 0.9em; }
+    .resume-items dt { margin-top: 0.5em; }
+  }
+</style>

@@ -1,0 +1,20 @@
+---
+interface Props {
+  status: 'shipped' | 'in-progress' | 'planned';
+  /** Extra evidence shown beside In progress, e.g. "4 log entries". */
+  detail?: string;
+}
+const { status, detail } = Astro.props;
+
+const LABEL = {
+  shipped: 'Shipped',
+  'in-progress': 'In progress',
+  planned: 'Planned',
+} as const;
+---
+
+{/* Shape + text label + colour. The shape and label carry the meaning on their
+    own, so the badge survives greyscale, colour vision differences and print. */}
+<span class={`status status--${status}`}>
+  {LABEL[status]}{detail ? ` · ${detail}` : ''}
+</span>

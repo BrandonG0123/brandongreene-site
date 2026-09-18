@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Omit on pages that must not be indexed (drafts). */
+  noindex?: boolean;
+  jsonLd?: Record<string, unknown>;
+}
+
+const { title, description, noindex = false, jsonLd } = Astro.props;
+const canonical = new URL(Astro.url.pathname.replace(/\/$/, '') || '/', Astro.site);
+const fullTitle = title === 'Brandon Greene' ? title : `${title} — Brandon Greene`;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical.href} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+
+<!-- Body and display faces preloaded; they are the render-critical pair. -->
+<link
+  rel="preload"
+  href="/fonts/AtkinsonHyperlegibleNext-latin-400.woff2"
+  as="font"
+  type="font/woff2"
+  crossorigin
+/>
+<link rel="preload" href="/fonts/Fraunces-latin-700.woff2" as="font" type="font/woff2" crossorigin />
+
+<meta property="og:type" content="website" />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical.href} />
+<meta property="og:site_name" content="Brandon Greene" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+
+<link rel="alternate" type="application/rss+xml" title="Brandon Greene — build log" href="/rss.xml" />
+
+{jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+
+<!-- Sets the theme before first paint so there is no flash. Kept inline and tiny. -->
+<script is:inline>
+  (() => {
+    try {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+    } catch (e) {
+      /* private mode or blocked storage — fall back to the OS setting */
+    }
+  })();
+</script>

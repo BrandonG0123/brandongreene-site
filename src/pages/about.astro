@@ -1,0 +1,80 @@
+---
+import Base from '../layouts/Base.astro';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Brandon Greene',
+  url: Astro.site?.href,
+  description: 'High school student working on AI, mathematics and hardware.',
+};
+---
+
+<Base
+  title="About"
+  description="Brandon Greene — high school student working on AI, mathematics and hardware, plus tennis and competitive chess."
+  jsonLd={jsonLd}
+>
+  <div class="wrap sheet">
+    <div class="rail">
+      <dl>
+        <dt>Class of</dt>
+        <dd>2029</dd>
+        <dt>Focus</dt>
+        <dd>AI/ML, mathematics, hardware</dd>
+        <dt>Also</dt>
+        <dd>Tennis, chess</dd>
+      </dl>
+    </div>
+
+    <div class="column">
+      <h1>About</h1>
+
+      <!-- DRAFT: Brandon, this is a skeleton built from the interview. Rewrite in
+           your own words and add the specifics marked below. -->
+
+      <p>
+        I'm a high school student in the class of 2029. Most of what I do sits somewhere between
+        software and physical objects — writing code, working through the maths behind it, and then
+        printing something that has to actually fit.
+      </p>
+
+      <h2>What I'm working on</h2>
+      <p>
+        I'm a few weeks into a year-long independent study in AI and machine learning, supervised by
+        my computer science teacher. The idea came out of a conversation with my college advisor and
+        lined up with things I already wanted to build.
+      </p>
+      <p>
+        The main project is a foot scanner aimed at making custom orthopedic insoles cheaper to
+        produce. It is early. The <a href="/log">build log</a> is where the actual week-to-week work
+        lives, including the parts that don't work yet.
+      </p>
+
+      <h2>Tennis</h2>
+      <!-- TODO Brandon: how long, what level, team or club, time per week, any results.
+           No invented numbers — write what's true. -->
+      <p>
+        I play tennis. <em>[To fill in: how long you've played, where you play, how much time it
+        takes each week, and any results worth naming.]</em>
+      </p>
+
+      <h2>Chess</h2>
+      <!-- TODO Brandon: rated? federation? peak rating? tournaments? team?
+           Say if you'd rather not publish a rating and it stays off. -->
+      <p>
+        I played chess competitively. <em>[To fill in: how long, which federation or club, the
+        format of the competition, and any results. If you'd rather not publish a rating, say so and
+        it stays off.]</em>
+      </p>
+
+      <h2 id="contact">Contact</h2>
+      <p>
+        <!-- TODO: replace with the alias address once the domain is registered.
+             Brandon's personal email must never appear here in plain text. -->
+        <em>[Contact method not set up yet — an alias address on the site's own domain, once the
+        domain is registered.]</em>
+      </p>
+    </div>
+  </div>
+</Base>
