@@ -49,7 +49,16 @@ MARKER_MM = 30.0
 GAP_MM = 6.0
 MARGIN_MM = 10.0
 SEAM_CLEAR_MM = 22.0
-CHECK_BAR_MM = 100.0
+# Two check bars, so people can use whichever ruler they have: an exact
+# 10 cm bar and an exact 4 inch bar. Measuring "100 mm" on an inch ruler is
+# needlessly awkward, and a mis-scaled print is the failure we must catch.
+CHECK_BARS = [
+    {"unit": "cm", "value": 10.0, "length_mm": 100.0, "label": "10 cm exactly"},
+    {"unit": "in", "value": 4.0, "length_mm": 101.6, "label": "4 inches exactly"},
+]
+CHECK_BAR_MM = CHECK_BARS[0]["length_mm"]
+# A ruler can be read to about half a millimetre; "fit to page" is out by 3-6 mm.
+CHECK_TOLERANCE_MM = 1.5
 MM_TO_PT = 72 / 25.4
 VERSION = 1
 
@@ -118,7 +127,7 @@ def board(paper: str) -> dict:
         ))
     return dict(
         version=VERSION, dictionary=DICTIONARY, paper=paper, sheet_mm=[W, H],
-        marker_mm=MARKER_MM, check_bar_mm=CHECK_BAR_MM,
+        marker_mm=MARKER_MM, check_bars=CHECK_BARS, check_tolerance_mm=CHECK_TOLERANCE_MM,
         # Nominal centre of the foot area, in mat coordinates.
         foot_center_mm=[W / 2, H],
         sheets=sheets,
@@ -194,10 +203,26 @@ def write_pdf(pages: list[Page]) -> bytes:
     return bytes(out)
 
 
-def check_bar_position(paper: str) -> tuple[float, float]:
-    """Left end of the 100 mm bar on the heel sheet (sheet mm)."""
+def check_bar_position(paper: str, unit: str = "cm") -> tuple[float, float]:
+    """Left end and baseline of a check bar on the heel sheet (sheet mm)."""
     W, H = PAPER[paper]
-    return (W - CHECK_BAR_MM) / 2, H - SEAM_CLEAR_MM - 70
+    bar = next(b for b in CHECK_BARS if b["unit"] == unit)
+    top = H - SEAM_CLEAR_MM - 62
+    return (W - bar["length_mm"]) / 2, top - (0 if unit == "cm" else 22)
+
+
+def draw_check_bar(p: "Page", paper: str, bar: dict) -> None:
+    """A bar of exactly the stated length, with ticks in its own unit."""
+    bx, by = check_bar_position(paper, bar["unit"])
+    step = bar["length_mm"] / bar["value"]  # one cm, or one inch
+    p.rect(bx, by, bar["length_mm"], 1.8)
+    for i in range(int(bar["value"]) + 1):
+        x = bx + i * step
+        p.rect(x - 0.15, by - 3.6, 0.3, 3.6)
+        p.text(x - 0.9, by - 8, 2.8, str(i), gray=0.25)
+        if i < bar["value"]:  # half-unit tick
+            p.rect(x + step / 2 - 0.12, by - 2.2, 0.24, 2.2)
+    p.text(bx + bar["length_mm"] + 3, by - 0.4, 3.0, bar["unit"], bold=True)
 
 
 def mat_pdf(paper: str) -> bytes:
@@ -230,13 +255,15 @@ def mat_pdf(paper: str) -> bytes:
         p.text(cx, seam_y + inward * 9, 3.0, edge_note, gray=0.45, center=True)
 
         if name == "heel":
-            bx, by = check_bar_position(paper)
-            p.rect(bx, by, CHECK_BAR_MM, 2.0)
-            for mm in range(0, 101, 10):
-                p.rect(bx + mm - 0.15, by - (4 if mm % 50 == 0 else 2.5), 0.3, 4 if mm % 50 == 0 else 2.5)
-            p.text(cx, by + 6, 3.4, "CHECK: this bar must measure exactly 100 mm", center=True, bold=True)
-            p.text(cx, by - 10, 3.0, "If it doesn't, print again at 100% / Actual size", gray=0.3, center=True)
-            p.text(cx, by - 15, 3.0, "(turn OFF 'Fit to page' or 'Scale to fit').", gray=0.3, center=True)
+            _, top_y = check_bar_position(paper, "cm")
+            p.text(cx, top_y + 8, 3.6, "CHECK YOUR PRINT: measure ONE bar with a ruler", center=True, bold=True)
+            for bar in CHECK_BARS:
+                draw_check_bar(p, paper, bar)
+                _, by = check_bar_position(paper, bar["unit"])
+                p.text(cx, by - 12.5, 2.9, f"^ this bar is {bar['label']}", gray=0.3, center=True)
+            _, bottom_y = check_bar_position(paper, CHECK_BARS[-1]["unit"])
+            p.text(cx, bottom_y - 19, 2.9, "Wrong length? Print again at 100% / Actual size", gray=0.3, center=True)
+            p.text(cx, bottom_y - 23.5, 2.9, "(turn OFF 'Fit to page' or 'Scale to fit').", gray=0.3, center=True)
             p.text(cx, MARGIN_MM + MARKER_MM + 30, 3.4, "Heel goes here, toes toward sheet 2", gray=0.45, center=True)
         else:
             p.text(cx, H - MARGIN_MM - MARKER_MM - 30, 3.4, "Toes point this way", gray=0.45, center=True)

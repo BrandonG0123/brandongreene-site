@@ -129,7 +129,7 @@
               <div><dt>Feet</dt><dd>${s.feet.join(", ")}</dd></div>
               <div><dt>Use</dt><dd>${esc(s.survey?.sport || answerText(schema.flatMap((x) => x.questions).find((q) => q.id === "use"), s.survey?.use))}</dd></div>
               <div><dt>Scans</dt><dd>${Object.keys(s.scans).length}</dd></div>
-              <div><dt>Mat check bar</dt><dd class="mono">${s.mat_check_mm == null ? "—" : s.mat_check_mm + " mm"}</dd></div>
+              <div><dt>Mat check bar</dt><dd class="mono">${s.mat_check ? `${s.mat_check.value} ${s.mat_check.unit} (${s.mat_check.mm} mm)` : s.mat_check_mm == null ? "—" : s.mat_check_mm + " mm"}</dd></div>
             </dl>
             <h3 style="margin:16px 0 6px;font-size:0.95rem">Confirmed at ${fmtDate(s.acknowledged_at)}</h3>
             <ul class="checklist">${Object.keys(ACK_TEXT).map((k) =>

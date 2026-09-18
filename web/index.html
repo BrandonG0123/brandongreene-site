@@ -164,20 +164,31 @@
       <p class="muted" style="margin:0 0 14px">The black squares let us measure your foot in real millimetres. Without
         the mat, the scan can't be used.</p>
       <div class="btn-row" style="margin-bottom:14px">
-        <a class="btn secondary" href="/mat/footscan-mat-letter.pdf" target="_blank" rel="noopener">US Letter PDF</a>
-        <a class="btn secondary" href="/mat/footscan-mat-a4.pdf" target="_blank" rel="noopener">A4 PDF</a>
+        <a class="btn secondary" href="/mat/footscan-mat-letter.pdf">US Letter PDF</a>
+        <a class="btn secondary" href="/mat/footscan-mat-a4.pdf">A4 PDF</a>
+        <a class="btn secondary" href="/mat.html">Printing help</a>
       </div>
       <ol class="howto">
-        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is
-          fine. <a href="/mat.html" target="_blank">Full instructions</a>.</p></li>
-        <li><p><strong>Measure the black bar</strong> on sheet 1 with a ruler and enter it below.</p></li>
+        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is fine.</p></li>
+        <li><p><strong>Measure one check bar</strong> on sheet 1 with a ruler: the 10 cm bar or the 4 inch bar,
+          whichever your ruler uses. Enter what you measured below.</p></li>
         <li><p><strong>Tape the sheets together</strong> at the dashed edges, sheet 1 at the heel end, then tape the mat
           flat to the floor.</p></li>
       </ol>
-      <div class="field" style="margin-top:14px;max-width:260px">
-        <label for="mat-check">Black bar length (mm)</label>
-        <input id="mat-check" type="number" inputmode="decimal" min="80" max="120" step="0.5" placeholder="should be 100">
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+        <div class="field" style="flex:1;min-width:150px">
+          <label for="mat-check">Bar length you measured</label>
+          <input id="mat-check" type="number" inputmode="decimal" min="1" max="30" step="0.1">
+        </div>
+        <div class="field" style="width:130px">
+          <label for="mat-unit">Ruler</label>
+          <select id="mat-unit">
+            <option value="cm">cm bar</option>
+            <option value="in">inch bar</option>
+          </select>
+        </div>
       </div>
+      <p class="hint" id="mat-expect" style="margin:8px 0 0"></p>
     </div>
     <p class="error" id="plan-error" role="alert"></p>
     <div class="btn-row">

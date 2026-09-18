@@ -57,6 +57,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import mat as mat_mod
 from . import survey as survey_mod
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -166,21 +167,33 @@ def validate_submission(body: dict) -> dict:
     missing = [k for k in REQUIRED_ACKS if acks.get(k) is not True]
     if missing:
         raise BadRequest(f"all acknowledgments are required (missing {missing})")
-    try:
-        mat_check = float(body.get("mat_check_mm"))
-    except (TypeError, ValueError):
-        raise BadRequest("mat_check_mm: measure the 100 mm bar on the printed scan mat") from None
-    # Fit-to-page scaling is typically 3-6 %; ruler reading error is about 0.5 mm.
-    if abs(mat_check - 100) > 1:
-        raise BadRequest("mat_check_mm: the scan mat was printed at the wrong size; print at 100% / actual size")
+    mat_check = validate_mat_check(body)
     feet, answers, evaluation = evaluate_survey(body)
     if evaluation["blocked"]:
         # Screened out: refuse, and store nothing about this person.
         raise ScreenedOut(evaluation["blocked"])
     return dict(
-        name=name, feet=feet, survey=answers, flags=evaluation["flags"], plan=evaluation["plan"], mat_check_mm=mat_check,
+        name=name, feet=feet, survey=answers, flags=evaluation["flags"], plan=evaluation["plan"],
+        mat_check=mat_check, mat_check_mm=mat_check["mm"],
         acknowledgments={k: True for k in REQUIRED_ACKS}, device=str(body.get("device", ""))[:300],
     )
+
+
+def validate_mat_check(body: dict) -> dict:
+    """The measured check bar, in whichever unit the person's ruler uses."""
+    unit = body.get("mat_check_unit", "cm")
+    bar = next((b for b in mat_mod.CHECK_BARS if b["unit"] == unit), None)
+    if bar is None:
+        raise BadRequest(f"mat_check_unit must be one of {[b['unit'] for b in mat_mod.CHECK_BARS]}")
+    try:
+        value = float(body.get("mat_check_value"))
+    except (TypeError, ValueError):
+        raise BadRequest(f"mat_check_value: measure the {bar['label']} bar on the printed scan mat") from None
+    measured_mm = value * (bar["length_mm"] / bar["value"])
+    # Fit-to-page scaling is out by 3-6 %; a ruler reads to about half a millimetre.
+    if abs(measured_mm - bar["length_mm"]) > mat_mod.CHECK_TOLERANCE_MM:
+        raise BadRequest("mat_check_value: the scan mat was printed at the wrong size; print at 100% / actual size")
+    return dict(value=value, unit=unit, mm=round(measured_mm, 2), expected_mm=bar["length_mm"])
 
 
 def new_id(prefix: str, data_dir: Path) -> str:
@@ -229,12 +242,14 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             self.end_headers()
             self.wfile.write(data)
 
-        def send_file(self, path: Path, ctype: str, cache: str = "no-cache"):
+        def send_file(self, path: Path, ctype: str, cache: str = "no-cache", headers: dict | None = None):
             data = path.read_bytes()
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", cache)
+            for k, v in (headers or {}).items():
+                self.send_header(k, v)
             self.end_headers()
             self.wfile.write(data)
 
@@ -292,11 +307,11 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     return self.api(method, path.strip("/").split("/")[1:])
                 if method != "GET":
                     return self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
-                if path == "/studio" or path.startswith("/studio/"):
+                if path == "/studio" or path.startswith("/studio/"):  # noqa: SIM102
                     if query and self.studio_login(path, query):
                         return
                     self.require_local()
-                return self.static(path)
+                return self.static(path, query)
             except BadRequest as e:
                 self.send_json({"error": str(e)}, HTTPStatus.BAD_REQUEST)
             except Forbidden as e:
@@ -310,7 +325,7 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             except FileNotFoundError:
                 self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
-        def static(self, path: str):
+        def static(self, path: str, query: str = ""):
             rel = path.lstrip("/") or "index.html"
             target = (web_dir / rel).resolve()
             if target.is_dir():
@@ -319,11 +334,15 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                 return self.send_error(HTTPStatus.NOT_FOUND)
             ctype = "text/javascript" if target.suffix == ".js" else (
                 mimetypes.guess_type(target.name)[0] or "application/octet-stream")
-            self.send_file(target, ctype)
+            # ?download=1 asks the browser to save the file instead of showing it.
+            extra = {"Content-Disposition": f'attachment; filename="{target.name}"'} if "download=1" in query else {}
+            self.send_file(target, ctype, headers=extra)
 
         def api(self, method: str, parts: list[str]):
             if parts[:1] == ["submissions"]:
                 return self.api_submissions(method, parts[1:])
+            if parts == ["mat"] and method == "GET":
+                return self.send_json({"check_bars": mat_mod.CHECK_BARS, "tolerance_mm": mat_mod.CHECK_TOLERANCE_MM})
             if parts == ["survey"] and method == "GET":
                 return self.send_json({"sections": survey_mod.SECTIONS})
             if parts == ["survey", "evaluate"] and method == "POST":

@@ -8,6 +8,7 @@ import { createStageView } from "./stage-view.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const MIN_FRAMES = 20;
+let matTolerance = null;
 // ?demo=1 shows a simulated camera for trying the flow on a laptop. Demo mode
 // never creates a submission or uploads anything.
 const DEMO = new URLSearchParams(location.search).has("demo");
@@ -231,22 +232,47 @@ function renderPlan() {
     ? "You'll need someone to hold the phone for the standing scans. Allow about five minutes per scan."
     : "Allow about five minutes per scan.";
   $("plan-error").textContent = DEMO ? "Demo mode: nothing will be sent." : "";
-  if (DEMO && !$("mat-check").value) $("mat-check").value = "100";
+  loadMatBars().then(() => {
+    describeExpected();
+    if (DEMO && !$("mat-check").value) $("mat-check").value = String(currentBar().value);
+  });
   show("plan", "survey");
 }
+
+$("mat-unit").addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); });
 
 $("btn-plan-back").addEventListener("click", () => {
   flow.sectionIndex = flow.sections.length - 1;
   renderSection();
 });
 
-// A printer's "fit to page" typically shrinks by 3-6%, i.e. 3-6 mm on this bar.
-// Ruler reading error is about 0.5 mm, so 1 mm is the tolerance.
+// The mat prints two check bars (10 cm and 4 in) so any ruler works. A
+// printer's "fit to page" is out by 3-6%, far more than a ruler's error.
+let matBars = null;
+async function loadMatBars() {
+  if (!matBars) {
+    const info = await api("/mat", { method: "GET" });
+    matBars = info.check_bars;
+    matTolerance = info.tolerance_mm;
+  }
+  return matBars;
+}
+const currentBar = () => matBars?.find((b) => b.unit === $("mat-unit").value);
+
+function describeExpected() {
+  const bar = currentBar();
+  $("mat-expect").textContent = bar ? `The ${bar.unit === "cm" ? "cm" : "inch"} bar should measure ${bar.label}.` : "";
+}
+
 function checkMatPrint() {
-  const v = Number($("mat-check").value);
-  if (!$("mat-check").value) return "Print the scan mat and enter the length of the black bar.";
-  if (Math.abs(v - 100) > 1)
-    return `Your bar measures ${v} mm, so the printer resized the mat. Print it again at 100% / "Actual size" (turn off "Fit to page"), then measure again.`;
+  const bar = currentBar();
+  if (!bar) return "Couldn't load the mat details. Reload the page and try again.";
+  const raw = $("mat-check").value;
+  if (!raw) return `Print the scan mat, measure the ${bar.label.replace(" exactly", "")} bar, and enter it.`;
+  const value = Number(raw);
+  const mm = value * (bar.length_mm / bar.value);
+  if (Math.abs(mm - bar.length_mm) > (matTolerance ?? 1.5))
+    return `You measured ${value} ${bar.unit}, but that bar should be ${bar.label}. The printer resized the mat: print again at 100% / "Actual size" (turn off "Fit to page"), then measure again.`;
   return null;
 }
 
@@ -258,12 +284,15 @@ $("btn-plan-start").addEventListener("click", async () => {
     $("mat-check").focus();
     return;
   }
-  flow.matCheck = Number($("mat-check").value);
+  flow.matCheck = { value: Number($("mat-check").value), unit: $("mat-unit").value };
   if (!DEMO && !flow.submission) {
     btn.disabled = true;
     try {
       const created = await api("/submissions", {
-        json: { name: flow.name, feet: flow.feet, acknowledgments: flow.acks, survey: flow.answers, mat_check_mm: flow.matCheck, device: navigator.userAgent },
+        json: {
+          name: flow.name, feet: flow.feet, acknowledgments: flow.acks, survey: flow.answers,
+          mat_check_value: flow.matCheck.value, mat_check_unit: flow.matCheck.unit, device: navigator.userAgent,
+        },
       });
       flow.submission = created;
       flow.evaluation = { plan: created.plan, flags: created.flags };

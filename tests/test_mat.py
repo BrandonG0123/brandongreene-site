@@ -84,22 +84,21 @@ def test_rendered_markers_match_board_definition(paper):
     assert worst < 0.15, f"worst corner error {worst:.3f} mm"
 
 
-def test_check_bar_is_100mm():
+@pytest.mark.parametrize("bar", mat.CHECK_BARS, ids=lambda b: b["unit"])
+def test_check_bars_print_at_their_stated_length(bar):
+    """The whole point of the bars: a mis-scaled print has to be catchable."""
     paper = "letter"
     _, pages = render(paper)
-    W, H = mat.PAPER[paper]
-    bx, by = mat.check_bar_position(paper)
-    row = int(round((H - (by + 1.0)) * PX_PER_MM))  # middle of the 2 mm bar
+    _, H = mat.PAPER[paper]
+    bx, by = mat.check_bar_position(paper, bar["unit"])
+    row = int(round((H - (by + 0.9)) * PX_PER_MM))  # middle of the bar
     dark = np.where(pages[0][row] < 128)[0]
-    # the bar is the run of dark pixels that contains its midpoint
-    mid = int((bx + 50) * PX_PER_MM)
-    left = right = mid
-    while left - 1 in set(dark):
-        left -= 1
-    dark_set = set(dark)
-    while right + 1 in dark_set:
-        right += 1
-    assert (right - left + 1) / PX_PER_MM == pytest.approx(100.0, abs=0.3)
+    runs = np.split(dark, np.where(np.diff(dark) > 1)[0] + 1)
+    longest = max(runs, key=len)
+    assert len(longest) / PX_PER_MM == pytest.approx(bar["length_mm"], abs=0.3)
+    assert abs(longest[0] / PX_PER_MM - bx) < 0.3
+    # a ruler reading has to be able to tell a good print from "fit to page"
+    assert mat.CHECK_TOLERANCE_MM < 0.03 * bar["length_mm"]
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")

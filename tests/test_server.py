@@ -16,7 +16,8 @@ SURVEY = {
     "use": "sport", "sport": "tennis", "sport_level": "competitive", "shoe_type": "court",
     "removable_insole": "yes", "current_insoles": "none", "goals": ["support", "stability"],
 }
-PERSON = {"name": "Test Person", "feet": ["right", "left"], "acknowledgments": ACKS, "survey": SURVEY, "mat_check_mm": 100}
+PERSON = {"name": "Test Person", "feet": ["right", "left"], "acknowledgments": ACKS, "survey": SURVEY,
+          "mat_check_value": 10, "mat_check_unit": "cm"}
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -116,8 +117,11 @@ def test_restarting_a_foot_clears_old_frames(servers):
     ({"feet": []}, "feet"),
     ({"feet": ["right", "right"]}, "feet"),
     ({"feet": ["middle"]}, "feet"),
-    ({"mat_check_mm": None}, "mat_check_mm"),
-    ({"mat_check_mm": 96.5}, "wrong size"),
+    ({"mat_check_value": None}, "mat_check_value"),
+    ({"mat_check_value": 9.6}, "wrong size"),                      # cm bar, fit-to-page
+    ({"mat_check_value": 4}, "wrong size"),                        # an inch reading against the cm bar
+    ({"mat_check_value": 3.7, "mat_check_unit": "in"}, "wrong size"),
+    ({"mat_check_value": 10, "mat_check_unit": "furlong"}, "mat_check_unit"),
 ])
 def test_submission_validation(servers, patch, msg):
     _, phone, _ = servers
@@ -186,6 +190,31 @@ def test_research_capture_roundtrip(servers):
     meta = json.loads((data / "captures" / cid / "capture.json").read_text())
     assert meta["status"] == "complete" and meta["frame_files"] == ["frame_0001.jpg"]
     assert call(f"{op}/api/captures", "POST", {**setup, "load_kg": None})[0] == 400
+
+
+def test_check_bar_accepts_either_ruler(servers):
+    """A 10 cm bar and a 4 inch bar are the same print; both readings pass."""
+    op, phone, _ = servers
+    bars = body(call(f"{phone}/api/mat"))["check_bars"]
+    assert {b["unit"] for b in bars} == {"cm", "in"}
+    created = {}
+    for reading, unit in [(10, "cm"), (10.1, "cm"), (4, "in"), (3.97, "in")]:
+        status, raw, _ = call(f"{phone}/api/submissions", "POST",
+                              {**PERSON, "mat_check_value": reading, "mat_check_unit": unit})
+        assert status == 201, raw
+        created[(reading, unit)] = json.loads(raw)["id"]
+    detail = body(call(f"{op}/api/submissions/{created[(3.97, 'in')]}"))
+    assert detail["mat_check"]["unit"] == "in"
+    assert detail["mat_check"]["mm"] == pytest.approx(100.8, abs=0.1)  # stored in mm whatever the ruler
+
+
+def test_pdf_download_header(servers):
+    op, _, _ = servers
+    status, data, headers = call(f"{op}/mat/footscan-mat-letter.pdf")
+    assert status == 200 and data[:4] == b"%PDF" and headers["Content-Type"] == "application/pdf"
+    assert "Content-Disposition" not in headers  # opens in the browser by default
+    _, _, headers = call(f"{op}/mat/footscan-mat-letter.pdf?download=1")
+    assert headers["Content-Disposition"].startswith("attachment")
 
 
 def test_object_capture_needs_no_foot_mat_or_load(servers):

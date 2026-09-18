@@ -7,7 +7,21 @@
     279.4
   ],
   "marker_mm": 30.0,
-  "check_bar_mm": 100.0,
+  "check_bars": [
+    {
+      "unit": "cm",
+      "value": 10.0,
+      "length_mm": 100.0,
+      "label": "10 cm exactly"
+    },
+    {
+      "unit": "in",
+      "value": 4.0,
+      "length_mm": 101.6,
+      "label": "4 inches exactly"
+    }
+  ],
+  "check_tolerance_mm": 1.5,
   "foot_center_mm": [
     107.95,
     279.4
