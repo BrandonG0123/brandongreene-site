@@ -153,6 +153,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 .checklist input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--brand); flex: none; }
 
 /* ---- footer ------------------------------------------------------------ */
+/* Phones: keep the safety strip, but give the page more room. */
+@media (max-width: 520px) {
+  .safety-strip { font-size: 0.78rem; padding-block: 6px; }
+  .site-header .wrap { padding-block: 9px; }
+  .site-brand { font-size: 1rem; }
+  .site-brand-mark { width: 24px; height: 24px; }
+  .nav a { padding: 5px 10px; font-size: 0.88rem; }
+  main { padding-block: 20px 40px; }
+}
+
 .site-footer { border-top: 1px solid var(--line); padding-block: 28px; color: var(--muted); font-size: 0.9rem; }
 .site-footer p { max-width: 70ch; }
 

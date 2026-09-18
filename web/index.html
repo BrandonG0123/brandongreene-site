@@ -31,6 +31,15 @@
 
     .stage { position: relative; background: #0b0f0f; border-radius: var(--radius); overflow: hidden; aspect-ratio: 3 / 4; max-height: 62vh; width: 100%; }
     @media (min-width: 700px) { .stage { aspect-ratio: 4 / 3; } }
+    /* While scanning on a phone, the controls must stay on screen without scrolling. */
+    @media (max-width: 520px) {
+      #v-scan { gap: 12px; }
+      #v-scan .stage { max-height: 46vh; }
+      #v-scan h1 { font-size: 1.2rem; }
+      #v-scan .eyebrow { margin-bottom: 4px; }
+      .guidance { font-size: 0.95rem; padding: 10px 12px; }
+      .mini-map { width: 88px; }
+    }
     .stage .feed { width: 100%; height: 100%; object-fit: cover; }
     .guidance { position: absolute; left: 10px; right: 10px; bottom: 10px; background: rgb(10 14 14 / 80%); color: #fff; border-radius: 12px; padding: 12px 14px; font-weight: 650; font-size: 1.05rem; backdrop-filter: blur(6px); }
     .guidance.bad { background: rgb(150 30 24 / 90%); }
