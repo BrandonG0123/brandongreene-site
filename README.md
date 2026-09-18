@@ -70,6 +70,11 @@ catches printers that shrink the page. After changing the layout in
 .venv/bin/footscan mat
 ```
 
+**Object scans.** The studio's research capture has an *Object* condition:
+any object, no mat, no foot. It exercises the camera, quality checks and
+upload when a foot or a printed mat isn't available, and is marked
+unmeasurable so it never enters foot measurement data.
+
 **Not built yet:** turning scans into a TPU print file. That needs
 reconstruction, landmarks and the generator (Phases 2–4), and the Phase 0
 repeatability gate has to pass first.

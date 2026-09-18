@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Print the scan mat — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    main.wrap { max-width: 780px; }
+    .download { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 18px 0; }
+    .download a { display: grid; gap: 4px; padding: 18px; border-radius: var(--radius); border: 2px solid var(--brand);
+      text-decoration: none; background: var(--surface); }
+    .download a strong { font-size: 1.15rem; color: var(--ink); }
+    .download a span { color: var(--muted); font-size: 0.9rem; }
+    .download a:hover { background: var(--brand-soft); }
+    .howto { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 16px; }
+    .howto li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; align-items: start; }
+    .howto li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--brand);
+      color: var(--brand-ink); display: grid; place-items: center; font-weight: 700; }
+    .howto p { margin: 0 0 6px; }
+    .howto p:last-child { margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 0.95rem; vertical-align: top; }
+    th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  </style>
+</head>
+<body data-area="customer">
+<main class="wrap">
+  <p class="eyebrow">Scan mat</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0 0 10px">Print the scan mat</h1>
+  <p class="muted" style="max-width:62ch;font-size:1.05rem">Photos show a foot's shape but not its size. The black
+    squares on the mat have a known size, and that's what turns your scan into real millimetres. Two pages, plain
+    paper, black and white is fine.</p>
+
+  <div class="download">
+    <a href="/mat/footscan-mat-letter.pdf" target="_blank" rel="noopener">
+      <strong>US Letter PDF ↓</strong><span>8.5 × 11 in · 2 pages</span></a>
+    <a href="/mat/footscan-mat-a4.pdf" target="_blank" rel="noopener">
+      <strong>A4 PDF ↓</strong><span>210 × 297 mm · 2 pages</span></a>
+  </div>
+
+  <div class="card">
+    <ol class="howto">
+      <li><div>
+        <p><strong>Print both pages at 100%.</strong></p>
+        <p class="muted">Set scale to "100%" or "Actual size" and turn <strong>off</strong> "Fit to page" or "Scale to
+          fit". That setting is the single most common way a scan goes wrong: it shrinks the page by a few percent and
+          every measurement is then quietly wrong.</p></div></li>
+      <li><div>
+        <p><strong>Measure the black bar on sheet 1.</strong></p>
+        <p class="muted">Use a ruler, end to end. It must measure 100 mm. If it doesn't, fix the scale setting and
+          print again. You'll enter what you measured before scanning.</p></div></li>
+      <li><div>
+        <p><strong>Tape the two sheets together.</strong></p>
+        <p class="muted">Sheet 1 (the heel end) goes below, sheet 2 (toes) above, with the dashed edges meeting. Butt
+          the edges together rather than overlapping. Tape can cover anything except the black squares.</p></div></li>
+      <li><div>
+        <p><strong>Tape the mat flat to a hard floor.</strong></p>
+        <p class="muted">Not carpet: paper that curls or slides spoils the measurement. Keep it clean and unfolded, and
+          avoid lights reflecting off the paper.</p></div></li>
+      <li><div>
+        <p><strong>Put your bare foot in the middle</strong>, heel toward sheet 1.</p>
+        <p class="muted">Your foot should sit inside the black squares without covering them.</p></div></li>
+    </ol>
+  </div>
+
+  <section>
+    <h2>If something looks wrong</h2>
+    <table>
+      <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>The bar measures about 96 mm</td><td>Classic "fit to page". Print again at 100% / Actual size.</td></tr>
+        <tr><td>"Keep the scan mat in view" keeps appearing</td><td>Step back so more squares are in frame, reduce
+          glare, and flatten the mat. A faint or grey print is harder to detect: print darker.</td></tr>
+        <tr><td>The squares look grey or blurry on paper</td><td>Use a higher print quality setting, or another
+          printer. Sharp black edges are what the camera looks for.</td></tr>
+        <tr><td>Only one paper size available</td><td>Either size works. Print whichever your printer takes; the
+          scanner recognises both.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p><a class="btn" href="/">Back to scanning</a></p>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+</body>
+</html>

@@ -68,7 +68,7 @@
 
     <div class="setup" style="margin-top:20px">
       <form id="setup-form" class="card" novalidate>
-        <div class="row-2">
+        <div class="row-2" id="foot-row">
           <div class="field">
             <span style="font-weight:650">Foot</span>
             <div class="segmented" role="radiogroup" aria-label="Foot">
@@ -96,6 +96,10 @@
           <label class="choice"><input type="radio" name="condition" value="fwb">
             <strong>Full weight-bearing</strong>
             <span class="hint">Relaxed standing, weight split evenly, this foot on the scale.</span></label>
+          <label class="choice"><input type="radio" name="condition" value="object">
+            <strong>Object (scanner test)</strong>
+            <span class="hint">Any object: a shoe, a hand, anything. No mat and no foot needed. Can't be measured in
+              millimetres, and is kept out of the Phase 0 foot data.</span></label>
         </fieldset>
 
         <div class="row-2">
@@ -127,6 +131,10 @@
       </form>
 
       <aside class="panel">
+        <div class="callout warn" id="object-note" hidden>
+          <p><strong>Object scan: not measurable.</strong> Without the mat there's no real-world scale, so this capture
+            tests the camera, quality checks and upload only. It is never used for foot measurements.</p>
+        </div>
         <div class="card">
           <h3>Before you start</h3>
           <ul class="checklist" id="checklist">
@@ -138,10 +146,9 @@
           </ul>
         </div>
         <div class="callout brand">
-          <p><strong>Scan mat required.</strong> Frames are only kept while at least two mat markers are in view, so
-            every saved photo can be scaled to millimetres. Print it from
-            <a href="/mat/footscan-mat-letter.pdf" target="_blank">Letter</a> or
-            <a href="/mat/footscan-mat-a4.pdf" target="_blank">A4</a> at 100%, and check the bar measures 100 mm.</p>
+          <p><strong>Scan mat required</strong> for every foot condition: frames are only kept while at least two mat
+            markers are in view, so each saved photo can be scaled to millimetres.
+            <a href="/mat.html">Print the scan mat</a>. Choose <em>Object</em> above to test the scanner without one.</p>
         </div>
         <div class="callout">
           <p class="hint" style="margin:0"><strong>On your phone:</strong> run
@@ -158,7 +165,7 @@
         <p class="eyebrow" id="live-eyebrow">Capturing</p>
         <h1 style="font-size:clamp(1.5rem,3.5vw,2.1rem);margin:0" id="live-title">Capture</h1>
       </div>
-      <div class="btn-row">
+      <div class="btn-row" id="capture-controls">
         <button class="btn" id="btn-start">Start capturing</button>
         <button class="btn secondary" id="btn-pause" hidden>Pause</button>
         <button class="btn secondary" id="btn-finish" disabled>Finish &amp; review</button>

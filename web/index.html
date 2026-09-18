@@ -48,6 +48,7 @@
     .mini-map { position: absolute; top: 10px; right: 10px; width: 112px; background: rgb(255 255 255 / 92%); border-radius: 12px; padding: 6px; }
     @media (prefers-color-scheme: dark) { .mini-map { background: rgb(22 30 29 / 92%); } }
     .mini-map .map text { display: none; }
+    #scan-hud { display: grid; gap: 12px; }
     .scan-bar { display: grid; gap: 8px; }
     .bar { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
     .bar > div { height: 100%; width: 0; background: var(--brand); transition: width 0.3s; }
@@ -167,7 +168,8 @@
         <a class="btn secondary" href="/mat/footscan-mat-a4.pdf" target="_blank" rel="noopener">A4 PDF</a>
       </div>
       <ol class="howto">
-        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is fine.</p></li>
+        <li><p><strong>Print both pages at 100% / "Actual size".</strong> Turn off "Fit to page". Black and white is
+          fine. <a href="/mat.html" target="_blank">Full instructions</a>.</p></li>
         <li><p><strong>Measure the black bar</strong> on sheet 1 with a ruler and enter it below.</p></li>
         <li><p><strong>Tape the sheets together</strong> at the dashed edges, sheet 1 at the heel end, then tape the mat
           flat to the floor.</p></li>
@@ -211,14 +213,16 @@
       <div class="mini-map"><svg class="map" id="map" role="img" aria-label="Which angles around your foot are done"></svg></div>
       <div class="guidance" id="guidance" aria-live="polite">Stand behind the heel, then tap Start.</div>
     </div>
-    <div class="scan-bar">
-      <div class="bar-label"><span>Scan progress</span><span class="mono" id="progress-label">0%</span></div>
-      <div class="bar"><div id="progress-bar"></div></div>
-    </div>
-    <div class="scan-controls">
-      <button class="btn" id="btn-start">Start</button>
-      <button class="btn secondary" id="btn-pause" hidden>Pause</button>
-      <button class="btn secondary" id="btn-finish" disabled>Finish</button>
+    <div id="scan-hud">
+      <div class="scan-bar">
+        <div class="bar-label"><span>Scan progress</span><span class="mono" id="progress-label">0%</span></div>
+        <div class="bar"><div id="progress-bar"></div></div>
+      </div>
+      <div class="scan-controls">
+        <button class="btn" id="btn-start">Start</button>
+        <button class="btn secondary" id="btn-pause" hidden>Pause</button>
+        <button class="btn secondary" id="btn-finish" disabled>Finish</button>
+      </div>
     </div>
     <button class="btn secondary" id="btn-restart" type="button" style="justify-self:start">Start this foot over</button>
   </section>

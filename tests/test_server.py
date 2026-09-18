@@ -188,6 +188,21 @@ def test_research_capture_roundtrip(servers):
     assert call(f"{op}/api/captures", "POST", {**setup, "load_kg": None})[0] == 400
 
 
+def test_object_capture_needs_no_foot_mat_or_load(servers):
+    """Scanner test captures: any object, no mat, marked unmeasurable."""
+    op, _, data = servers
+    status, raw, _ = call(f"{op}/api/captures", "POST",
+                          {"condition": "object", "session": "MATTEST", "notes": "shoe on a desk"})
+    assert status == 201
+    cid = json.loads(raw)["id"]
+    meta = json.loads((data / "captures" / cid / "capture.json").read_text())
+    assert meta["foot"] is None and meta["measurable"] is False and meta["load_kg"] is None
+    # foot conditions still demand a foot, and weight-bearing still demands the scale reading
+    assert call(f"{op}/api/captures", "POST", {"condition": "swb", "session": "S1", "load_kg": 9})[0] == 400
+    assert call(f"{op}/api/captures", "POST", {"condition": "fwb", "session": "S1", "foot": "right"})[0] == 400
+    assert json.loads(call(f"{op}/api/captures", "POST", {"condition": "object", "session": "S1", "foot": "right"})[1])["id"]
+
+
 def test_static_traversal_blocked(servers):
     op, _, _ = servers
     assert call(f"{op}/../pyproject.toml")[0] == 404

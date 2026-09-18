@@ -12,11 +12,12 @@ export function footSvg({ mirror = false, cls = "" } = {}) {
 }
 
 const NAV = {
-  customer: [["/", "Scan"], ["/care.html", "Wearing your insole"]],
+  customer: [["/", "Scan"], ["/mat.html", "Scan mat"], ["/care.html", "Wearing your insole"]],
   studio: [
     ["/studio/", "Submissions"],
     ["/studio/capture.html", "Research capture"],
     ["/studio/captures.html", "Research library"],
+    ["/mat.html", "Scan mat"],
     ["/studio/project.html", "Project"],
   ],
 };

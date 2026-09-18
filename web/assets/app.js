@@ -3,6 +3,7 @@
 // (src/footscan/survey.py), so this file only renders them.
 import { CoverageMap, MAP_CSS } from "./coverage-map.js";
 import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
+import { createStageView } from "./stage-view.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -21,6 +22,7 @@ const flow = {
   scanIndex: 0,
   results: {},            // scan key -> photo count
   scanner: null,
+  stageView: null,
 };
 const currentScan = () => flow.evaluation.plan[flow.scanIndex];
 
@@ -344,6 +346,10 @@ async function startScan(simulated) {
   $("btn-pause").hidden = true;
   $("btn-finish").disabled = true;
   show("scan", "scan");
+  // Scanning takes over the screen; the corner button parks it like a video player.
+  flow.stageView ??= createStageView($("stage"), $("scan-hud"),
+    { docked: [$("demo-ribbon"), $("guidance")] });
+  flow.stageView.full();
 }
 
 $("btn-start").addEventListener("click", () => {
@@ -361,6 +367,7 @@ $("btn-pause").addEventListener("click", () => {
 
 $("btn-restart").addEventListener("click", () => {
   if (flow.scanner?.frames.length && !confirm("Delete the photos for this scan and start again?")) return;
+  flow.stageView?.inline();
   flow.scanner?.close();
   flow.scanner = null;
   openSetup();
@@ -371,6 +378,7 @@ $("btn-finish").addEventListener("click", () => saveScan());
 async function saveScan() {
   const scanner = flow.scanner;
   scanner.hold();
+  flow.stageView?.inline();
   const scan = currentScan();
   $("saving-title").textContent = `Saving: ${scan.label.toLowerCase()}…`;
   $("saving-error").textContent = "";
@@ -410,6 +418,7 @@ async function saveScan() {
 
 $("btn-retry-upload").addEventListener("click", () => saveScan());
 $("btn-rescan").addEventListener("click", () => {
+  flow.stageView?.inline();
   flow.scanner?.close();
   flow.scanner = null;
   openSetup();

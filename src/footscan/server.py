@@ -63,7 +63,10 @@ ROOT = Path(__file__).resolve().parents[2]
 WEB_DIR = ROOT / "web"
 DATA_DIR = ROOT / "data"
 
-CONDITIONS = {"nwb", "nwb_relaxed", "swb", "fwb"}
+# "object" is a scanner test: any object, no mat, no foot. It can't be scaled
+# to millimetres, so it never counts as foot measurement data.
+CONDITIONS = {"nwb", "nwb_relaxed", "swb", "fwb", "object"}
+UNSCALED_CONDITIONS = {"object"}
 METHODS = {"bare_skin", "speckle_sock", "marker_dots", "foam_impression"}
 FEET = ("left", "right")
 REQUIRED_ACKS = ("not_medical_device", "clinician_review", "break_in", "photo_consent")
@@ -112,10 +115,13 @@ def validate_setup(body: dict) -> dict:
     cond = body.get("condition")
     session = str(body.get("session", "")).strip()
     method = body.get("method", "bare_skin")
-    if foot not in FEET:
-        raise BadRequest("foot must be left or right")
     if cond not in CONDITIONS:
         raise BadRequest(f"condition must be one of {sorted(CONDITIONS)}")
+    is_object = cond in UNSCALED_CONDITIONS
+    if is_object:
+        foot = foot if foot in FEET else None
+    elif foot not in FEET:
+        raise BadRequest("foot must be left or right")
     if not SESSION_RE.match(session):
         raise BadRequest("session: 1-20 letters, digits, - or _")
     if method not in METHODS:
@@ -125,6 +131,7 @@ def validate_setup(body: dict) -> dict:
         raise BadRequest("weight-bearing captures need the scale reading (load_kg)")
     return dict(
         foot=foot, condition=cond, session=session, method=method, load_kg=load,
+        measurable=not is_object,
         notes=str(body.get("notes", ""))[:2000], device=str(body.get("device", ""))[:300],
     )
 
@@ -459,7 +466,8 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             if not p and method == "POST":
                 setup = validate_setup(self.json_body())
                 captures_dir.mkdir(parents=True, exist_ok=True)
-                cid = new_id(f"{setup['session']}_{setup['condition']}_{setup['foot'][0].upper()}_", captures_dir)
+                tag = setup["foot"][0].upper() if setup["foot"] else "X"
+                cid = new_id(f"{setup['session']}_{setup['condition']}_{tag}_", captures_dir)
                 (captures_dir / cid).mkdir()
                 write_json(captures_dir / cid / "capture.json",
                            dict(capture_id=cid, created=now_iso(), status="uploading", frames=[], **setup))

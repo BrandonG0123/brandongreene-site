@@ -152,6 +152,40 @@ input:focus-visible, select:focus-visible, textarea:focus-visible, .btn:focus-vi
 .checklist label { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; }
 .checklist input { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--brand); flex: none; }
 
+/* ---- camera stage: inline, fullscreen, minimised ------------------------ */
+body.stage-locked { overflow: hidden; }
+.stage-buttons { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 3; }
+.stage-btn { width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center;
+  background: rgb(10 14 14 / 70%); color: #fff; backdrop-filter: blur(6px); padding: 0; }
+.stage-btn svg { width: 20px; height: 20px; }
+.stage-btn:hover { background: rgb(10 14 14 / 88%); }
+.stage.is-full {
+  position: fixed; inset: 0; z-index: 60; width: 100%; height: 100%;
+  max-height: none; aspect-ratio: auto; border-radius: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.stage.is-full .feed { object-fit: contain; }
+.stage.is-full .stage-buttons { top: max(12px, env(safe-area-inset-top)); }
+.stage-dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; gap: 10px;
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgb(8 12 12 / 82%) 35%); }
+.stage-dock .guidance, .stage-dock .demo-ribbon, .stage-dock .sim-ribbon {
+  position: static; inset: auto; margin: 0; justify-self: start;
+}
+.stage.is-full .chips { padding-right: 104px; }
+.stage-dock .bar { background: rgb(255 255 255 / 25%); }
+.stage-dock .bar-label, .stage-dock .progress-label { color: rgb(255 255 255 / 85%); }
+.stage-dock .btn.secondary { background: rgb(255 255 255 / 14%); color: #fff; border-color: transparent; }
+.stage.is-mini {
+  position: fixed; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 60;
+  width: 132px; height: 176px; aspect-ratio: auto; max-height: none; cursor: pointer;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 35%);
+}
+.stage.is-mini .feed { object-fit: cover; }
+.stage.is-mini .guidance, .stage.is-mini .mini-map, .stage.is-mini .chips, .stage.is-mini .demo-ribbon, .stage.is-mini .sim-ribbon { display: none; }
+.stage.is-mini .stage-buttons { top: 6px; right: 6px; gap: 4px; }
+.stage.is-mini .stage-btn { width: 30px; height: 30px; }
+.stage.is-mini .stage-btn svg { width: 15px; height: 15px; }
+
 /* ---- footer ------------------------------------------------------------ */
 /* Phones: keep the safety strip, but give the page more room. */
 @media (max-width: 520px) {

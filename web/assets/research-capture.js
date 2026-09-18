@@ -2,6 +2,7 @@
 // quality readouts, frame review, save to the research library.
 import { CoverageMap } from "./coverage-map.js";
 import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
+import { createStageView } from "./stage-view.js";
 
 const TARGET_FRAMES = 60;
 const CONDITION_LABELS = {
@@ -9,6 +10,7 @@ const CONDITION_LABELS = {
   nwb_relaxed: "Non-weight-bearing (relaxed)",
   swb: "Semi-weight-bearing",
   fwb: "Full weight-bearing",
+  object: "Object (scanner test)",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +22,8 @@ function show(name) {
 
 let setup = null;
 let scanner = null;
+let stageView = null;
+const isObject = () => form.condition.value === "object";
 
 // ---- setup -----------------------------------------------------------------
 const form = $("setup-form");
@@ -31,6 +35,8 @@ function syncSetup() {
   const cond = form.condition.value;
   const loaded = cond === "swb" || cond === "fwb";
   $("load-field").hidden = !loaded;
+  $("foot-row").hidden = cond === "object";
+  $("object-note").hidden = cond !== "object";
   document.querySelectorAll("#checklist [data-cond]").forEach((li) => {
     li.hidden = li.dataset.cond === "nwb" ? cond !== "nwb" : !loaded;
   });
@@ -41,7 +47,7 @@ syncSetup();
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   setup = {
-    foot: form.foot.value,
+    foot: isObject() ? null : form.foot.value,
     condition: form.condition.value,
     session: form.session.value.trim(),
     load_kg: form.load_kg.value === "" ? null : Number(form.load_kg.value),
@@ -67,16 +73,19 @@ function setChip(id, state, text) {
 }
 
 async function startLive(simulated) {
-  $("live-title").textContent = `${CONDITION_LABELS[setup.condition]} · ${setup.foot} foot`;
+  $("live-title").textContent = setup.foot
+    ? `${CONDITION_LABELS[setup.condition]} · ${setup.foot} foot`
+    : CONDITION_LABELS[setup.condition];
   $("live-eyebrow").textContent = `Session ${setup.session}`;
   $("sim-ribbon").hidden = !simulated;
   $("btn-start").hidden = false;
   $("btn-pause").hidden = true;
-  const map = new CoverageMap($("map"), setup.foot);
+  const map = new CoverageMap($("map"), setup.foot ?? "right");
   const boards = await loadBoards();
+  const needsMat = setup.condition !== "object";
 
   scanner = new Scanner({
-    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: true,
+    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: needsMat,
     onFrame: () => {
       $("flash").classList.add("on");
       requestAnimationFrame(() => $("flash").classList.remove("on"));
@@ -85,7 +94,8 @@ async function startLive(simulated) {
       setChip("chip-sharp", s.sharp.ok ? "ok" : "bad", s.sharp.ok ? "Sharp" : "Blurry");
       setChip("chip-exposure", s.exposure.ok ? "ok" : "bad",
         s.exposure.ok ? "Exposure OK" : s.exposure.issue === "overexposed" ? "Too bright" : "Too dark");
-      setChip("chip-mat", s.matVisible ? "ok" : "bad", s.matVisible ? `Mat: ${s.matMarkers} markers` : "Mat not in view");
+      setChip("chip-mat", s.matVisible ? "ok" : needsMat ? "bad" : "idle",
+        s.matVisible ? `Mat: ${s.matMarkers} markers` : needsMat ? "Mat not in view" : "No mat (object scan)");
       const VIEW = { mat: "Position: from mat", sensors_aligned: "Position: sensors (mat-aligned)", sensors: "Position: sensors only" };
       setChip("chip-sensor", s.viewSource === "mat" ? "ok" : s.hasView ? "idle" : "bad", VIEW[s.viewSource] || "Position unknown");
       $("frames-label").textContent = `${s.kept} / ${TARGET_FRAMES}`;
@@ -106,6 +116,9 @@ async function startLive(simulated) {
   show("live");
   try {
     await scanner.open();
+    stageView ??= createStageView($("stage"), $("capture-controls"),
+      { docked: [$("sim-ribbon"), $("guidance")] });
+    stageView.full();
   } catch (err) {
     scanner = null;
     show("setup");
@@ -132,6 +145,7 @@ $("btn-cancel").addEventListener("click", () => {
 
 $("btn-finish").addEventListener("click", () => {
   scanner.hold();
+  stageView?.inline();
   renderReview();
   show("review");
 });
@@ -174,6 +188,7 @@ function renderReview() {
 $("btn-more").addEventListener("click", () => {
   show("live");
   scanner.resumeLoop();
+  stageView?.full();
 });
 
 $("btn-discard").addEventListener("click", () => {
@@ -182,6 +197,7 @@ $("btn-discard").addEventListener("click", () => {
 });
 
 function discard() {
+  stageView?.inline();
   scanner?.close();
   scanner?.frames.forEach((f) => f.url && URL.revokeObjectURL(f.url));
   scanner = null;
