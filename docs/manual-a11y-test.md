@@ -126,3 +126,21 @@ is a test you'll redo.
 | Date | Browser / SR | Result | Notes |
 |---|---|---|---|
 | | | | |
+
+---
+
+## Device matrix
+
+Checked on 2026-09-23 with emulated viewports. Re-run after any layout change.
+
+| Device | Width | Layout | Chars/line |
+|---|---|---|---|
+| iPhone (small) | 320 | single column | 33 |
+| iPhone 16 | 393 | single column | 41 |
+| iPad mini portrait | 744 | single column, centred | 65 |
+| iPad Air portrait | 820 | single column, centred | 65 |
+| iPad Air landscape | 1180 | two column, rail left | 65 |
+| MacBook | 1440 | two column, rail left | 65 |
+
+At every width: no horizontal scroll, no element wider than the viewport, and
+no interactive target under 24×24px. Touch devices get 44px.

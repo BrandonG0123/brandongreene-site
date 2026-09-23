@@ -22,22 +22,6 @@ const fmt = (d: Date) =>
   description="Dated entries showing work in progress across Brandon Greene's projects."
 >
   <div class="wrap sheet">
-    <div class="rail">
-      <dl>
-        <dt>Entries</dt>
-        <dd>{entries.length}</dd>
-        {
-          entries.length > 0 && (
-            <>
-              <dt>Latest</dt>
-              <dd>{fmt(entries[0].data.date)}</dd>
-            </>
-          )
-        }
-        <dt>Feed</dt>
-        <dd><a href="/rss.xml">RSS</a></dd>
-      </dl>
-    </div>
 
     <div class="column">
       <h1>Build log</h1>
@@ -74,6 +58,23 @@ const fmt = (d: Date) =>
           <p>No entries yet.</p>
         )
       }
+    </div>
+
+    <div class="rail">
+      <dl>
+        <dt>Entries</dt>
+        <dd>{entries.length}</dd>
+        {
+          entries.length > 0 && (
+            <>
+              <dt>Latest</dt>
+              <dd>{fmt(entries[0].data.date)}</dd>
+            </>
+          )
+        }
+        <dt>Feed</dt>
+        <dd><a href="/rss.xml">RSS</a></dd>
+      </dl>
     </div>
   </div>
 </Base>

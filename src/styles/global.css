@@ -16,6 +16,7 @@
   --section:  #005F73;  /* links/focus 6.81:1 */
   --markup:   #A4321E;  /* failures    6.44:1 */
   --rule:     #8C857A;  /* boundaries  3.42:1 */
+  --hairline: #D5CEC3;
   --hairline: color-mix(in srgb, var(--rule) 38%, transparent);
 
   --bg: var(--vellum);
@@ -37,8 +38,10 @@
   --step-3: 2.197rem;
   --step-4: clamp(2rem, 1.25rem + 3.2vw, 3.43rem);
 
-  --measure: 65ch;
-  --rail: 13rem;
+  /* NOT ch: `ch` is the width of "0", which in a proportional face overshoots
+     badly — 65ch measured 95 actual characters. Verified ~66 at 18px. */
+  --measure: 33rem;
+  --rail: 12rem;
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -50,8 +53,8 @@
   --space-8: 6rem;
 }
 
-:root:not([data-theme='light']) {
-  @media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
     --bg: #15171A;
     --surface: #1D2025;
@@ -165,6 +168,7 @@ blockquote {
   color: var(--fg-muted);
 }
 
+::selection { background: #BFE3EA; }
 ::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
 
 /* ==========================================================================
@@ -212,7 +216,7 @@ blockquote {
 
 .wrap {
   width: 100%;
-  max-width: 76rem;
+  max-width: 54rem;
   margin-inline: auto;
   padding-inline: var(--space-5);
 }
@@ -245,6 +249,33 @@ blockquote {
   padding-top: var(--space-3);
 }
 
+/* Below the two-column breakpoint the column is centred rather than stranded
+   against the left edge on an iPad. */
+@media (max-width: 56.24rem) {
+  .sheet > .column,
+  .sheet > .rail {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--measure);
+  }
+  /* The rail's heading is hidden on desktop, where the rail's position explains
+     it. Here it is a block at the foot of the page and needs saying. */
+  .sheet > .rail > h2.visually-hidden:not(:focus):not(:active) {
+    clip-path: none;
+    height: auto;
+    width: auto;
+    overflow: visible;
+    position: static;
+    white-space: normal;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin: 0 0 var(--space-4);
+  }
+}
+
 .rail dl { margin: 0; display: grid; gap: var(--space-3); }
 .rail dt {
   font-family: var(--font-mono);
@@ -275,8 +306,15 @@ blockquote {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-4) var(--space-5);
-  padding-block: var(--space-4);
+  gap: var(--space-3) var(--space-5);
+  padding-block: var(--space-3);
+}
+
+@media (min-width: 40rem) {
+  .site-header > .wrap {
+    gap: var(--space-4) var(--space-5);
+    padding-block: var(--space-4);
+  }
 }
 
 .site-header .brand {
@@ -300,8 +338,20 @@ blockquote {
   font-size: var(--step--1);
   color: var(--fg);
   text-decoration: none;
-  padding-bottom: 2px;
   border-bottom: 2px solid transparent;
+  /* WCAG 2.2 2.5.8 Target Size (Minimum). These measured 23px tall before. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding-bottom: 2px;
+}
+
+/* Touch devices get Apple HIG's 44px rather than the bare WCAG minimum. */
+@media (pointer: coarse) {
+  .site-nav a { min-height: 44px; }
+  .theme-toggle { min-height: 44px; }
+  .filter-buttons button { min-height: 44px; }
+  .site-footer a { display: inline-block; padding-block: var(--space-2); }
 }
 .site-nav a:hover { border-bottom-color: var(--rule); }
 .site-nav a[aria-current='page'] {
@@ -452,17 +502,18 @@ blockquote {
    Home
    ========================================================================== */
 
-.hero { padding-block: var(--space-8) var(--space-7); }
-.hero h1 { max-width: 20ch; margin-bottom: var(--space-5); }
+.hero { padding-block: clamp(2rem, 7vw, 6rem) var(--space-6); }
+.hero h1 { max-width: 13em; margin-bottom: var(--space-5); }
 .hero .lede {
   font-size: var(--step-1);
   line-height: 1.5;
-  max-width: 48ch;
+  max-width: 24em;
   color: var(--fg);
 }
-.hero .lede + p { max-width: 55ch; color: var(--fg-muted); }
+.hero .lede + p { max-width: var(--measure); color: var(--fg-muted); }
 
 .section-head {
+  margin-top: var(--space-7);
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;

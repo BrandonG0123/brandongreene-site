@@ -24,19 +24,11 @@ const fmt = (d: Date) =>
   description="Everything Brandon Greene is building, labelled Shipped, In progress or Planned."
 >
   <div class="wrap sheet">
-    <div class="rail">
-      <dl>
-        <dt>Total</dt>
-        <dd>{active.length} with pages</dd>
-        <dt>Planned</dt>
-        <dd>{planned.length} listed, no page</dd>
-      </dl>
-    </div>
 
     <div class="column">
       <h1>Projects</h1>
       <p>
-        Every project here carries a status. <strong>Shipped</strong> means you can go and use it.
+        Every project here carries a status. <strong>Shipped</strong> means you can go and use it.{' '}
         <strong>In progress</strong> means it is genuinely unfinished, and the build log shows where
         it stands. <strong>Planned</strong> means it is an intention and nothing more, so it gets one
         line and no page.
@@ -112,6 +104,15 @@ const fmt = (d: Date) =>
           </section>
         )
       }
+    </div>
+
+    <div class="rail">
+      <dl>
+        <dt>Total</dt>
+        <dd>{active.length} with pages</dd>
+        <dt>Planned</dt>
+        <dd>{planned.length} listed, no page</dd>
+      </dl>
     </div>
   </div>
 </Base>

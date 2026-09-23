@@ -81,8 +81,14 @@ room:
     idea without any decoration.
 
   Scale: 1.25 major third off an 18px body. Line height 1.65 body, 1.15
-  display. Measure capped at 65ch. Reading experience is settled BEFORE
-  anything else gets added.
+  display. Reading experience is settled BEFORE anything else gets added.
+
+  MEASURE — revised 2026-09-23 after measuring the built site.
+  The brief originally said 65ch. That was wrong: `ch` is the width of the "0"
+  glyph, and in a proportional face it overshoots badly. 65ch rendered 95
+  actual characters per line on both iPad and Mac. Now --measure: 33rem, which
+  measures 65 characters at 744px, 1180px and 1440px. Do not express the
+  measure in ch.
 
   Alternative if Fraunces reads too warm - say so and I'll swap:
     Instrument Serif (sharper, more editorial) or Archivo Expanded (engineered,
