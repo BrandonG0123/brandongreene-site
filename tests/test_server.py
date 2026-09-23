@@ -165,16 +165,29 @@ def test_survey_endpoints_and_screening(servers):
     assert not any((data / "submissions").glob("*")) if (data / "submissions").exists() else True
 
 
-def test_studio_key_login_from_phone(servers):
+def test_studio_key_opens_the_studio_from_any_device(servers):
+    """The key alone must always work: cookies can be blocked, cleared, or
+    refused behind a self-signed certificate."""
     _, phone, _ = servers
-    opener = urllib.request.build_opener(NoRedirect)
-    assert call(f"{phone}/studio/?key=wrong", opener=opener)[0] == 403
-    status, _, headers = call(f"{phone}/studio/?key={KEY}", opener=opener)
-    assert status == 303 and headers["Location"] == "/studio/"
+    # no key: a readable page, not a raw error
+    status, page, headers = call(f"{phone}/studio/")
+    assert status == 403 and headers["Content-Type"].startswith("text/html")
+    assert b"Studio locked" in page and b'name="key"' in page
+    assert call(f"{phone}/studio/?key=wrong")[0] == 403
+
+    # key in the URL serves the page and offers a cookie for next time
+    status, _, headers = call(f"{phone}/studio/?key={KEY}")
+    assert status == 200
     cookie = headers["Set-Cookie"].split(";")[0]
     assert "HttpOnly" in headers["Set-Cookie"]
-    assert call(f"{phone}/studio/", headers={"Cookie": cookie})[0] == 200
+
+    # afterwards any of the three work, on pages and on the API
+    assert call(f"{phone}/studio/capture.html", headers={"Cookie": cookie})[0] == 200
+    assert call(f"{phone}/studio/capture.html?key={KEY}")[0] == 200
     assert call(f"{phone}/api/submissions", headers={"Cookie": cookie})[0] == 200
+    assert call(f"{phone}/api/submissions", headers={"X-Studio-Key": KEY})[0] == 200
+    assert call(f"{phone}/api/submissions?key={KEY}")[0] == 200
+    assert call(f"{phone}/api/submissions", headers={"X-Studio-Key": "wrong"})[0] == 403
     assert call(f"{phone}/api/submissions", headers={"Cookie": "footscan_studio=wrong"})[0] == 403
 
 

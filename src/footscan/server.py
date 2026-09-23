@@ -108,6 +108,23 @@ class Forbidden(Exception):
     pass
 
 
+STUDIO_LOCKED_HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Studio locked</title>
+<link rel="stylesheet" href="/assets/style.css"></head><body>
+<main class="wrap" style="max-width:520px">
+<h1 style="margin-top:12vh">Studio locked</h1>
+<p class="muted">This is the private side of footscan. To open it on this device, paste the studio key.
+It is printed in the terminal when footscan starts, and stored in the file <span class="mono">.studio_key</span>.</p>
+<form class="card" method="get" style="display:grid;gap:14px">
+  <div class="field"><label for="key">Studio key</label>
+    <input id="key" name="key" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+  <button class="btn" type="submit">Open the studio</button>
+</form>
+<p class="hint">Tip: open the full link with <span class="mono">?key=...</span> once and this device remembers it.
+If you are looking for the scan page, it is <a href="/">here</a>.</p>
+</main></body></html>"""
+
+
 class ScreenedOut(Exception):
     def __init__(self, blocked: dict):
         super().__init__(blocked["message"])
@@ -307,6 +324,7 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             self.wfile.write(data)
 
         def send_file(self, path: Path, ctype: str, cache: str = "no-cache", headers: dict | None = None):
+            headers = {**getattr(self, "_extra_headers", {}), **(headers or {})}
             data = path.read_bytes()
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", ctype)
@@ -338,23 +356,41 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             got = jar.get("footscan_studio")
             return bool(got) and hmac.compare_digest(got.value, studio_key)
 
+        def has_studio_key(self) -> bool:
+            """Key in a header or in ?key=. Cookies can be blocked or cleared
+            (a self-signed certificate, private browsing, a link opened without
+            the key), so the key alone must always be enough."""
+            if not studio_key:
+                return False
+            header = self.headers.get("X-Studio-Key", "")
+            if header and hmac.compare_digest(header, studio_key):
+                return True
+            given = query_param(self.path, "key")
+            return bool(given) and hmac.compare_digest(given, studio_key)
+
+        def is_operator(self) -> bool:
+            return local_check(self) or self.has_studio_cookie() or self.has_studio_key()
+
         def require_local(self):
-            if not (local_check(self) or self.has_studio_cookie()):
+            if not self.is_operator():
                 raise Forbidden("studio is only available to the operator")
 
-        def studio_login(self, path: str, query: str) -> bool:
-            """``/studio/?key=...``: set the cookie and redirect to a clean URL."""
-            params = dict(q.split("=", 1) for q in query.split("&") if "=" in q)
-            key = params.get("key")
-            if not (studio_key and key and hmac.compare_digest(key, studio_key)):
-                return False
+        def remember_studio_key(self):
+            """Set the cookie for next time. The page is served either way, so a
+            browser that refuses the cookie still works via the key."""
             flags = "; Secure" if secure_cookie else ""
-            self.send_response(HTTPStatus.SEE_OTHER)
-            self.send_header("Set-Cookie", f"footscan_studio={studio_key}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000{flags}")
-            self.send_header("Location", path)
-            self.send_header("Content-Length", "0")
+            self._extra_headers = {
+                "Set-Cookie": f"footscan_studio={studio_key}; Path=/; HttpOnly; SameSite=Strict; Max-Age=31536000{flags}",
+            }
+
+        def studio_locked(self, path: str):
+            body = STUDIO_LOCKED_HTML.encode()
+            self.send_response(HTTPStatus.FORBIDDEN)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            return True
+            self.wfile.write(body)
 
         def save_jpeg(self, path: Path, n: int):
             if not 1 <= n <= MAX_FRAMES:
@@ -371,10 +407,11 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     return self.api(method, path.strip("/").split("/")[1:])
                 if method != "GET":
                     return self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
-                if path == "/studio" or path.startswith("/studio/"):  # noqa: SIM102
-                    if query and self.studio_login(path, query):
-                        return
-                    self.require_local()
+                if path == "/studio" or path.startswith("/studio/"):
+                    if not self.is_operator():
+                        return self.studio_locked(path)
+                    if self.has_studio_key() and not self.has_studio_cookie():
+                        self.remember_studio_key()  # so later pages work without the key in the URL
                 return self.static(path, query)
             except BadRequest as e:
                 self.send_json({"error": str(e)}, HTTPStatus.BAD_REQUEST)

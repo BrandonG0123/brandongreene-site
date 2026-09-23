@@ -25,9 +25,45 @@ const NAV = {
 
 import { addPageGlow, initReveal } from "./reveal.js";
 
+const KEY_STORE = "footscan.studioKey";
+
+/**
+ * Studio pages are opened with ?key=... once. Remember the key on this device
+ * and put it back on studio links and requests, so the studio keeps working if
+ * the cookie is refused or cleared (Safari over a self-signed certificate,
+ * private browsing, or a link opened without the key).
+ */
+function rememberStudioKey() {
+  const fromUrl = new URL(location.href).searchParams.get("key");
+  if (fromUrl) {
+    try { localStorage.setItem(KEY_STORE, fromUrl); } catch { /* private mode: the URL still carries it */ }
+    return fromUrl;
+  }
+  try { return localStorage.getItem(KEY_STORE); } catch { return null; }
+}
+
+function useStudioKey(key) {
+  if (!key) return;
+  const fetchWithKey = globalThis.fetch;
+  globalThis.fetch = (input, init = {}) => {
+    const url = typeof input === "string" ? input : input.url;
+    if (url && !/^https?:/i.test(url)) {
+      init = { ...init, headers: { ...(init.headers || {}), "X-Studio-Key": key } };
+    }
+    return fetchWithKey(input, init);
+  };
+  addEventListener("DOMContentLoaded", () => {
+    for (const a of document.querySelectorAll('a[href^="/studio/"]')) {
+      if (!a.href.includes("key=")) a.href += (a.href.includes("?") ? "&" : "?") + `key=${encodeURIComponent(key)}`;
+    }
+  });
+}
+
 function mountLayout() {
   const area = document.body.dataset.area || "customer";
   const here = location.pathname.replace(/index\.html$/, "");
+  const studioKey = area === "studio" ? rememberStudioKey() : null;
+  useStudioKey(studioKey);
 
   const strip = document.createElement("div");
   strip.className = "safety-strip";
@@ -44,8 +80,10 @@ function mountLayout() {
       <svg class="site-brand-mark" viewBox="0 0 200 200" aria-hidden="true"><rect width="200" height="200" rx="46" fill="var(--brand)"/>
         <g fill="var(--brand-ink)" transform="translate(40 26) scale(0.6)">${footSvg()}</g></svg>
       footscan${area === "studio" ? ' <span class="badge brand" style="margin-left:4px">Studio</span>' : ""}</a>
-    <nav class="nav" aria-label="Main">${NAV[area].map(([href, label]) =>
-      `<a href="${href}"${href === here ? ' aria-current="page"' : ""}>${label}</a>`).join("")}</nav></div>`;
+    <nav class="nav" aria-label="Main">${NAV[area].map(([href, label]) => {
+      const url = studioKey && href.startsWith("/studio/") ? `${href}?key=${encodeURIComponent(studioKey)}` : href;
+      return `<a href="${url}"${href === here ? ' aria-current="page"' : ""}>${label}</a>`;
+    }).join("")}</nav></div>`;
 
   const footer = document.createElement("footer");
   footer.className = "site-footer";
