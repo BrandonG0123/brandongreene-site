@@ -24,6 +24,10 @@ const fullTitle = title === 'Brandon Greene' ? title : `${title} — Brandon Gre
 <title>{fullTitle}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical.href} />
+
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#15171A" media="(prefers-color-scheme: dark)" />
 {(noindex || siteBlocked) && <meta name="robots" content="noindex, nofollow" />}
 
 <!-- Body and display faces preloaded; they are the render-critical pair. -->
