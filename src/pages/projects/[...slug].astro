@@ -1,11 +1,13 @@
 ---
 import { getCollection, render } from 'astro:content';
+import { visibleProjects } from '../../lib/visibility';
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
 
 export async function getStaticPaths() {
   // Planned projects never get a page. That is the whole point of the status.
-  const projects = await getCollection('projects', (p) => p.data.status !== 'planned');
+  // Placeholders are stripped from production builds by visibleProjects().
+  const projects = (await visibleProjects()).filter((p) => p.data.status !== 'planned');
   return projects.map((project) => ({ params: { slug: project.id }, props: { project } }));
 }
 
@@ -34,10 +36,21 @@ const jsonLd = {
 };
 ---
 
-<Base title={d.title} description={d.summary} noindex={d.draft} jsonLd={jsonLd}>
+<Base title={d.title} description={d.summary} noindex={d.draft || d.placeholder} jsonLd={jsonLd}>
   <div class="wrap sheet">
 
     <article class="column">
+      {
+        d.placeholder && (
+          <div class="draft-banner">
+            <strong>Layout slot, not a project</strong>
+            This page exists so the case study layout can be judged with realistic content. It
+            renders in development only and is stripped from every production build. Fill in the
+            fields and delete <code>placeholder: true</code> to turn it into a real project.
+          </div>
+        )
+      }
+
       {
         d.draft && (
           <div class="draft-banner">

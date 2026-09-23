@@ -1,10 +1,11 @@
 ---
-import { getCollection } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
+import ProjectList from '../../components/ProjectList.astro';
+import { visibleProjects, visibleLog } from '../../lib/visibility';
 
-const all = await getCollection('projects', (p) => !p.data.draft);
-const logEntries = await getCollection('log', (e) => !e.data.draft);
+const all = await visibleProjects();
+const logEntries = await visibleLog();
 
 const active = all
   .filter((p) => p.data.status !== 'planned')
@@ -14,9 +15,9 @@ const active = all
 const planned = all.filter((p) => p.data.status === 'planned');
 
 const areas = [...new Set(active.flatMap((p) => p.data.areas))].sort();
-const entryCount = (slug: string) => logEntries.filter((e) => e.data.project === slug).length;
-const fmt = (d: Date) =>
-  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const entryCounts = Object.fromEntries(
+  all.map((p) => [p.id, logEntries.filter((e) => e.data.project === p.id).length])
+);
 ---
 
 <Base
@@ -56,37 +57,7 @@ const fmt = (d: Date) =>
 
       <p class="visually-hidden" role="status" data-filter-status></p>
 
-      <ul class="project-list" data-project-list>
-        {
-          active.map((p) => (
-            <li data-areas={p.data.areas.join(' ')}>
-              <article class="project-entry">
-                <div class="project-meta">
-                  <StatusBadge
-                    status={p.data.status}
-                    detail={
-                      p.data.status === 'in-progress' && entryCount(p.id) > 0
-                        ? `${entryCount(p.id)} log ${entryCount(p.id) === 1 ? 'entry' : 'entries'}`
-                        : undefined
-                    }
-                  />
-                  <span>Started {fmt(p.data.started)}</span>
-                  {p.data.collaboration === 'group' && <span>Group project</span>}
-                </div>
-                <h3>
-                  <a href={`/projects/${p.id}`}>{p.data.title}</a>
-                </h3>
-                <p>{p.data.summary}</p>
-                <ul class="areas">
-                  {p.data.areas.map((a) => (
-                    <li>{a}</li>
-                  ))}
-                </ul>
-              </article>
-            </li>
-          ))
-        }
-      </ul>
+      <ProjectList projects={active} entryCounts={entryCounts} />
 
       {
         planned.length > 0 && (

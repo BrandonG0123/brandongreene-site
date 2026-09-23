@@ -72,6 +72,38 @@ Text here.
 - **planned** — an intention. Gets one line on `/projects`, **no page**, and
   never appears in the main list or on the home page. This is deliberate.
 
+## Placeholder slots
+
+`content/projects/slot-*.md` are **layout slots, not projects**. They exist so
+you can see how the list and the case study page behave with a realistic number
+of entries instead of one.
+
+They carry `placeholder: true`, and that flag is enforced by the build, not by
+anyone remembering:
+
+- `src/lib/visibility.ts` gates every project query on `import.meta.env.DEV`
+- `import.meta.env.DEV` is **false in every `astro build`**
+- so a production build emits no slot page, no index row, no home page entry,
+  no sitemap URL and no RSS item
+
+You cannot accidentally deploy one. Verify any time with:
+
+```bash
+npm run build && ls dist/projects/
+```
+
+Only real projects appear.
+
+### Turning a slot into a real project
+
+1. Replace `title`, `summary`, `areas`, `status` and `started`
+2. Delete the `placeholder: true` line
+3. Write the body using the case study shape above
+4. Rename the file — the filename becomes the URL
+
+Delete any slots you don't end up using. They cost nothing while they sit there,
+but a folder of `slot-*.md` gets confusing after a year.
+
 ## Add a build log entry
 
 Create `content/log/YYYY-MM-DD-short-slug.md`:

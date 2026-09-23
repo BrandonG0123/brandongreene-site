@@ -34,6 +34,16 @@ const projects = defineCollection({
      * half-written work from quietly going live.
      */
     draft: z.boolean().default(false),
+    /**
+     * placeholder: true is a layout slot, not a project. It renders ONLY in
+     * `astro dev` so you can see how the list behaves with more entries, and is
+     * stripped from every production build — pages, index, home, sitemap, RSS.
+     * Nothing marked placeholder can reach a deployed site.
+     *
+     * To turn a slot into a real project: fill in the fields, write the body,
+     * and delete this line.
+     */
+    placeholder: z.boolean().default(false),
     /** Group work is labelled as group work, with the specific contribution named. */
     collaboration: z.enum(['solo', 'group']).default('solo'),
     role: z.string().optional(),
