@@ -1,5 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
+import { SITE } from '../../astro.config.mjs';
+
+// Derived, never hardcoded — change SITE in astro.config.mjs and this follows.
+const domain = new URL(SITE).hostname;
 ---
 
 <Base
@@ -15,7 +19,7 @@ import Base from '../layouts/Base.astro';
         <h1>Brandon Greene</h1>
         <p class="mono-label">
           Class of 2029 · Software, machine learning, hardware ·
-          <a href="https://brandongreene.dev">brandongreene.dev</a>
+          <a href="/">{domain}</a>
         </p>
       </header>
 

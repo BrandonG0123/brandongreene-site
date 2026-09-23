@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://brandongreene.dev/sitemap-index.xml

@@ -10,6 +10,11 @@ interface Props {
 }
 
 const { title, description, noindex = false, jsonLd } = Astro.props;
+
+// Site-wide switch for a deployed-but-not-launched site. Set
+// PUBLIC_ALLOW_INDEXING=false in the host's environment to keep the whole site
+// out of search results until the content is ready.
+const siteBlocked = import.meta.env.PUBLIC_ALLOW_INDEXING === 'false';
 const canonical = new URL(Astro.url.pathname.replace(/\/$/, '') || '/', Astro.site);
 const fullTitle = title === 'Brandon Greene' ? title : `${title} — Brandon Greene`;
 ---
@@ -19,7 +24,7 @@ const fullTitle = title === 'Brandon Greene' ? title : `${title} — Brandon Gre
 <title>{fullTitle}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical.href} />
-{noindex && <meta name="robots" content="noindex, nofollow" />}
+{(noindex || siteBlocked) && <meta name="robots" content="noindex, nofollow" />}
 
 <!-- Body and display faces preloaded; they are the render-critical pair. -->
 <link

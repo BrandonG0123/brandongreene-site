@@ -125,12 +125,22 @@ the "N log entries" evidence on its status badge. They also go into `/rss.xml`.
 **Write entries as they happen.** A log backfilled from memory in senior year is
 worth much less than one written the week it happened, and it shows.
 
-## Accessibility checks
+## Checks
 
 ```bash
-npm run build
-npm run test:a11y     # axe-core across every built page — see scripts/a11y.mjs
+npm test                  # build + a11y + links + budget. What CI runs.
+
+npm run test:a11y         # axe-core, every page x 2 themes x 3 viewports
+npm run test:links        # every internal and external link resolves
+npm run test:budget       # JS under 100 KB, fonts and CSS in check
+npx lhci autorun          # Lighthouse: accessibility and performance >= 95
 ```
+
+All of these run on every push and every pull request
+(`.github/workflows/ci.yml`). A violation fails the build — nothing is advisory.
+
+CI also asserts that no placeholder slot reached `dist/`, as a second lock on
+top of the `import.meta.env.DEV` gate in `src/lib/visibility.ts`.
 
 Automated tools catch **roughly a third** of real accessibility problems. They
 find missing labels, bad contrast and broken ARIA. They cannot tell you whether
@@ -161,8 +171,12 @@ institutions that can and do check things.
 
 ## Deploy
 
-Not set up yet. Planned: Cloudflare Pages from GitHub, preview build per pull
-request. When it's done, this section gets the DNS steps.
+See [DEPLOY.md](DEPLOY.md) — domain, GitHub, Cloudflare Pages, DNS, and the
+pre-launch checklist.
 
-The site URL lives in one place — `SITE` in `astro.config.mjs`. Change it there
-and canonical URLs, the sitemap and RSS all follow.
+The site URL lives in one place: `SITE` in `astro.config.mjs`. Canonical URLs,
+the sitemap, RSS, robots.txt and the résumé header all derive from it.
+
+To keep a deployed site out of search before launch, set
+`PUBLIC_ALLOW_INDEXING=false` in the host's environment variables. Every page
+then sends `noindex` and robots.txt serves `Disallow: /`.
