@@ -36,7 +36,13 @@ const jsonLd = {
 };
 ---
 
-<Base title={d.title} description={d.summary} noindex={d.draft || d.placeholder} jsonLd={jsonLd}>
+<Base
+  title={d.title}
+  description={d.summary}
+  noindex={d.draft || d.placeholder}
+  jsonLd={jsonLd}
+  ogSlug={project.id}
+>
   <div class="wrap sheet">
 
     <article class="column">

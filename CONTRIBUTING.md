@@ -125,6 +125,21 @@ the "N log entries" evidence on its status badge. They also go into `/rss.xml`.
 **Write entries as they happen.** A log backfilled from memory in senior year is
 worth much less than one written the week it happened, and it shows.
 
+## Social cards
+
+Every project gets a generated Open Graph card at `/og/<slug>.png`, plus a
+default site card at `/og/default.png`. They are built by `src/lib/og.ts` —
+the design brief's title block at 1200x630, so a link preview and the page
+itself read as the same object.
+
+You do not need to make images. Add a project and its card appears.
+
+The card renders with satori, which cannot read woff2, so TTF copies of Fraunces
+and IBM Plex Mono live in `assets/og-fonts/`. Those are build-time only — they
+are never served to a browser and cost the page nothing.
+
+Placeholder slots get no card, for the same reason they get no page.
+
 ## Checks
 
 ```bash

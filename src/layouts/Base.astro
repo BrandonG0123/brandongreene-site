@@ -8,14 +8,21 @@ interface Props {
   description: string;
   noindex?: boolean;
   jsonLd?: Record<string, unknown>;
+  ogSlug?: string;
 }
-const { title, description, noindex, jsonLd } = Astro.props;
+const { title, description, noindex, jsonLd, ogSlug } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
-    <BaseHead title={title} description={description} noindex={noindex} jsonLd={jsonLd} />
+    <BaseHead
+      title={title}
+      description={description}
+      noindex={noindex}
+      jsonLd={jsonLd}
+      ogSlug={ogSlug}
+    />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>

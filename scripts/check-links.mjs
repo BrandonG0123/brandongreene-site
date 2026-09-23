@@ -21,8 +21,15 @@ const external = new Map();
 for (const route of pages) {
   const file = route === '/' ? 'dist/index.html' : `dist${route}/index.html`;
   const html = fs.readFileSync(fs.existsSync(file) ? file : `dist${route}.html`, 'utf8');
-  for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
-    const href = m[1];
+  const refs = [
+    ...[...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]),
+    // Social card images are URLs a reader hits on every share preview.
+    ...[...html.matchAll(/<meta[^>]+(?:property="og:image"|name="twitter:image")[^>]*content="([^"]+)"/g)].map(
+      (m) => m[1]
+    ),
+  ];
+
+  for (const href of refs) {
     if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('data:')) continue;
 
     // Canonical URLs, og:url and any other self-reference point at the site's

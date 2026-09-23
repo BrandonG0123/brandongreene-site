@@ -26,6 +26,8 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@lhci/cli": "^0.15.1",
-    "playwright": "^1.63.0"
+    "@resvg/resvg-js": "^2.6.2",
+    "playwright": "^1.63.0",
+    "satori": "^0.33.5"
   }
 }

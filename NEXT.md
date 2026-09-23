@@ -1,4 +1,4 @@
-# Where we stopped — 23 Sept 2026
+# Where we stopped — 23 Sept 2026 (updated)
 
 Picking this back up: read this file first, then `CONTRIBUTING.md` and
 `DEPLOY.md`.
@@ -33,6 +33,10 @@ npx lhci autorun     # Lighthouse
 - **CI** (`.github/workflows/ci.yml`): axe-core over every page × 2 themes ×
   3 viewports, link resolution, performance budget, Lighthouse ≥ 95.
   All failing builds, nothing advisory.
+- **Social cards**: generated per project at `/og/<slug>.png` plus a site
+  default, built by `src/lib/og.ts`. `og:image` and `twitter:image` wired, and
+  the link checker validates those URLs resolve.
+- **Favicon** and theme-color.
 
 ## Verified, last run
 
@@ -43,7 +47,7 @@ npx lhci autorun     # Lighthouse
 | LCP | 445 ms worst case (budget 2000) |
 | CLS | 0.000 |
 | JS | 5.9 KB total, all inline (budget 100 KB) |
-| Links | 14 internal, all resolve |
+| Links | 17 internal, all resolve (incl. social cards) |
 | Reflow | no horizontal scroll at 320–1440 |
 | Line length | 65 characters at iPad mini, iPad landscape and 1440 Mac |
 
@@ -66,8 +70,9 @@ npx lhci autorun     # Lighthouse
    there.
 4. **Manual accessibility pass** — `docs/manual-a11y-test.md`. Automated tooling
    catches about a third of real issues; this is the part that matters.
-5. Generated OG image per project (not built yet).
-6. Delete unused `slot-*.md` files once real projects replace them.
+5. Delete unused `slot-*.md` files once real projects replace them.
+6. Add real images to the foot scanner page once there is something to
+   photograph. The schema already enforces alt text and requires width/height.
 
 ## Open questions for Brandon
 
