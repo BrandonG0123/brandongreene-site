@@ -80,12 +80,12 @@ async function startLive(simulated) {
   $("sim-ribbon").hidden = !simulated;
   $("btn-start").hidden = false;
   $("btn-pause").hidden = true;
-  const map = new CoverageMap($("map"), setup.foot ?? "right");
+  const map = new CoverageMap($("map"), setup.foot);
   const boards = await loadBoards();
   const needsMat = setup.condition !== "object";
 
   scanner = new Scanner({
-    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: needsMat, foot: setup.foot ?? "right",
+    stage: $("stage"), simulated, targetFrames: TARGET_FRAMES, boards, requireMat: needsMat, foot: setup.foot,
     onFrame: () => {
       $("flash").classList.add("on");
       requestAnimationFrame(() => $("flash").classList.remove("on"));

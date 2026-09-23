@@ -162,20 +162,32 @@ export class Coverage {
 }
 
 /**
- * Where to stand, in words a child can follow. Azimuth 0 is behind the heel
- * and grows counter-clockwise seen from above, which passes the foot's outer
- * side first, so the names match the labels on the coverage map.
+ * Where to stand, in words a child can follow. Azimuth 0 is where scanning
+ * started and grows counter-clockwise seen from above, which passes a foot's
+ * outer side first, so the names match the labels on the coverage map.
+ *
+ * `foot` is "left"/"right" for a foot, or null when it's any other object:
+ * "behind the heel" is meaningless when you're scanning a hand or a shoe.
  */
 export function describeCell(cell, foot = "right") {
-  if (cell === "top") return "right above the foot, looking down";
+  const object = foot !== "left" && foot !== "right";
+  if (cell === "top") return object ? "right above it, looking down" : "right above the foot, looking down";
   const [band, idx] = cell.split("-");
   const az = (Number(idx) + 0.5) * (360 / AZ_SECTORS);
+  const height = band === "low" ? "down low" : "a bit higher up";
+  if (object) {
+    const where = az < 30 || az >= 330 ? "back where you started"
+      : az < 150 ? "a quarter of the way around from the start"
+        : az < 210 ? "the far side, opposite where you started"
+          : "three quarters of the way around";
+    return `${where}, ${height}`;
+  }
   const [first, second] = foot === "right" ? ["outer", "inner"] : ["inner", "outer"];
   const where = az < 30 || az >= 330 ? "behind the heel"
     : az < 150 ? `by the ${first} side of the foot`
       : az < 210 ? "in front of the toes"
         : `by the ${second} side of the foot`;
-  return `${where}, ${band === "low" ? "down low" : "a bit higher up"}`;
+  return `${where}, ${height}`;
 }
 
 /** Nearest under-covered cell to where the camera is now. */

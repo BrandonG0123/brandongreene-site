@@ -59,6 +59,7 @@ const median = (xs) => {
 };
 
 export class Scanner {
+  /** foot: "left"/"right", or null when scanning anything that isn't a foot. */
   constructor({ stage, simulated = false, targetFrames = 60, boards = [], requireMat = false, foot = "right", onUpdate = () => {}, onFrame = () => {} }) {
     Object.assign(this, { stage, simulated, targetFrames, foot, onUpdate, onFrame });
     this.boards = boards.map((b) => ({ board: b, index: indexBoard(b) }));
@@ -166,6 +167,10 @@ export class Scanner {
 
   get elapsedMs() {
     return this.elapsedBefore + (this.capturing ? performance.now() - this.startedAt : 0);
+  }
+
+  get subjectName() {
+    return this.foot === "left" || this.foot === "right" ? "the foot" : "the object";
   }
 
   get focalHint() {
@@ -316,16 +321,16 @@ export class Scanner {
     if (!this.started) {
       return this.requireMat && !matVisible
         ? { text: "Point the phone at the mat so you can see the black squares, then tap Start.", tone: "" }
-        : { text: "Start behind the heel, then tap Start.", tone: "" };
+        : { text: `Stand behind ${this.foot === "left" || this.foot === "right" ? "the heel" : "it"}, then tap Start.`, tone: "" };
     }
     if (!this.capturing) return { text: "Paused.", tone: "" };
     if (!exposure.ok) return { text: exposure.message, tone: "bad" };
     if (!sharp.ok) return { text: sharp.message, tone: "bad" };
     if (this.requireMat && this.matLostSince != null && now - this.matLostSince > 800)
-      return { text: "Move back a bit, until you can see the black squares around the foot.", tone: "bad" };
+      return { text: `Move back a bit, until you can see the black squares around ${this.subjectName}.`, tone: "bad" };
     if (done) return { text: "All done! Tap Finish.", tone: "done" };
     if (!hasView)
-      return { text: `Walk slowly around the foot: low down, then higher up, then from above. ${this.targetFrames - kept} photos to go.`, tone: "" };
+      return { text: `Walk slowly around ${this.subjectName}: low down, then higher up, then from above. ${this.targetFrames - kept} photos to go.`, tone: "" };
     if (next && next !== cell) return { text: `Now move here: ${describeCell(next, this.foot)}.`, tone: "" };
     if (next) return { text: "Good. Hold still here for a moment.", tone: "" };
     return { text: `You have been all the way around. ${Math.max(0, this.targetFrames - kept)} more photos.`, tone: "" };

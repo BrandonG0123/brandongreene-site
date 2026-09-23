@@ -17,6 +17,7 @@ function radiusFor(elevation) {
 }
 
 export class CoverageMap {
+  /** foot: "left"/"right", or null for any other object (no heel, no toes). */
   constructor(svg, foot, { labels = true } = {}) {
     this.svg = svg;
     const step = 360 / AZ_SECTORS;
@@ -26,8 +27,14 @@ export class CoverageMap {
       for (let i = 0; i < AZ_SECTORS; i++) s += `<path class="cell" data-cell="${band}-${i}" d="${wedge(r1, r2, i * step, (i + 1) * step)}"/>`;
     }
     s += `<circle class="cell" data-cell="top" cx="${R.cx}" cy="${R.cy}" r="${R.top}"/>`;
-    s += `<g transform="translate(76 70) scale(0.24)">${footSvg({ mirror: foot === "left", cls: "foot" })}</g>`;
-    if (labels) {
+    const object = foot !== "left" && foot !== "right";
+    s += object
+      ? `<rect class="foot" x="86" y="80" width="28" height="40" rx="12"/>`
+      : `<g transform="translate(76 70) scale(0.24)">${footSvg({ mirror: foot === "left", cls: "foot" })}</g>`;
+    if (labels && object) {
+      s += `<text x="100" y="208" text-anchor="middle">you started here</text>`;
+      s += `<text x="100" y="-4" text-anchor="middle">far side</text>`;
+    } else if (labels) {
       // Seen from above with toes up, a right foot's big toe is on the left.
       const [l, r] = foot === "right" ? ["inner", "outer"] : ["outer", "inner"];
       s += `<text x="100" y="208" text-anchor="middle">heel · start here</text><text x="100" y="-4" text-anchor="middle">toes</text>`;

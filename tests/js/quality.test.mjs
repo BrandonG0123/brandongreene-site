@@ -86,3 +86,18 @@ test("research capture hides only the foot field for object scans", async () => 
   assert.ok(!block.includes('id="session"'), "session input must not sit inside the hidden foot field");
   assert.ok(html.includes('id="session"'), "session input still exists");
 });
+
+test("directions suit what is being scanned", async () => {
+  const { describeCell } = await import("../../web/assets/quality.js");
+  // a foot has a heel and an inner/outer side
+  assert.match(describeCell("low-0", "right"), /behind the heel/);
+  assert.match(describeCell("mid-3", "right"), /outer side of the foot/);
+  assert.match(describeCell("mid-3", "left"), /inner side of the foot/);
+  // anything else must not: no heel on a hand or a shoe
+  for (const cell of ["low-0", "mid-3", "low-6", "mid-9", "top"]) {
+    const text = describeCell(cell, null);
+    assert.ok(!/heel|toes|foot/.test(text), `object wording leaked foot terms: ${text}`);
+  }
+  assert.match(describeCell("low-0", null), /back where you started/);
+  assert.match(describeCell("low-6", null), /far side/);
+});
