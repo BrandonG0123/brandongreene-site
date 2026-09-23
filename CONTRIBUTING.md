@@ -165,12 +165,27 @@ whether a screen reader user can understand the page. The manual pass in
 
 ## Images
 
-Every image needs real alt text describing what matters about it, not the
-filename. Decorative images get `alt=""`. Diagrams need either a text
-description or a caption carrying the same information. The schema enforces a
-minimum alt length so an empty string can't slip in by accident on a hero image.
+Put the file next to the markdown, in `content/projects/`, and reference it
+relatively:
 
-Always set `width` and `height` so the page doesn't shift while loading.
+```yaml
+hero:
+  src: ./scanner-rig.jpg
+  alt: The scanning rig on a desk, a phone clamped above a foot on a turntable
+  caption: First working version of the rig, Oct 2026
+```
+
+Astro generates AVIF and WebP with a JPEG fallback at 1x and 2x for the reading
+column, and reads the real dimensions out of the file so `width` and `height`
+are never typed by hand and never wrong. **Do not set width/height yourself** —
+that is what actually prevents layout shift, and a hand-typed number drifts the
+moment you swap the image.
+
+Alt text must describe **what matters about the image**, not the filename. The
+schema rejects anything under 12 characters, so an empty or lazy string cannot
+slip onto a hero by accident. Decorative images get `alt=""`. Diagrams need
+either a text description or a caption carrying the same information — a
+screen reader user should get what a sighted reader gets.
 
 ## Honesty rules
 

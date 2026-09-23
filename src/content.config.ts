@@ -18,7 +18,10 @@ const link = z.object({
 
 const projects = defineCollection({
   loader: glob({ pattern: '**/*.{md,mdx}', base: './content/projects' }),
-  schema: z.object({
+  // image() resolves a path relative to the markdown file and hands back real
+  // dimensions, so width/height are never typed by hand and never wrong —
+  // which is what actually prevents layout shift.
+  schema: ({ image }) => z.object({
     title: z.string(),
     /** One sentence: what it is and who it was for. Shown in the grid. */
     summary: z.string(),
@@ -51,10 +54,8 @@ const projects = defineCollection({
     aiAssisted: z.string().optional(),
     hero: z
       .object({
-        src: z.string(),
+        src: image(),
         alt: z.string().min(12, 'Alt text must describe what matters, not the filename.'),
-        width: z.number(),
-        height: z.number(),
         caption: z.string().optional(),
       })
       .optional(),

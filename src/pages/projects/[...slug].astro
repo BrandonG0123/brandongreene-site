@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import { Picture } from 'astro:assets';
 import { visibleProjects } from '../../lib/visibility';
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
@@ -78,11 +79,15 @@ const jsonLd = {
       {
         d.hero && (
           <figure>
-            <img
+            {/* AVIF and WebP with a JPEG fallback, sized for the reading column
+                at 1x and 2x. Dimensions come from the file, so no layout shift. */}
+            <Picture
               src={d.hero.src}
               alt={d.hero.alt}
-              width={d.hero.width}
-              height={d.hero.height}
+              formats={['avif', 'webp']}
+              fallbackFormat="jpg"
+              widths={[528, 1056]}
+              sizes="(min-width: 56.25rem) 33rem, 100vw"
               loading="eager"
               decoding="async"
             />

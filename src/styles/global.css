@@ -171,6 +171,20 @@ blockquote {
 ::selection { background: #BFE3EA; }
 ::selection { background: color-mix(in srgb, var(--accent) 25%, transparent); }
 
+figure {
+  margin: var(--space-6) 0;
+}
+figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline);
+}
+figcaption {
+  margin-top: var(--space-3);
+  color: var(--fg-muted);
+}
+
 /* ==========================================================================
    Utilities
    ========================================================================== */

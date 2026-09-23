@@ -5,8 +5,8 @@ Picking this back up: read this file first, then `CONTRIBUTING.md` and
 
 ## State
 
-Site is built, verified, and committed. Nothing is deployed. Last commit
-`bfd27ea`. No git remote yet.
+Site is built, verified, and committed. Nothing is deployed, and there is no
+git remote yet — see `DEPLOY.md`. For the latest state run `git log --oneline`.
 
 ```bash
 cd /Users/bgreene/code/brandongreene-site
@@ -37,6 +37,10 @@ npx lhci autorun     # Lighthouse
   default, built by `src/lib/og.ts`. `og:image` and `twitter:image` wired, and
   the link checker validates those URLs resolve.
 - **Favicon** and theme-color.
+- **Responsive images**: hero images use Astro's asset pipeline — AVIF and WebP
+  with a JPEG fallback at 1x and 2x, dimensions read from the file so they
+  cannot be wrong. Verified end to end with a test image, which was then
+  removed. Drop a photo next to the markdown and it works.
 
 ## Verified, last run
 
@@ -72,7 +76,7 @@ npx lhci autorun     # Lighthouse
    catches about a third of real issues; this is the part that matters.
 5. Delete unused `slot-*.md` files once real projects replace them.
 6. Add real images to the foot scanner page once there is something to
-   photograph. The schema already enforces alt text and requires width/height.
+   photograph. The pipeline is built and verified — see CONTRIBUTING.md.
 
 ## Open questions for Brandon
 
