@@ -75,3 +75,14 @@ test("capture policy", () => {
   for (let i = 0; i < 6; i++) c.add("low-0");
   assert.equal(shouldCapture(base), false);
 });
+
+// Guard for a real bug: the Foot and Session inputs shared one row, so hiding
+// the foot for object scans hid the session box too.
+test("research capture hides only the foot field for object scans", async () => {
+  const { readFileSync } = await import("node:fs");
+  const html = readFileSync(new URL("../../web/studio/capture.html", import.meta.url), "utf8");
+  const footRow = html.slice(html.indexOf('id="foot-row"'));
+  const block = footRow.slice(0, footRow.indexOf("</div>"));
+  assert.ok(!block.includes('id="session"'), "session input must not sit inside the hidden foot field");
+  assert.ok(html.includes('id="session"'), "session input still exists");
+});
