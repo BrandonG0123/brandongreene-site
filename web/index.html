@@ -50,6 +50,16 @@
     @media (prefers-color-scheme: dark) { .mini-map { background: rgb(22 30 29 / 92%); } }
     .mini-map .map text { display: none; }
     #scan-hud { display: grid; gap: 12px; }
+    .steer { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
+      transition: transform 0.3s ease; }
+    .steer svg { width: 27vmin; max-width: 160px; filter: drop-shadow(0 3px 12px rgb(0 0 0 / 55%)); transition: transform 0.25s ease; }
+    .steer svg path { fill: color-mix(in srgb, var(--accent) 88%, transparent); stroke: rgb(10 14 14 / 45%); stroke-width: 2; }
+    .steer.arrived svg path { fill: color-mix(in srgb, #58d68d 88%, transparent); }
+    .steer.arrived svg { transform: none !important; }
+    .steer-text { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); pointer-events: none;
+      background: rgb(10 14 14 / 78%); color: #fff; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.01em;
+      padding: 7px 16px; border-radius: 999px; backdrop-filter: blur(6px); white-space: nowrap; }
+    @media (prefers-reduced-motion: reduce) { .steer svg { transition: none; } }
     .scan-bar { display: grid; gap: 8px; }
     .bar { height: 10px; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
     .bar > div { height: 100%; width: 0; background: var(--brand); transition: width 0.3s; }
@@ -232,6 +242,10 @@
     <div class="stage" id="stage">
       <div class="demo-ribbon" id="demo-ribbon" hidden>DEMO · NOTHING IS SENT</div>
       <div class="mini-map"><svg class="map" id="map" role="img" aria-label="Which angles around your foot are done"></svg></div>
+        <div class="steer" id="steer" hidden aria-hidden="true">
+          <svg viewBox="0 0 100 100"><path d="M50 8 L78 52 H62 V88 H38 V52 H22 Z"/></svg>
+        </div>
+        <div class="steer-text" id="steer-text" hidden></div>
       <div class="guidance" id="guidance" aria-live="polite">Stand behind the heel, then tap Start.</div>
     </div>
     <div id="scan-hud">
@@ -244,6 +258,7 @@
         <button class="btn secondary" id="btn-pause" hidden>Pause</button>
         <button class="btn secondary" id="btn-finish" disabled>Finish</button>
       </div>
+      <button class="btn secondary" id="btn-sound" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Sound on</button>
     </div>
     <button class="btn secondary" id="btn-restart" type="button" style="justify-self:start">Start this foot over</button>
   </section>

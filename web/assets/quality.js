@@ -190,6 +190,48 @@ export function describeCell(cell, foot = "right") {
   return `${where}, ${height}`;
 }
 
+/** Where a cell sits: the middle of its wedge and of its height band. */
+export function targetView(cell) {
+  if (cell === "top") return { azimuth: null, elevation: 78 };
+  const [band, idx] = cell.split("-");
+  return {
+    azimuth: (Number(idx) + 0.5) * (360 / AZ_SECTORS),
+    elevation: band === "low" ? 12 : 42,
+  };
+}
+
+/**
+ * Which way to move the phone to reach a cell: an arrow, not a sentence.
+ *
+ * Geometry: the camera points inward at the subject, so stepping around it in
+ * the direction of increasing azimuth moves the camera to its own right.
+ * (Camera position P = (sin a, -cos a); dP/da = (cos a, sin a), which is the
+ * camera's right vector.) So a positive azimuth difference means "go right",
+ * and a positive elevation difference means "lift it higher".
+ *
+ * Returns the screen rotation for an up-pointing arrow, plus plain words.
+ */
+export function steerTo(view, cell, { azTolerance = 14, elTolerance = 9 } = {}) {
+  if (!view || !cell) return { arrived: false, angle: null, turn: "none", tilt: "none", text: "" };
+  const target = targetView(cell);
+  const dAz = target.azimuth == null ? 0 : ((target.azimuth - view.azimuth + 540) % 360) - 180;
+  const dEl = target.elevation - view.elevation;
+  const turn = Math.abs(dAz) < azTolerance ? "none" : dAz > 0 ? "right" : "left";
+  const tilt = Math.abs(dEl) < elTolerance ? "none" : dEl > 0 ? "up" : "down";
+  if (turn === "none" && tilt === "none") {
+    return { arrived: true, angle: null, turn, tilt, dAz, dEl, text: "Hold it there" };
+  }
+  // Arrow: 0 degrees points up the screen, 90 points right.
+  const vx = Math.max(-1, Math.min(1, dAz / 45));
+  const vy = Math.max(-1, Math.min(1, dEl / 25));
+  const angle = (Math.atan2(vx, vy) * 180) / Math.PI;
+  const words = [];
+  if (turn !== "none") words.push(`go ${turn}`);
+  if (tilt !== "none") words.push(tilt === "up" ? "higher" : "lower");
+  const text = words.join(", ").replace(/^./, (c) => c.toUpperCase());
+  return { arrived: false, angle, turn, tilt, dAz, dEl, text };
+}
+
 /** Nearest under-covered cell to where the camera is now. */
 export function nextMissing(coverage, view) {
   const missing = coverage.missing();

@@ -14,8 +14,9 @@
 //      instructions say to start behind the heel). Guidance only.
 import {
   Coverage, SharpnessJudge, cellFor, describeCell, exposureStats, judgeExposure,
-  laplacianVariance, nextMissing, shouldCapture, toGray, viewFromOrientation, wrap360,
+  laplacianVariance, nextMissing, shouldCapture, steerTo, toGray, viewFromOrientation, wrap360,
 } from "./quality.js";
+import { Cues, ScreenAwake } from "./cues.js";
 import { MAX_HAMMING, estimateView, indexBoard } from "./mat-pose.js";
 import { SimulatedCamera } from "./sim-camera.js";
 
@@ -87,6 +88,9 @@ export class Scanner {
     this.elapsedBefore = 0;
     this.startedAt = null;
     this.sensorSource = simulated ? "simulated" : "none";
+    this.cues = new Cues();
+    this.awake = new ScreenAwake();
+    this.doneAnnounced = false;
     this.analysis = document.createElement("canvas");
     this.detectCanvas = document.createElement("canvas");
     this.grab = document.createElement("canvas");
@@ -130,6 +134,9 @@ export class Scanner {
   }
 
   start() {
+    // Audio and wake lock both need a user gesture; Start is that gesture.
+    this.cues.start();
+    this.awake.acquire();
     if (this.alpha0 == null) {
       const o = this.simulated ? this.sim.orientation() : this.orientation;
       this.alpha0 = o ? o.alpha : 0;
@@ -160,6 +167,8 @@ export class Scanner {
   /** Releases the camera and removes the feed from the page. */
   close() {
     this.hold();
+    this.cues.stop();
+    this.awake.release();
     this.stream?.getTracks().forEach((t) => t.stop());
     this.drawable?.remove();
     window.removeEventListener("deviceorientation", this._onOrientation);
@@ -299,11 +308,13 @@ export class Scanner {
     // Progress for a single bar: frames and coverage both have to be there.
     const progress = Math.min(kept / this.targetFrames, completeness ?? 1);
     const matMarkers = this.mat && now - this.mat.at < MAT_FRESH_MS ? this.mat.markers.length : 0;
+    const steer = this.capturing && !done ? steerTo(view, next) : { arrived: false, angle: null, text: "" };
+    const guidance = this.guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now });
+    this.speak({ guidance, steer, done, sharp, exposure, matVisible });
 
     this.onUpdate({
-      sharp, exposure, hasView, viewSource: source, cell, next, kept, completeness, done, progress,
-      matVisible, matMarkers, paper: this.mat?.paper ?? null,
-      guidance: this.guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now }),
+      sharp, exposure, hasView, viewSource: source, cell, next, kept, completeness, done, progress, steer,
+      matVisible, matMarkers, paper: this.mat?.paper ?? null, guidance,
     });
   }
 
@@ -315,6 +326,31 @@ export class Scanner {
       focal_px: r.focal ?? null, focal_measured: r.focalMeasured ?? null,
       camera_mm: r.camera?.map((v) => +v.toFixed(1)) ?? null, reprojection_rms_px: r.rms ?? null,
     };
+  }
+
+  /** Short spoken cues, and a sound when something needs attention. */
+  speak({ guidance, steer, done, sharp, exposure, matVisible }) {
+    if (!this.capturing) return;
+    if (done) {
+      if (!this.doneAnnounced) {
+        this.doneAnnounced = true;
+        this.cues.complete();
+        this.cues.say("All done. Tap finish.");
+      }
+      return;
+    }
+    this.doneAnnounced = false;
+    if (!exposure.ok || !sharp.ok || (this.requireMat && !matVisible)) {
+      const problem = !exposure.ok
+        ? (exposure.issue === "overexposed" ? "Too bright" : "Too dark")
+        : !sharp.ok ? "Hold steadier" : "Show the mat";
+      if (problem !== this.lastProblem) this.cues.problem();
+      this.lastProblem = problem;
+      this.cues.say(problem);
+      return;
+    }
+    this.lastProblem = null;
+    this.cues.say(steer.text || guidance.text);
   }
 
   guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now }) {
@@ -342,7 +378,12 @@ export class Scanner {
     this.grab.getContext("2d").drawImage(src, 0, 0, w, h);
     const frame = { n: this.frames.length + 1, t_ms: Math.round(this.elapsedMs), width: w, height: h, excluded: false, ...info };
     this.frames.push(frame);
+    const before = info.cell ? this.coverage.fill(info.cell) : 1;
     if (info.cell) this.coverage.add(info.cell);
+    // A click per photo, and a two-note chime when an angle is finished, so
+    // you can keep your eyes on what you are scanning.
+    if (info.cell && before < 1 && this.coverage.fill(info.cell) >= 1) this.cues.cellDone();
+    else this.cues.shutter();
     this.grab.toBlob((blob) => {
       frame.blob = blob;
       frame.url = URL.createObjectURL(blob);

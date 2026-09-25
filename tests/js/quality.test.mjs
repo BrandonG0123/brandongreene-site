@@ -101,3 +101,31 @@ test("directions suit what is being scanned", async () => {
   assert.match(describeCell("low-0", null), /back where you started/);
   assert.match(describeCell("low-6", null), /far side/);
 });
+
+test("steering points the right way around the subject", async () => {
+  const { steerTo, targetView } = await import("../../web/assets/quality.js");
+  const at = (azimuth, elevation) => ({ azimuth, elevation });
+
+  // increasing azimuth is the camera's own right, so a cell ahead of us is "right"
+  assert.equal(steerTo(at(0, 12), "low-3").turn, "right");
+  assert.equal(steerTo(at(180, 12), "low-3").turn, "left");
+  // and it takes the short way round the circle
+  assert.equal(steerTo(at(350, 12), "low-0").turn, "right");
+  assert.equal(steerTo(at(10, 12), "low-11").turn, "left");
+
+  // height
+  assert.equal(steerTo(at(15, 12), "mid-0").tilt, "up");
+  assert.equal(steerTo(at(15, 42), "low-0").tilt, "down");
+  assert.equal(steerTo(at(15, 12), "top").tilt, "up");
+
+  // close enough: hold still
+  const here = targetView("mid-4");
+  const arrived = steerTo(at(here.azimuth, here.elevation), "mid-4");
+  assert.equal(arrived.arrived, true);
+  assert.match(arrived.text, /Hold it there/);
+
+  // the arrow angle: 0 is up the screen, 90 is right
+  assert.ok(Math.abs(steerTo(at(0, 12), "low-3").angle - 90) < 1, "pure right turn points right");
+  assert.ok(Math.abs(steerTo(at(15, 12), "top").angle) < 1, "pure lift points up");
+  assert.ok(steerTo(at(15, 42), "low-0").angle === 180, "pure drop points down");
+});

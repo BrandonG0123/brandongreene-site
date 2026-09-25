@@ -246,6 +246,47 @@ function renderPlan() {
 document.querySelectorAll("input[name=mat-unit]").forEach((r) =>
   r.addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); }));
 
+/** Big arrow on the camera view: which way to move next. */
+function renderSteer(s, scanner) {
+  const arrow = $("steer"), label = $("steer-text");
+  const show = scanner.capturing && s.hasView && !s.done && (s.steer.angle != null || s.steer.arrived);
+  arrow.hidden = !show;
+  label.hidden = !show;
+  if (!show) return;
+  arrow.classList.toggle("arrived", s.steer.arrived);
+  if (s.steer.angle != null) {
+    // Sit toward the edge it points at, so the arrow never covers the subject.
+    const rad = (s.steer.angle * Math.PI) / 180;
+    arrow.style.transform = `translate(${(Math.sin(rad) * 26).toFixed(1)}%, ${(-Math.cos(rad) * 22).toFixed(1)}%)`;
+    arrow.firstElementChild.style.transform = `rotate(${s.steer.angle.toFixed(0)}deg)`;
+  } else {
+    arrow.style.transform = "none";
+  }
+  label.textContent = s.steer.text;
+}
+
+const SPEAKER = {
+  on: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  off: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+};
+
+function wireSoundToggle(scanner) {
+  const btn = $("btn-sound");
+  const paint = () => {
+    // An inline icon, not an emoji: emoji fall back to a missing-glyph box on iOS.
+    btn.innerHTML = scanner.cues.enabled ? `${SPEAKER.on} Sound on` : `${SPEAKER.off} Sound off`;
+    btn.setAttribute("aria-pressed", String(scanner.cues.enabled));
+  };
+  btn.onclick = () => {
+    scanner.cues.enabled = !scanner.cues.enabled;
+    scanner.cues.save();
+    if (scanner.cues.enabled) scanner.cues.start();
+    else globalThis.speechSynthesis?.cancel?.();
+    paint();
+  };
+  paint();
+}
+
 // ---- Rescan links: /?rescan=<submission>&t=<token> ----------------------------
 // The person already answered the questions and agreed to the safety points.
 // They only redo the scans the operator asked for, and check the mat again.
@@ -397,6 +438,7 @@ async function startScan(simulated) {
       $("guidance").className = `guidance ${s.guidance.tone}`;
       $("progress-label").textContent = `${Math.round(100 * s.progress)}%`;
       $("progress-bar").style.width = `${100 * s.progress}%`;
+      renderSteer(s, scanner);
       $("btn-finish").disabled = s.kept < MIN_FRAMES;
       $("btn-finish").className = s.done ? "btn accent" : "btn secondary";
     },
@@ -408,6 +450,7 @@ async function startScan(simulated) {
     return;
   }
   flow.scanner = scanner;
+  wireSoundToggle(scanner);
   $("btn-start").hidden = false;
   $("btn-pause").hidden = true;
   $("btn-finish").disabled = true;
