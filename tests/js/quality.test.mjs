@@ -45,7 +45,7 @@ test("sharpness judge is relative to recent frames", () => {
   for (let i = 0; i < 20; i++) j.judge(1000);
   assert.equal(j.judge(900).ok, true);
   assert.equal(j.judge(300).ok, false);
-  assert.equal(j.judge(5).message.startsWith("No detail"), true);
+  assert.match(j.judge(5).message, /can.t see any detail/);
 });
 
 test("orientation to view and cells", () => {

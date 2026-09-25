@@ -4,8 +4,22 @@
     {
       "name": "footscan",
       "runtimeExecutable": ".venv/bin/footscan",
-      "runtimeArgs": ["serve", "--port", "8765"],
+      "runtimeArgs": [
+        "serve",
+        "--port",
+        "8765"
+      ],
       "port": 8765
+    },
+    {
+      "name": "footscan-test",
+      "runtimeExecutable": ".venv/bin/footscan",
+      "runtimeArgs": [
+        "serve",
+        "--port",
+        "8766"
+      ],
+      "port": 8766
     }
   ]
 }

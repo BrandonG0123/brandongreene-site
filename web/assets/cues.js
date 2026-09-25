@@ -11,6 +11,24 @@
 
 const STORE = "footscan.cues";
 
+/**
+ * Call synchronously inside a tap handler. iOS only lets audio and speech
+ * begin from a user gesture; this opens both so later cues can play even
+ * though scanning starts by itself, without a second tap.
+ */
+export function unlockAudio() {
+  const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+  if (AC && !globalThis.__footscanAudio) {
+    try { globalThis.__footscanAudio = new AC(); } catch { /* no audio */ }
+  }
+  globalThis.__footscanAudio?.resume?.().catch(() => {});
+  try {
+    const silent = new SpeechSynthesisUtterance(" ");
+    silent.volume = 0;
+    globalThis.speechSynthesis?.speak(silent);
+  } catch { /* no speech */ }
+}
+
 export class Cues {
   constructor() {
     const saved = (() => {
@@ -30,15 +48,18 @@ export class Cues {
   /** Call from a click/tap: browsers only allow audio to begin from a gesture. */
   start() {
     if (!this.enabled || this.ctx) return;
+    // Reuse the context opened by unlockAudio() during the tap, if any.
+    this.ctx = globalThis.__footscanAudio ?? null;
     const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (AC) {
+    if (!this.ctx && AC) {
       try { this.ctx = new AC(); } catch { this.ctx = null; }
     }
     this.ctx?.resume?.().catch(() => {});
   }
 
   stop() {
-    this.ctx?.close?.().catch(() => {});
+    // Keep the shared context: closing it would silence the next scan.
+    if (this.ctx && this.ctx !== globalThis.__footscanAudio) this.ctx.close?.().catch(() => {});
     this.ctx = null;
     globalThis.speechSynthesis?.cancel?.();
   }

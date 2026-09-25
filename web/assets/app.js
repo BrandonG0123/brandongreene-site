@@ -1,10 +1,12 @@
 // Customer flow: about you -> survey -> scan plan -> (setup -> scan -> save) per planned scan -> send.
 // The survey questions and the scan plan both come from the server
 // (src/footscan/survey.py), so this file only renders them.
-import { CoverageMap, MAP_CSS } from "./coverage-map.js";
+import { readCheckBar } from "./mat-check.js";
 import { Scanner, cameraErrorMessage, loadBoards, requestMotionPermission } from "./scanner.js";
 import { createStageView } from "./stage-view.js";
+import { renderSteer, wireSoundToggle } from "./scan-ui.js";
 import { DIAGRAM_CSS, matDiagram, phonePathDiagram } from "./diagrams.js";
+import { unlockAudio } from "./cues.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -14,7 +16,7 @@ let matTolerance = null;
 // never creates a submission or uploads anything.
 const DEMO = new URLSearchParams(location.search).has("demo");
 
-$("map-css").textContent = MAP_CSS + DIAGRAM_CSS;
+$("map-css").textContent = DIAGRAM_CSS;
 $("mat-diagram").innerHTML = matDiagram();
 $("path-diagram").innerHTML = phonePathDiagram();
 
@@ -237,55 +239,12 @@ function renderPlan() {
     : "Each scan takes about five minutes.";
   $("plan-error").textContent = DEMO ? "Demo mode: nothing will be sent." : "";
   loadMatBars().then(() => {
-    describeExpected();
-    if (DEMO && !$("mat-check").value) $("mat-check").value = String(currentBar().value);
+    if (DEMO && !$("mat-check").value) $("mat-check").value = "10";
   });
   show("plan", "survey");
 }
 
-document.querySelectorAll("input[name=mat-unit]").forEach((r) =>
-  r.addEventListener("change", () => { $("mat-check").value = ""; describeExpected(); }));
 
-/** Big arrow on the camera view: which way to move next. */
-function renderSteer(s, scanner) {
-  const arrow = $("steer"), label = $("steer-text");
-  const show = scanner.capturing && s.hasView && !s.done && (s.steer.angle != null || s.steer.arrived);
-  arrow.hidden = !show;
-  label.hidden = !show;
-  if (!show) return;
-  arrow.classList.toggle("arrived", s.steer.arrived);
-  if (s.steer.angle != null) {
-    // Sit toward the edge it points at, so the arrow never covers the subject.
-    const rad = (s.steer.angle * Math.PI) / 180;
-    arrow.style.transform = `translate(${(Math.sin(rad) * 26).toFixed(1)}%, ${(-Math.cos(rad) * 22).toFixed(1)}%)`;
-    arrow.firstElementChild.style.transform = `rotate(${s.steer.angle.toFixed(0)}deg)`;
-  } else {
-    arrow.style.transform = "none";
-  }
-  label.textContent = s.steer.text;
-}
-
-const SPEAKER = {
-  on: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-  off: `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" style="vertical-align:-3px"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`,
-};
-
-function wireSoundToggle(scanner) {
-  const btn = $("btn-sound");
-  const paint = () => {
-    // An inline icon, not an emoji: emoji fall back to a missing-glyph box on iOS.
-    btn.innerHTML = scanner.cues.enabled ? `${SPEAKER.on} Sound on` : `${SPEAKER.off} Sound off`;
-    btn.setAttribute("aria-pressed", String(scanner.cues.enabled));
-  };
-  btn.onclick = () => {
-    scanner.cues.enabled = !scanner.cues.enabled;
-    scanner.cues.save();
-    if (scanner.cues.enabled) scanner.cues.start();
-    else globalThis.speechSynthesis?.cancel?.();
-    paint();
-  };
-  paint();
-}
 
 // ---- Rescan links: /?rescan=<submission>&t=<token> ----------------------------
 // The person already answered the questions and agreed to the safety points.
@@ -332,36 +291,20 @@ async function loadMatBars() {
   }
   return matBars;
 }
-const matUnit = () => document.querySelector("input[name=mat-unit]:checked").value;
-const currentBar = () => matBars?.find((b) => b.unit === matUnit());
-
-function describeExpected() {
-  const bar = currentBar();
-  $("mat-expect").textContent = bar ? `It should end at ${bar.value} ${bar.unit === "cm" ? "cm" : "inches"}.` : "";
-}
-
 function checkMatPrint() {
-  const bar = currentBar();
-  if (!bar) return "Couldn't load the mat details. Reload the page and try again.";
-  const raw = $("mat-check").value;
-  const unit = bar.unit === "cm" ? "cm" : "inches";
-  if (!raw) return `Print the mat, measure the ${unit} bar with a ruler, and type the number it ends at.`;
-  const value = Number(raw);
-  const mm = value * (bar.length_mm / bar.value);
-  if (Math.abs(mm - bar.length_mm) > (matTolerance ?? 1.5))
-    return `Your bar ends at ${value} ${unit}, but it should end at ${bar.value}. The printer made the mat the wrong size. Print it again with size set to 100% ("Actual size"), then measure again.`;
-  return null;
+  if (!matBars) return { ok: false, message: "Couldn't load the mat details. Reload the page and try again." };
+  return readCheckBar($("mat-check").value, matBars, matTolerance ?? 1.5);
 }
 
 $("btn-plan-start").addEventListener("click", async () => {
   const btn = $("btn-plan-start");
-  const matProblem = checkMatPrint();
-  if (matProblem) {
-    $("plan-error").textContent = matProblem;
+  const check = checkMatPrint();
+  if (!check.ok) {
+    $("plan-error").textContent = check.message;
     $("mat-check").focus();
     return;
   }
-  flow.matCheck = { value: Number($("mat-check").value), unit: matUnit() };
+  flow.matCheck = { value: Number($("mat-check").value), unit: check.bar.unit };
   if (!DEMO && !flow.submission) {
     btn.disabled = true;
     try {
@@ -410,32 +353,65 @@ function openSetup() {
   $("setup-eyebrow").textContent = `Scan ${flow.scanIndex + 1} of ${total}`;
   $("setup-title").textContent = `Get ready: ${scan.label.toLowerCase()}`;
   $("setup-steps").innerHTML = (SETUP_STEPS[scan.condition] || SETUP_STEPS.swb).map((t) => `<li><p>${t}</p></li>`).join("");
-  $("load-hint").textContent = scan.condition === "fwb"
-    ? "optional: stand with this foot on a bathroom scale and the other on a book of the same height"
-    : "optional: put a scale under this foot and enter what it shows";
-  $("load").value = "";
   $("setup-error").textContent = "";
   $("btn-open").hidden = DEMO;
   $("btn-demo").hidden = !DEMO;
   show("setup", "scan");
 }
 
-$("btn-open").addEventListener("click", () => startScan(false));
-$("btn-demo").addEventListener("click", () => startScan(true));
+// Unlock sound on the tap itself: browsers only allow audio to begin from a
+// gesture, and scanning now starts by itself a moment later.
+$("btn-open").addEventListener("click", () => { unlockAudio(); startScan(false); });
+$("btn-demo").addEventListener("click", () => { unlockAudio(); startScan(true); });
+
+// Scanning begins by itself once the mat has been in view for a moment, with
+// a short countdown, so there is one button to press instead of two.
+const AUTO_START_AFTER_MS = 1200;
+const COUNTDOWN_S = 3;
+function autoStart(s, scanner) {
+  if (scanner.started) return null;
+  const now = performance.now();
+  if (!s.matVisible) {
+    // One missed frame is normal; only start over if the mat is really gone.
+    flow.matLostAt ??= now;
+    if (flow.matSeenSince == null || now - flow.matLostAt > 900) {
+      flow.matSeenSince = null;
+      return { text: "Point the phone at the mat so the black squares are in view.", tone: "" };
+    }
+  } else {
+    flow.matLostAt = null;
+  }
+  flow.matSeenSince ??= now;
+  const left = COUNTDOWN_S - Math.floor((now - flow.matSeenSince - AUTO_START_AFTER_MS) / 1000);
+  if (now - flow.matSeenSince < AUTO_START_AFTER_MS) return { text: "Got the mat. Hold still…", tone: "" };
+  if (left > 0) return { text: `Starting in ${left}…`, tone: "done" };
+  beginCapture();
+  return null;
+}
+
+function beginCapture() {
+  if (flow.scanner.started) return;
+  flow.scanner.start();
+  $("btn-start").hidden = true;
+  $("btn-pause").hidden = false;
+  $("btn-pause").textContent = "Pause";
+}
 
 async function startScan(simulated) {
   await requestMotionPermission();
   const scan = currentScan();
   $("scan-eyebrow").textContent = scan.label;
   $("demo-ribbon").hidden = !simulated;
-  const map = new CoverageMap($("map"), scan.foot, { labels: false });
+  flow.matSeenSince = null;
+  flow.matLostAt = null;
   const boards = await loadBoards();
   const scanner = new Scanner({
     stage: $("stage"), simulated, boards, requireMat: true, foot: scan.foot,
     onUpdate: (s) => {
-      map.update({ coverage: scanner.coverage, view: scanner.view, next: s.next, hasSensor: s.hasView, active: scanner.capturing });
-      $("guidance").textContent = s.guidance.text;
-      $("guidance").className = `guidance ${s.guidance.tone}`;
+      const waiting = autoStart(s, scanner);
+      const g = waiting ?? s.guidance;
+      $("guidance").textContent = g.text;
+      $("guidance").className = `guidance ${g.tone}`;
       $("progress-label").textContent = `${Math.round(100 * s.progress)}%`;
       $("progress-bar").style.width = `${100 * s.progress}%`;
       renderSteer(s, scanner);
@@ -461,12 +437,7 @@ async function startScan(simulated) {
   flow.stageView.full();
 }
 
-$("btn-start").addEventListener("click", () => {
-  flow.scanner.start();
-  $("btn-start").hidden = true;
-  $("btn-pause").hidden = false;
-  $("btn-pause").textContent = "Pause";
-});
+$("btn-start").addEventListener("click", () => beginCapture());
 
 $("btn-pause").addEventListener("click", () => {
   const s = flow.scanner;
@@ -510,7 +481,7 @@ async function saveScan() {
         await api(`${base}/frames/${i + 1}`, { method: "PUT", body: kept[i].blob, headers: { "Content-Type": "image/jpeg" } });
       }
       await api(`${base}/complete`, {
-        json: { frames: scanner.frameRecords(), summary: scanner.summary(), load_kg: $("load").value || null },
+        json: { frames: scanner.frameRecords(), summary: scanner.summary() },
       });
     }
     progress(kept.length, kept.length, DEMO ? "Demo: nothing uploaded" : "Saved");

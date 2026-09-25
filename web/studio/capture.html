@@ -36,8 +36,9 @@
       transition: transform 0.3s ease; }
     .steer svg { width: 27vmin; max-width: 160px; filter: drop-shadow(0 3px 12px rgb(0 0 0 / 55%)); transition: transform 0.25s ease; }
     .steer svg path { fill: color-mix(in srgb, var(--accent) 88%, transparent); stroke: rgb(10 14 14 / 45%); stroke-width: 2; }
-    .steer.arrived svg path { fill: color-mix(in srgb, #58d68d 88%, transparent); }
+    .steer.arrived svg path, .steer.arrived svg circle { fill: none; stroke: #58d68d; stroke-width: 10; }
     .steer.arrived svg { transform: none !important; }
+    .steer.arrived, .steer.arrived svg { transition: none; } /* the tick snaps to centre, no slide */
     .steer-text { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); pointer-events: none;
       background: rgb(10 14 14 / 78%); color: #fff; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.01em;
       padding: 7px 16px; border-radius: 999px; backdrop-filter: blur(6px); white-space: nowrap; }

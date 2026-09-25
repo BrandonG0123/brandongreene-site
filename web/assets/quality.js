@@ -49,9 +49,9 @@ export function exposureStats(gray) {
 }
 
 export function judgeExposure({ mean, clippedHigh, clippedLow }) {
-  if (clippedHigh > 0.05) return { ok: false, issue: "overexposed", message: "Too bright: highlights are clipping. Move out of direct light." };
-  if (mean > 215) return { ok: false, issue: "overexposed", message: "Too bright overall." };
-  if (clippedLow > 0.25 || mean < 50) return { ok: false, issue: "underexposed", message: "Too dark. Add even, diffuse light." };
+  if (clippedHigh > 0.05) return { ok: false, issue: "overexposed", message: "Too bright. Move out of direct sunlight or away from the lamp." };
+  if (mean > 215) return { ok: false, issue: "overexposed", message: "Too bright. Move somewhere with softer light." };
+  if (clippedLow > 0.25 || mean < 50) return { ok: false, issue: "underexposed", message: "Too dark. Turn on more lights." };
   return { ok: true, issue: null, message: "Exposure OK" };
 }
 
@@ -73,7 +73,7 @@ export class SharpnessJudge {
     return {
       ok, relative, warmingUp,
       message: ok ? "Sharp" : score < this.absoluteMin
-        ? "No detail. Is the foot in view and in focus?"
+        ? "The camera can't see any detail. Point it at the object and wait for it to focus."
         : "Blurry. Move slower and hold steady.",
     };
   }
