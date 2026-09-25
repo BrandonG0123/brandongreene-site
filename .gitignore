@@ -5,3 +5,6 @@ dist/
 *.log
 .env
 .lighthouseci/
+
+# Holds the server address — never commit this.
+deploy/deploy.env

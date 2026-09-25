@@ -1,0 +1,46 @@
+# Caddy config for the static site.
+#
+# Recommended over nginx here: Caddy gets and renews HTTPS certificates itself,
+# with no certbot cron job to forget about. That matters more than usual if the
+# domain is a .dev, which browsers refuse to load over plain HTTP.
+#
+# Install:  sudo apt install caddy
+# Place at: /etc/caddy/Caddyfile
+# Reload:   sudo systemctl reload caddy
+#
+# CHANGE THE DOMAIN on the first line to the one you registered.
+
+brandongreene.dev, www.brandongreene.dev {
+	root * /var/www/brandongreene
+	encode zstd gzip
+
+	# Clean URLs: /projects resolves to /projects/index.html, which is how
+	# Astro lays the build out.
+	try_files {path} {path}/index.html {path}.html
+	file_server
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# The site loads nothing from anywhere else: no external scripts, no
+		# external fonts, no analytics. This says so, and breaks loudly if that
+		# ever stops being true.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# Fingerprinted filenames and self-hosted fonts never change content.
+	@immutable path /fonts/* /_astro/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# HTML should revalidate, so a deploy is visible immediately.
+	@html path *.html /
+	header @html Cache-Control "public, max-age=0, must-revalidate"
+
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}
