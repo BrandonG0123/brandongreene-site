@@ -304,3 +304,32 @@ body.stage-locked { overflow: hidden; }
 
 /* The scan view stays still and compact: the camera is the moving part. */
 #v-scan .reveal, #v-saving .reveal { opacity: 1; transform: none; }
+
+
+/* ---- tidy-ups ------------------------------------------------------------ */
+/* A list that is also a card keeps the card's padding (page styles reset
+   list padding, which left the numbers hanging over the card edge). */
+.card.howto { padding: clamp(18px, 3vw, 26px); }
+
+/* The next step is always reachable: primary buttons stick to the bottom of
+   the screen on long pages instead of hiding below the fold. */
+.action-bar {
+  position: sticky; bottom: 0; z-index: 20;
+  display: flex; gap: var(--gap-s); flex-wrap: wrap; align-items: center;
+  margin-inline: -20px; padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(to bottom, transparent, var(--bg) 28%);
+}
+.action-bar .btn { flex: 1 1 auto; }
+.action-bar .btn:only-child, .action-bar .btn.primary-wide { flex-basis: 100%; }
+
+/* Header: one compact row on phones, and a one-line safety note. */
+.strip-short { display: none; }
+@media (max-width: 520px) {
+  .strip-long { display: none; }
+  .strip-short { display: inline; }
+  .safety-strip .wrap { flex-wrap: nowrap; }
+  .site-header .wrap { flex-wrap: nowrap; gap: 10px; }
+  .site-header .nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -8px; }
+  .site-header .nav::-webkit-scrollbar { display: none; }
+  .site-header .nav a { white-space: nowrap; }
+}

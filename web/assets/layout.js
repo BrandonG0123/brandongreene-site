@@ -12,7 +12,7 @@ export function footSvg({ mirror = false, cls = "" } = {}) {
 }
 
 const NAV = {
-  customer: [["/", "Scan"], ["/mat.html", "Scan mat"], ["/care.html", "Wearing your insole"]],
+  customer: [["/", "Scan"], ["/mat.html", "Scan mat"], ["/care.html", "Wearing it"]],
   studio: [
     ["/studio/", "Submissions"],
     ["/studio/capture.html", "Research capture"],
@@ -69,9 +69,10 @@ function mountLayout() {
   strip.className = "safety-strip";
   strip.setAttribute("role", "note");
   strip.innerHTML = `<div class="wrap"><strong>NOT A MEDICAL DEVICE</strong>
-    <span>${area === "studio"
+    <span class="strip-long">${area === "studio"
       ? "Nothing leaves the studio for sport without clinician sign-off."
-      : "This insole is homemade, not from a doctor. Show it to a foot doctor before you play sport in it."}</span></div>`;
+      : "This insole is homemade, not from a doctor. Show it to a foot doctor before you play sport in it."}</span>
+    <span class="strip-short">${area === "studio" ? "Clinician sign-off before sport." : "See a foot doctor before sport."}</span></div>`;
 
   const header = document.createElement("header");
   header.className = "site-header";

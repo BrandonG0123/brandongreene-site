@@ -50,6 +50,7 @@
     @media (prefers-color-scheme: dark) { .mini-map { background: rgb(22 30 29 / 92%); } }
     .mini-map .map text { display: none; }
     #scan-hud { display: grid; gap: 12px; }
+    .pdf-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .steer { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none;
       transition: transform 0.3s ease; }
     .steer svg { width: 27vmin; max-width: 160px; filter: drop-shadow(0 3px 12px rgb(0 0 0 / 55%)); transition: transform 0.25s ease; }
@@ -143,12 +144,12 @@
 
   <!-- 2. Survey -->
   <section class="view" id="v-survey" hidden style="margin:0">
-    <p class="eyebrow" id="survey-eyebrow">Questions · 1 of 3</p>
+    <p class="eyebrow" id="survey-eyebrow">Part 1 of 3</p>
     <h1 id="survey-title">Safety check</h1>
     <p class="lede" id="survey-intro"></p>
     <form class="card form" id="survey-form" novalidate></form>
     <p class="error" id="survey-error" role="alert"></p>
-    <div class="btn-row">
+    <div class="action-bar">
       <button class="btn secondary" id="btn-survey-back" type="button">Back</button>
       <button class="btn" id="btn-survey-next" type="button">Next</button>
     </div>
@@ -183,11 +184,11 @@
       <p class="muted" style="margin:0 0 14px">Photos can't tell how big your foot is. The black squares are a known
         size, so they work like a ruler. Without the mat, the scan can't be used.</p>
       <div class="diagram" id="mat-diagram" style="max-width:180px;margin:0 auto 14px"></div>
-      <div class="btn-row" style="margin-bottom:14px">
+      <div class="pdf-pair">
         <a class="btn secondary" href="/mat/footscan-mat-letter.pdf">US Letter PDF</a>
         <a class="btn secondary" href="/mat/footscan-mat-a4.pdf">A4 PDF</a>
-        <a class="btn secondary" href="/mat.html">Printing help</a>
       </div>
+      <p class="hint" style="text-align:center;margin:8px 0 16px"><a href="/mat.html">Printing help</a></p>
       <ol class="howto">
         <li><p><strong>Print both pages.</strong> In the print box, set size to <strong>100%</strong> (sometimes
           called "Actual size"). Turn off "Fit to page". Black and white is fine.</p></li>
@@ -203,7 +204,7 @@
       </div>
     </div>
     <p class="error" id="plan-error" role="alert"></p>
-    <div class="btn-row">
+    <div class="action-bar">
       <button class="btn secondary" id="btn-plan-back" type="button">Change answers</button>
       <button class="btn" id="btn-plan-start" type="button">Start scanning</button>
     </div>
@@ -216,7 +217,7 @@
     <div class="card"><ol class="howto stagger" id="setup-steps"></ol></div>
     <div class="diagram" id="path-diagram"></div>
     <p class="error" id="setup-error" role="alert"></p>
-    <div class="btn-row">
+    <div class="action-bar">
       <button class="btn" id="btn-open">Open the camera</button>
       <button class="btn secondary" id="btn-demo" hidden>Use simulated camera</button>
     </div>
@@ -271,7 +272,7 @@
     <p class="lede">Check the list, then send your photos.</p>
     <div class="foot-rows stagger" id="foot-rows"></div>
     <p class="error" id="send-error" role="alert"></p>
-    <button class="btn" id="btn-send">Send my scans</button>
+    <div class="action-bar"><button class="btn" id="btn-send">Send my scans</button></div>
   </section>
 
   <!-- 5. Done -->

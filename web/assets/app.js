@@ -89,7 +89,7 @@ const applies = (q) => Object.entries(q.show_if || {}).every(([k, vals]) => vals
 
 function renderSection() {
   const section = flow.sections[flow.sectionIndex];
-  $("survey-eyebrow").textContent = `Questions · ${flow.sectionIndex + 1} of ${flow.sections.length}`;
+  $("survey-eyebrow").textContent = `Part ${flow.sectionIndex + 1} of ${flow.sections.length}`;
   $("survey-title").textContent = section.title;
   $("survey-intro").textContent = section.intro || "";
   $("survey-error").textContent = "";
@@ -237,7 +237,7 @@ function renderPlan() {
   $("plan-helper").textContent = standing
     ? "Ask someone to hold the phone for the standing scans. Each scan takes about five minutes."
     : "Each scan takes about five minutes.";
-  $("plan-error").textContent = DEMO ? "Demo mode: nothing will be sent." : "";
+  $("plan-error").textContent = "";
   loadMatBars().then(() => {
     if (DEMO && !$("mat-check").value) $("mat-check").value = "10";
   });
@@ -350,7 +350,9 @@ const SETUP_STEPS = {
 function openSetup() {
   const scan = currentScan();
   const total = flow.evaluation.plan.length;
-  $("setup-eyebrow").textContent = `Scan ${flow.scanIndex + 1} of ${total}`;
+  // A counter only helps when there's more than one scan.
+  $("setup-eyebrow").textContent = total > 1 ? `Scan ${flow.scanIndex + 1} of ${total}` : "";
+  $("setup-eyebrow").hidden = total <= 1;
   $("setup-title").textContent = `Get ready: ${scan.label.toLowerCase()}`;
   $("setup-steps").innerHTML = (SETUP_STEPS[scan.condition] || SETUP_STEPS.swb).map((t) => `<li><p>${t}</p></li>`).join("");
   $("setup-error").textContent = "";
