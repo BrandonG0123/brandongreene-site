@@ -161,6 +161,42 @@ hr {
   margin: var(--space-7) 0;
 }
 
+/* Tables — used by project pages for phase and status breakdowns. Ruled like
+   a parts list rather than boxed in, matching the rest of the sheet. */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+  text-align: left;
+  /* Without this a table refuses to shrink below its widest cell's content and
+     drags the whole page into horizontal scroll at 320px. Fixed layout makes the
+     columns share the available width and lets the text wrap instead. */
+  table-layout: fixed;
+}
+th, td { overflow-wrap: break-word; }
+thead th {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+  font-weight: 400;
+  border-bottom: 1px solid var(--rule);
+  padding: 0 var(--space-3) var(--space-2) 0;
+  vertical-align: bottom;
+}
+tbody td {
+  border-bottom: 1px solid var(--hairline);
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  vertical-align: top;
+}
+thead th:last-child,
+tbody td:last-child { padding-right: 0; }
+
+/* A narrow first column of row numbers should not take a third of the table. */
+tbody td:first-child,
+thead th:first-child { width: 2.5em; color: var(--fg-muted); font-family: var(--font-mono); }
+
 blockquote {
   border-left: 3px solid var(--rule);
   margin-left: 0;
@@ -238,10 +274,15 @@ figcaption {
 /* The drawing sheet: a reading column beside a margin rail of callouts. */
 .sheet {
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, 1fr), not 1fr: a grid item defaults to min-width:auto, so a wide
+     child (a table, a long code line) refuses to shrink and pushes the whole
+     page into horizontal scroll. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   padding-block: var(--space-6) var(--space-8);
 }
+
+.sheet > * { min-width: 0; }
 
 @media (min-width: 56.25rem) {
   .sheet {
