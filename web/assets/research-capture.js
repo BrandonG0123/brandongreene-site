@@ -12,7 +12,9 @@ const CONDITION_LABELS = {
   swb: "Semi-weight-bearing",
   fwb: "Full weight-bearing",
   object: "Object (scanner test)",
+  calibration: "Calibration object",
 };
+const NOT_A_FOOT = ["object", "calibration"];
 
 const $ = (id) => document.getElementById(id);
 const views = { setup: $("setup-view"), live: $("live-view"), review: $("review-view") };
@@ -24,7 +26,7 @@ function show(name) {
 let setup = null;
 let scanner = null;
 let stageView = null;
-const isObject = () => form.condition.value === "object";
+const isObject = () => NOT_A_FOOT.includes(form.condition.value);
 
 // ---- setup -----------------------------------------------------------------
 const form = $("setup-form");
@@ -36,7 +38,7 @@ function syncSetup() {
   const cond = form.condition.value;
   const loaded = cond === "swb" || cond === "fwb";
   $("load-field").hidden = !loaded;
-  $("foot-row").hidden = cond === "object";
+  $("foot-row").hidden = NOT_A_FOOT.includes(cond);
   $("object-note").hidden = cond !== "object";
   document.querySelectorAll("#checklist [data-cond]").forEach((li) => {
     li.hidden = li.dataset.cond === "nwb" ? cond !== "nwb" : !loaded;

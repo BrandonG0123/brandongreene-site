@@ -28,8 +28,8 @@ starts with proving the measurements are repeatable before any CAD.
 | # | Phase | Status |
 |---|-------|--------|
 | 0 | Measurement protocol + repeatability study | **built — awaiting real data** |
-| 1 | Marker board PDF + guided capture page (+ LiDAR path) | **capture page built; board, LiDAR import next** |
-| 2 | Reconstruction (COLMAP/Meshroom) + accuracy study | not started |
+| 1 | Marker board PDF + guided capture page (+ LiDAR path) | **built — untested on a real printed mat** |
+| 2 | Reconstruction (COLMAP) + accuracy study ([docs/phase2-reconstruction.md](docs/phase2-reconstruction.md)) | **built — awaiting real scans** |
 | 3 | Landmark viewer | not started |
 | 4 | Parametric generator (CadQuery) + zonal lattice | not started |
 | 5 | Lattice coupon compression testing | not started |
@@ -85,12 +85,29 @@ files from scanning apps (e.g. LiDAR scans from Polycam or Scaniverse), detects
 metres vs millimetres, and stores the model in the research library for
 comparison with photo scans.
 
+**3D models (Phase 2).** In the studio, *3D model* on a capture or a
+customer's scan builds a surface in millimetres in the background (several
+minutes) and shows how well it went together. For the accuracy study, print
+the calibration object (Project page), scan it as *Calibration object*,
+enter your caliper readings, build. From the command line:
+
+```bash
+.venv/bin/pip install -e ".[recon]"     # COLMAP, MeshLab, Manifold
+.venv/bin/footscan calib-object -o calibration-object.stl
+.venv/bin/footscan reconstruct data/captures/<id> [--calibration-object]
+```
+
+See [docs/phase2-reconstruction.md](docs/phase2-reconstruction.md) for every
+step, what the error numbers mean, and what has (and hasn't) been tested.
+To try the studio on test data without touching your library:
+`footscan serve --data .demo-data`.
+
 **On the internet.** See [docs/HOSTING.md](docs/HOSTING.md): use `--public`
 behind a tunnel, and read the checklist first.
 
 **Not built yet:** turning scans into a TPU print file. That needs
-reconstruction, landmarks and the generator (Phases 2–4), and the Phase 0
-repeatability gate has to pass first.
+landmarks and the generator (Phases 3–4), and the Phase 0 repeatability
+gate has to pass first.
 
 JavaScript tests (frame quality, coverage, and camera position from the mat):
 

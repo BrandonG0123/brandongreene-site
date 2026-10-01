@@ -32,6 +32,27 @@
     </figure>
   </section>
 
+  <section id="calibration-object">
+    <p class="eyebrow">Phase 2 · accuracy study</p>
+    <h2>Print the calibration object</h2>
+    <div class="card howto">
+      <p>The only honest way to say how accurate a scan is: scan something whose exact shape you know. This object is
+        150 × 70 mm with a dome, a ramp and two flat terraces, sized like a foot.</p>
+      <ol>
+        <li><strong>Print it</strong> base-down at 100% scale, no supports, in a matte light colour (white or grey PLA).
+          <a href="/studio/files/footscan-calibration-object.stl?download=1">Download the STL</a>.</li>
+        <li><strong>Measure it</strong> with calipers once it has cooled: overall length and width, base thickness,
+          the dome's top height, and both terrace heights (table to top). Printers are off by a few tenths of a
+          millimetre; your readings make the comparison fair.</li>
+        <li><strong>Scan it</strong> standing in the middle of the mat: Research capture → "Calibration object".
+          Scan it once as printed, and once after dotting it all over with a fine marker pen (more texture),
+          noting which in the notes.</li>
+        <li><strong>Build the 3D model</strong> from the capture library, enter your caliper readings, rebuild.
+          The page shows the median and 95th-percentile surface error and each dimension: scan vs. calipers.</li>
+      </ol>
+    </div>
+  </section>
+
   <section>
     <p class="eyebrow">The pipeline</p>
     <h2>Eight phases, and the first one isn't CAD</h2>
@@ -44,7 +65,7 @@
         <span class="badge warn">In progress</span></li>
       <li><span class="num">02</span><div><h3>Reconstruction & accuracy</h3>
         <p>Photos → mesh with a reproducible config, scaled from the board, checked against a printed object of known size.</p></div>
-        <span class="badge">Planned</span></li>
+        <span class="badge ok">Built · awaiting real scans</span></li>
       <li><span class="num">03</span><div><h3>Landmarks</h3>
         <p>Click the navicular, met heads, calcaneus and malleoli on the 3D mesh. They drive everything downstream.</p></div>
         <span class="badge">Planned</span></li>

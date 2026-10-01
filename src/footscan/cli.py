@@ -4,6 +4,8 @@
     footscan repeatability data/raw/*.csv -o reports/phase0.md \
         [--target ahi=0.02 --device-condition swb] [--scans-per-device 3]
     footscan serve [--host 0.0.0.0 --https]
+    footscan calib-object -o calibration-object.stl
+    footscan reconstruct data/captures/<id> [--calibration-object] [--calipers calipers.json]
 """
 
 from __future__ import annotations
@@ -80,10 +82,43 @@ def cmd_mat(args) -> int:
     return 0
 
 
+def cmd_calib_object(args) -> int:
+    from .recon import calib
+
+    info = calib.write_stl(args.output)
+    print(f"wrote {info['path']}: {info['extents_mm']} mm, {info['faces']} triangles, {info['volume_cm3']} cm3")
+    print("Print base-down at 100% scale, no supports. Then measure with calipers:")
+    for c in calib.CALIPER_CHECKS:
+        print(f"  {c.key:13s} {c.label} (model {c.nominal_mm:g} mm): {c.how}")
+    return 0
+
+
+def cmd_reconstruct(args) -> int:
+    from .recon import pipeline
+
+    calipers = json.loads(Path(args.calipers).read_text()) if args.calipers else None
+    report = pipeline.reconstruct(args.capture, calibration_object=args.calibration_object or bool(calipers),
+                                  calipers=calipers)
+    print(SAFETY_BANNER)
+    s = report["scale"]
+    print(f"\nscale from the mat: residual {s['residual_rms_mm']} mm RMS over {s['corners_located']} corners; "
+          f"sheets agree within {s.get('sheet_scale_disagreement_pct')}%")
+    print(f"mesh: {report['mesh']['final_faces']:,} triangles -> {Path(args.capture) / 'recon' / 'mesh.ply'}")
+    if "accuracy" in report:
+        a = report["accuracy"]["surface_deviation"]
+        print(f"accuracy vs calibration object: median {a['median_mm']} mm, 95th percentile {a['p95_mm']} mm, "
+              f"signed mean {a['signed_mean_mm']} mm")
+        if report.get("synthetic"):
+            print("  (SYNTHETIC capture: this tests the code, not a real phone)")
+    for w in report["warnings"]:
+        print(f"warning: {w}")
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .server import serve
 
-    serve(args.host, args.port, args.https, args.public)
+    serve(args.host, args.port, args.https, args.public, data_dir=Path(args.data) if args.data else None)
     return 0
 
 
@@ -108,12 +143,25 @@ def main(argv=None) -> int:
     mt = sub.add_parser("mat", help="regenerate the printable scan mat PDFs and board definitions in web/mat/")
     mt.set_defaults(func=cmd_mat)
 
+    co = sub.add_parser("calib-object", help="write the printable calibration object (STL) for the accuracy study")
+    co.add_argument("-o", "--output", default="calibration-object.stl")
+    co.set_defaults(func=cmd_calib_object)
+
+    rc = sub.add_parser("reconstruct", help="photos on the mat -> mesh in millimetres (Phase 2)")
+    rc.add_argument("capture", help="a capture folder (photos + capture.json)")
+    rc.add_argument("--calibration-object", action="store_true",
+                    help="the photos are of the printed calibration object: also run the accuracy study")
+    rc.add_argument("--calipers", help="JSON of caliper measurements of the print, e.g. {\"length\": 149.9}")
+    rc.set_defaults(func=cmd_reconstruct)
+
     sv = sub.add_parser("serve", help="run the local website (capture, library, break-in tracker)")
     sv.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to reach it from your phone")
     sv.add_argument("--port", type=int, default=8765)
     sv.add_argument("--https", action="store_true", help="self-signed HTTPS (phones require it for camera access)")
     sv.add_argument("--public", action="store_true",
                     help="behind a tunnel or proxy on the internet: trust nothing as local; studio needs the key")
+    sv.add_argument("--data", help="data folder (default: data/). A separate folder keeps demos and tests "
+                                   "out of your real library")
     sv.set_defaults(func=cmd_serve)
 
     args = ap.parse_args(argv)

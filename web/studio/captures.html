@@ -33,6 +33,7 @@
         <option value="nwb">nwb</option><option value="nwb_relaxed">nwb_relaxed</option>
         <option value="swb">swb</option><option value="fwb">fwb</option>
         <option value="object">object</option>
+        <option value="calibration">calibration</option>
       </select>
       <select id="f-foot" aria-label="Filter by foot"><option value="">Both feet</option><option value="right">Right</option><option value="left">Left</option></select>
       <a class="btn" href="/studio/capture.html">New capture</a>
@@ -94,7 +95,7 @@
       const cov = s.coverage_completeness == null ? "—" : `${Math.round(100 * s.coverage_completeness)}%`;
       return `<article class="card cap" id="${esc(c.capture_id)}">${thumb}<div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
-          <span class="badge brand">${esc(c.condition)}</span>${c.foot ? `<span class="badge">${esc(c.foot)} foot</span>` : `<span class="badge warn">not measurable</span>`}${status}</div>
+          <span class="badge brand">${esc(c.condition)}</span>${c.foot ? `<span class="badge">${esc(c.foot)} foot</span>` : c.condition === "calibration" ? `<span class="badge">accuracy study</span>` : `<span class="badge warn">not measurable</span>`}${status}</div>
         <h3 class="mono">${esc(c.capture_id)}</h3>
         <dl>
           <div><dt>Session</dt><dd>${esc(c.session)}</dd></div>
@@ -107,6 +108,8 @@
           <div><dt>Created</dt><dd>${esc(c.created?.replace("T", " "))}</dd></div>
         </dl>
         ${c.notes ? `<p class="hint" style="margin:8px 0 0">${esc(c.notes)}</p>` : ""}
+        ${c.status === "complete" && c.frame_files?.length && c.condition !== "object"
+          ? `<p style="margin:10px 0 0"><a class="btn secondary" href="/studio/model.html?capture=${encodeURIComponent(c.capture_id)}">3D model</a></p>` : ""}
       </div></article>`;
     }).join("");
   }

@@ -1,0 +1,210 @@
+"""The underside of the foot, in the foot's own coordinate frame.
+
+After reconstruction the mesh is in *mat* coordinates: x across the paper,
+y toward the toe sheet, z up. Measurements and the insole design need *foot*
+coordinates (frame.py): x forward along the foot, y toward the inside
+(medial), z up, origin under the back of the heel. Phase 3 will place that
+frame from landmarks you click (heel, 1st and 5th metatarsal joints); this
+module builds a **provisional** frame from the mesh alone, so a scan can be
+looked at and roughly measured before any clicking. The report labels it
+provisional, and Phase 3 replaces it.
+
+The provisional frame
+---------------------
+- **Up** is the mat's z axis: in a standing or semi-standing scan, the floor
+  under the foot *is* the reference plane (frame.py's ``support_plane``).
+- **Forward** is the long axis of the footprint: take the part of the foot
+  within ``FOOTPRINT_BAND_MM`` of the floor, flatten it onto the floor, and
+  find the direction across which it is narrowest (see ``long_axis``).
+  That gives a line, not a direction. Two independent clues pick the toe end:
+  the mat says "toes toward sheet 2" (+y), and the leg rises above the
+  *heel*, so the scan's high points (the shin) sit over the back of the
+  foot. If the clues disagree, the leg wins and the report says so.
+- **Medial** is up x forward (the foot's left) for a right foot, and the
+  opposite for a left foot, so both feet get the same sign conventions.
+- **Origin** is the rearmost point of the footprint, on the floor.
+
+What "plantar surface" means here
+---------------------------------
+In a weight-bearing scan the sole is pressed on the paper and no camera
+sees it. What the cameras *do* see is where the sole leaves the floor: under
+the inner arch, the surface curves up from the paper and is visible from
+low, inside views. So:
+
+- ``plantar.ply``: the downward-facing part of the surface (normal pointing
+  more than ``DOWNWARD_COS`` toward the floor) near the floor: the arch's
+  underside and the rounded edges of the heel and forefoot.
+- **Footprint outline**: where the surface meets the paper (the open edge
+  the floor cut left behind), flattened onto the floor.
+- **Medial arch profile**: walking forward along the foot in 2 mm steps,
+  the height of the lowest surface point on the inside third of the foot.
+  Where the foot touches the floor it is ~0; under the arch it rises. This
+  is the shape the insole's arch is defined *relative to* (Phase 4), and for
+  a flat foot it is the number that matters most, so it is reported as a
+  curve, not a single value.
+
+In a non-weight-bearing scan the sole *is* visible, and the same
+downward-facing selection is the full plantar surface; but there is no floor
+under the foot, so the frame must come from landmarks (Phase 3).
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from ..frame import FootFrame
+
+FOOTPRINT_BAND_MM = 12.0
+LEG_MIN_HEIGHT_MM = 70.0
+DOWNWARD_COS = 0.25
+PLANTAR_MAX_HEIGHT_MM = 40.0
+PROFILE_STEP_MM = 2.0
+
+
+class PlantarError(ValueError):
+    pass
+
+
+def long_axis(xy: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """Direction of the footprint's length: the one across which it is narrowest.
+
+    Wrap the footprint in its convex hull (a rubber band around it), then
+    try each hull edge as a direction and measure the hull's width across
+    it. The narrowest width is always found along some hull edge (the
+    "rotating calipers" result), and the length axis is that edge. Unlike
+    the principal axis of all the points, the hull ignores the arch's gap,
+    which lies inside the outline and would otherwise tilt the axis toward
+    the outer border.
+    """
+    from scipy.spatial import ConvexHull
+
+    H = xy[ConvexHull(xy).vertices]
+    best = None
+    for a, b in zip(H, np.roll(H, -1, axis=0)):
+        e = b - a
+        n = np.linalg.norm(e)
+        if n < 1e-9:
+            continue
+        e /= n
+        perp = np.array([-e[1], e[0]])
+        width = float(np.ptp(H @ perp))
+        if best is None or width < best[1]:
+            best = (e, width, float(np.ptp(H @ e)))
+    e, width, length = best
+    return e, length, width
+
+
+def provisional_frame(mesh, foot: str) -> tuple[FootFrame, dict]:
+    if foot not in ("left", "right"):
+        raise PlantarError(f"foot must be 'left' or 'right', got {foot!r}")
+    V = np.asarray(mesh.vertices)
+    low = V[V[:, 2] < FOOTPRINT_BAND_MM]
+    if len(low) < 100:
+        raise PlantarError("almost no surface near the floor; is this a standing or semi-standing scan?")
+    xy = low[:, :2]
+    mu = xy.mean(0)
+    axis, length, width = long_axis(xy)
+    elongation = length / max(width, 1e-9)
+
+    notes = []
+    by_mat = 1.0 if axis[1] >= 0 else -1.0  # the mat's instruction: toes toward +y
+    high = V[V[:, 2] > LEG_MIN_HEIGHT_MM]
+    by_leg = None
+    if len(high) > 50:
+        s = (high[:, :2].mean(0) - mu) @ axis
+        by_leg = -1.0 if s > 0 else 1.0  # the leg is over the heel, so forward points away from it
+    sign = by_leg if by_leg is not None else by_mat
+    if by_leg is not None and by_leg != by_mat:
+        notes.append("the foot points away from the toe sheet (the leg says so); used the leg")
+    if by_leg is None:
+        notes.append("no leg in the scan, so the toe end was taken from the mat's direction")
+    fwd2 = sign * axis
+    along = (low[:, :2] - mu) @ fwd2
+    heel_xy = mu + along.min() * fwd2
+
+    anterior = np.r_[fwd2, 0.0]
+    up = np.array([0.0, 0.0, 1.0])
+    left = np.cross(up, anterior)
+    medial = left if foot == "right" else -left
+    frame = FootFrame(np.r_[heel_xy, 0.0], anterior, medial, up, foot, "support_plane")
+    info = dict(
+        provisional=True,
+        method="mat floor + footprint narrowest-width axis; replaced by landmarks in Phase 3",
+        footprint_elongation=round(elongation, 2),
+        toe_end_from="leg" if by_leg is not None else "mat",
+        notes=notes,
+    )
+    return frame, info
+
+
+def to_foot(mesh, frame: FootFrame):
+    """A copy of the mesh in foot coordinates (anterior, medial, up)."""
+    out = mesh.copy()
+    T = np.eye(4)
+    T[:3, :3] = frame.rotation
+    T[:3, 3] = -frame.rotation @ frame.origin
+    # Left-foot frames are mirror images; trimesh notices the negative
+    # determinant and flips the triangles' winding so they still face outward.
+    out.apply_transform(T)
+    return out
+
+
+def plantar_surface(foot_mesh):
+    """Downward-facing surface near the floor (foot coordinates)."""
+    m = foot_mesh.copy()
+    keep = (m.face_normals[:, 2] < -DOWNWARD_COS) & (m.triangles_center[:, 2] < PLANTAR_MAX_HEIGHT_MM)
+    m.update_faces(keep)
+    m.remove_unreferenced_vertices()
+    return m
+
+
+def footprint_outline(foot_mesh, max_height: float = 1.5) -> np.ndarray:
+    """Open-edge vertices at floor level, flattened: where the foot meets the paper (N x 2)."""
+    import trimesh
+
+    edges = foot_mesh.edges_sorted
+    groups = trimesh.grouping.group_rows(edges, require_count=1)  # edges used by one face = the border
+    border = np.unique(edges[groups].ravel())
+    P = foot_mesh.vertices[border]
+    return P[P[:, 2] < max_height][:, :2]
+
+
+def medial_profile(foot_mesh, step: float = PROFILE_STEP_MM) -> list[dict]:
+    """Lowest surface height on the inside third of the foot, every ``step`` mm from heel to toe."""
+    V = np.asarray(foot_mesh.vertices)
+    low = V[V[:, 2] < FOOTPRINT_BAND_MM]
+    length = float(low[:, 0].max())
+    out = []
+    for x in np.arange(step, length - step / 2, step):
+        sl = V[np.abs(V[:, 0] - x) < step / 2]
+        sl = sl[sl[:, 2] < PLANTAR_MAX_HEIGHT_MM]
+        if len(sl) < 5:
+            continue
+        lo, hi = np.percentile(sl[:, 1], [1, 99])
+        inner = sl[sl[:, 1] > hi - (hi - lo) / 3]
+        if len(inner) < 3:
+            continue
+        out.append(dict(x_mm=round(float(x), 1), height_mm=round(float(inner[:, 2].min()), 2)))
+    return out
+
+
+def run(mesh, foot: str) -> dict:
+    """Frame, foot-frame mesh, plantar surface, outline and arch profile for one weight-bearing scan."""
+    frame, info = provisional_frame(mesh, foot)
+    fm = to_foot(mesh, frame)
+    low = fm.vertices[fm.vertices[:, 2] < FOOTPRINT_BAND_MM]
+    outline = footprint_outline(fm)
+    profile = medial_profile(fm)
+    arch = max(profile, key=lambda r: r["height_mm"]) if profile else None
+    summary = dict(
+        **info,
+        foot=foot,
+        frame=dict(origin_mat_mm=frame.origin.round(3).tolist(), anterior=frame.anterior.round(6).tolist(),
+                   medial=frame.medial.round(6).tolist(), up=frame.up.tolist()),
+        footprint_length_mm=round(float(low[:, 0].max() - low[:, 0].min()), 1),
+        footprint_width_mm=round(float(np.percentile(low[:, 1], 99.5) - np.percentile(low[:, 1], 0.5)), 1),
+        medial_profile=profile,
+        highest_medial_point=arch,
+        outline_points=int(len(outline)),
+    )
+    return dict(summary=summary, foot_mesh=fm, plantar=plantar_surface(fm), outline=outline)

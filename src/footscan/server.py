@@ -34,6 +34,11 @@ GET  /api/submissions/<id>                              detail
 GET  /api/submissions/<id>/scans/<foot>/frames/<n>.jpg
 POST /api/submissions/<id>/status                       {status, note}
 GET/POST/PUT /api/captures...                           research captures (Phase 0)
+POST /api/captures/<id>/recon                           build the 3D model (Phase 2), in the background
+GET  /api/captures/<id>/recon                           its progress and results
+GET  /api/captures/<id>/recon/<file>                    mesh.ply, report.json, ... (download)
+PUT  /api/captures/<id>/calipers                        caliper readings of the calibration object
+POST/GET /api/submissions/<id>/scans/<key>/recon[/<file>]   the same for a customer's scan
 GET  /api/studio                                        scan address to share
 
 Phones only allow camera and motion-sensor access on secure origins, so
@@ -58,6 +63,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import mat as mat_mod
+from . import recon_jobs
 from . import survey as survey_mod
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -66,8 +72,11 @@ DATA_DIR = ROOT / "data"
 
 # "object" is a scanner test: any object, no mat, no foot. It can't be scaled
 # to millimetres, so it never counts as foot measurement data.
-CONDITIONS = {"nwb", "nwb_relaxed", "swb", "fwb", "object"}
+# "calibration" is the printed calibration object on the mat (Phase 2
+# accuracy study): scaled, but not a foot either.
+CONDITIONS = {"nwb", "nwb_relaxed", "swb", "fwb", "object", "calibration"}
 UNSCALED_CONDITIONS = {"object"}
+NON_FOOT_CONDITIONS = {"object", "calibration"}
 METHODS = {"bare_skin", "speckle_sock", "marker_dots", "foam_impression", "imported_mesh"}
 FEET = ("left", "right")
 REQUIRED_ACKS = ("not_medical_device", "clinician_review", "break_in", "photo_consent")
@@ -155,7 +164,7 @@ def validate_setup(body: dict) -> dict:
     method = body.get("method", "bare_skin")
     if cond not in CONDITIONS:
         raise BadRequest(f"condition must be one of {sorted(CONDITIONS)}")
-    is_object = cond in UNSCALED_CONDITIONS
+    is_object = cond in NON_FOOT_CONDITIONS
     if is_object:
         foot = foot if foot in FEET else None
     elif foot not in FEET:
@@ -289,6 +298,7 @@ def load_studio_key(path: Path) -> str:
 def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check=is_loopback,
                  studio_key: str | None = None, secure_cookie: bool = False,
                  submissions_per_hour: int = SUBMISSIONS_PER_HOUR):
+    runner = recon_jobs.ReconRunner()
     captures_dir = data_dir / "captures"
     submissions_dir = data_dir / "submissions"
     limiter = RateLimiter(submissions_per_hour)
@@ -610,6 +620,18 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                         if not f.is_file():
                             raise FileNotFoundError
                         return self.send_file(f, "image/jpeg")
+                if rest[2] == "recon":
+                    self.require_local()
+                    scan = meta["scans"][key]
+                    if rest[3:] == [] and method == "POST":
+                        if scan.get("status") != "complete":
+                            raise BadRequest("this scan isn't finished")
+                        # What the reconstruction needs to know, next to the photos.
+                        write_json(scan_dir / "capture.json", dict(
+                            capture_id=f"{meta['id']}/{key}", foot=scan["foot"], condition=scan["condition"],
+                            mat_paper=(scan.get("summary") or {}).get("mat_paper"),
+                            frames=[{"file": f} for f in scan.get("frame_files", [])]))
+                    return self.recon_api(method, scan_dir, rest[3:], calibration_object=False)
                 if rest[2] == "complete" and len(rest) == 3 and method == "POST":
                     self.require_token(meta)
                     body = self.json_body()
@@ -625,6 +647,28 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     )
                     write_json(d / "submission.json", meta)
                     return self.send_json({"ok": True, "frames_on_disk": len(files)})
+            raise FileNotFoundError
+
+        # -- 3D models (Phase 2, operator only) ----------------------------
+        def recon_api(self, method: str, folder: Path, rest: list[str], calibration_object: bool):
+            """rest is what follows .../recon: [] or [file name]."""
+            if rest == [] and method == "GET":
+                return self.send_json(recon_jobs.summary(folder, runner))
+            if rest == [] and method == "POST":
+                if not any(folder.glob("frame_*.jpg")):
+                    raise BadRequest("this capture has no photos to build a model from")
+                try:
+                    runner.start(folder, calibration_object)
+                except recon_jobs.Busy as e:
+                    return self.send_json({"error": str(e)}, HTTPStatus.CONFLICT)
+                return self.send_json(recon_jobs.summary(folder, runner), HTTPStatus.ACCEPTED)
+            if len(rest) == 1 and method == "GET" and rest[0] in recon_jobs.RECON_FILES:
+                f = folder / "recon" / rest[0]
+                if not f.is_file():
+                    raise FileNotFoundError
+                download = f"{folder.name}-{rest[0]}"
+                return self.send_file(f, recon_jobs.RECON_FILES[rest[0]],
+                                      headers={"Content-Disposition": f'attachment; filename="{download}"'})
             raise FileNotFoundError
 
         # -- research captures (operator only) -----------------------------
@@ -655,6 +699,13 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     if not f.is_file():
                         raise FileNotFoundError
                     return self.send_file(f, "image/jpeg")
+            if p[1:2] == ["recon"]:
+                meta = read_json(d / "capture.json")
+                return self.recon_api(method, d, p[2:], meta.get("condition") == "calibration")
+            if p[1:] == ["calipers"] and method == "PUT":
+                calipers = recon_jobs.validate_calipers(self.json_body())
+                write_json(d / "calipers.json", calipers)
+                return self.send_json({"ok": True, "calipers": calipers})
             if p[1:] == ["mesh"] and method == "PUT":
                 ext = (query_param(self.path, "ext") or "").lower()
                 if ext not in MESH_TYPES:
@@ -783,13 +834,14 @@ def lan_ip() -> str | None:
         return None
 
 
-def serve(host: str = "127.0.0.1", port: int = 8765, https: bool = False, public: bool = False) -> None:
+def serve(host: str = "127.0.0.1", port: int = 8765, https: bool = False, public: bool = False,
+          data_dir: Path | None = None) -> None:
     """Run the site. ``public``: reachable from the internet through a tunnel or
     proxy, so nothing is trusted for being "local" and only the studio key
     opens the studio."""
     studio_key = load_studio_key(ROOT / ".studio_key")
-    handler = make_handler(studio_key=studio_key, secure_cookie=https or public,
-                           local_check=never_local if public else is_loopback)
+    handler = make_handler(data_dir=(data_dir or DATA_DIR).resolve(), studio_key=studio_key,
+                           secure_cookie=https or public, local_check=never_local if public else is_loopback)
     httpd = ThreadingHTTPServer((host, port), handler)
     scheme = "http"
     if https:

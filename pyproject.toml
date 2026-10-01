@@ -6,7 +6,10 @@ requires-python = ">=3.11"
 dependencies = ["numpy", "scipy", "trimesh"]
 
 [project.optional-dependencies]
-dev = ["pytest", "opencv-python-headless", "pymupdf"]  # mat generation and its detection tests
+# Phase 2 reconstruction: COLMAP (structure from motion), MeshLab (surface
+# operations), Manifold (exact CSG for the calibration object), OpenCV.
+recon = ["opencv-python-headless", "pycolmap", "pymeshlab", "manifold3d", "rtree", "shapely"]
+dev = ["pytest", "opencv-python-headless", "pymupdf", "embreex"]  # embreex: ray casting for synthetic test scenes
 
 [project.scripts]
 footscan = "footscan.cli:main"
@@ -20,3 +23,5 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = ["slow: end-to-end reconstruction of a rendered scene (minutes); run with -m slow"]
+addopts = "-m 'not slow'"

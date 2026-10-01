@@ -388,3 +388,104 @@ def test_mesh_import_rejects_bad_files(servers):
     status, raw, _ = call(f"{op}/api/captures/{cid}/mesh?ext=obj", "PUT", b"not a mesh",
                           {"Content-Type": "application/octet-stream"})
     assert status == 400 and "couldn't read" in json.loads(raw)["error"]
+
+
+# --------------------------------------------------------------------------
+# Phase 2: 3D models from the studio
+# --------------------------------------------------------------------------
+def make_capture(op, condition="calibration", foot=None, frames=2):
+    st, raw, _ = call(f"{op}/api/captures", "POST", {"condition": condition, "foot": foot, "session": "S1"})
+    assert st == 201, raw
+    cid = json.loads(raw)["id"]
+    for n in range(1, frames + 1):
+        call(f"{op}/api/captures/{cid}/frames/{n}", "PUT", JPEG, {"Content-Type": "image/jpeg"})
+    call(f"{op}/api/captures/{cid}/complete", "POST", {"frames": []})
+    return cid
+
+
+def test_calibration_capture_is_not_foot_data(servers):
+    op, _, data = servers
+    cid = make_capture(op)
+    meta = json.loads((data / "captures" / cid / "capture.json").read_text())
+    assert meta["foot"] is None and meta["measurable"] is False and meta["condition"] == "calibration"
+
+
+def test_recon_status_before_any_build(servers):
+    op, _, _ = servers
+    cid = make_capture(op)
+    assert body(call(f"{op}/api/captures/{cid}/recon")) == {"state": "none"}
+
+
+def test_recon_needs_photos(servers):
+    op, _, _ = servers
+    cid = make_capture(op, frames=0)
+    assert call(f"{op}/api/captures/{cid}/recon", "POST", {})[0] == 400
+
+
+def test_recon_is_operator_only(servers):
+    op, phone, _ = servers
+    cid = make_capture(op)
+    assert call(f"{phone}/api/captures/{cid}/recon")[0] == 403
+    assert call(f"{phone}/api/captures/{cid}/recon", "POST", {})[0] == 403
+
+
+def test_recon_files_are_whitelisted(servers):
+    op, _, data = servers
+    cid = make_capture(op)
+    out = data / "captures" / cid / "recon"
+    out.mkdir()
+    (out / "mesh.ply").write_bytes(b"ply\n")
+    st, raw, h = call(f"{op}/api/captures/{cid}/recon/mesh.ply")
+    assert st == 200 and raw == b"ply\n" and "attachment" in h["Content-Disposition"]
+    assert call(f"{op}/api/captures/{cid}/recon/log.txt")[0] == 404
+    assert call(f"{op}/api/captures/{cid}/recon/..%2Fcapture.json")[0] == 404
+    assert call(f"{op}/api/captures/{cid}/recon/report.json")[0] == 404  # not there yet
+
+
+def test_calipers_saved_and_validated(servers):
+    op, _, data = servers
+    cid = make_capture(op)
+    assert call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": "abc"})[0] == 400
+    assert call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": 9999})[0] == 400
+    st, raw, _ = call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": "149.82", "width": "", "base": 10.04})
+    assert st == 200
+    saved = json.loads((data / "captures" / cid / "calipers.json").read_text())
+    assert saved == {"length": 149.82, "base": 10.04}
+    assert body(call(f"{op}/api/captures/{cid}/recon")) == {"state": "none"}  # readings alone don't build
+
+
+def test_runner_one_build_at_a_time_and_notices_a_dead_process(tmp_path):
+    from footscan import recon_jobs
+
+    fake = tmp_path / "fake-python"
+    fake.write_text("#!/bin/sh\nsleep 2\n")
+    fake.chmod(0o755)
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir(), b.mkdir()
+    runner = recon_jobs.ReconRunner(python=str(fake))
+    runner.start(a, calibration_object=False)
+    assert recon_jobs.summary(a, runner)["state"] == "running"
+    with pytest.raises(recon_jobs.Busy):
+        runner.start(b, calibration_object=False)
+    runner.proc.wait()
+    # it exited without writing "done": that's a failure, not "still running"
+    s = recon_jobs.summary(a, runner)
+    assert s["state"] == "failed" and "unexpectedly" in s["error"]
+
+
+def test_customer_scan_recon_writes_what_the_pipeline_needs(servers):
+    op, phone, data = servers
+    sub = body(call(f"{phone}/api/submissions", "POST", PERSON))
+    tok = {"X-Upload-Token": sub["upload_token"]}
+    key = sub["plan"][0]["key"]
+    base = f"{phone}/api/submissions/{sub['id']}/scans/{key}"
+    call(f"{base}/start", "POST", {}, tok)
+    call(f"{base}/frames/1", "PUT", JPEG, {**tok, "Content-Type": "image/jpeg"})
+    call(f"{base}/complete", "POST", {"frames": [], "summary": {"mat_paper": "a4"}}, tok)
+    # the phone can't start a build
+    assert call(f"{phone}/api/submissions/{sub['id']}/scans/{key}/recon", "POST", {})[0] == 403
+    st, raw, _ = call(f"{op}/api/submissions/{sub['id']}/scans/{key}/recon", "POST", {})
+    assert st == 202, raw
+    meta = json.loads((data / "submissions" / sub["id"] / key / "capture.json").read_text())
+    assert meta["foot"] == key.split("-")[0] and meta["condition"] == key.split("-")[1]
+    assert meta["mat_paper"] == "a4" and meta["frames"] == [{"file": "frame_0001.jpg"}]

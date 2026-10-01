@@ -108,6 +108,7 @@
       </dl>
       ${files.length ? `<div class="thumbs">${thumbs}</div>` : ""}
       ${files.length > 24 ? `<p class="hint" style="margin:8px 0 0">Showing 24 of ${files.length}.</p>` : ""}
+      ${scan.status === "complete" ? `<p style="margin:12px 0 0"><a class="btn secondary" href="/studio/model.html?submission=${encodeURIComponent(s.id)}&scan=${encodeURIComponent(key)}">3D model</a></p>` : ""}
     </section>`;
   }
 
