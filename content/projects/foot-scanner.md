@@ -133,7 +133,7 @@ unmeasurable so it can never leak into foot data.
 ## Evidence, and what I can't claim yet
 
 Fourteen commits between 16 and 25 September 2026. The measurement and
-statistics code is covered by 52 Python tests plus four JavaScript test files:
+statistics code is covered by 52 Python tests plus three JavaScript test files:
 geometry is checked against hand-built synthetic feet with known answers, under
 randomised camera poses and left/right mirroring, and the statistics are checked
 against simulated data with known variance components.
