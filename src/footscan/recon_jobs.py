@@ -40,6 +40,20 @@ class Busy(Exception):
     pass
 
 
+def pid_alive(pid) -> bool:
+    import os
+
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)  # signal 0: "does it exist?", sends nothing
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
 def validate_calipers(body: dict) -> dict:
     """Caliper readings of the printed calibration object, mm. Blank = not measured."""
     out = {}
@@ -64,15 +78,28 @@ class ReconRunner:
     def busy(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
 
-    def start(self, folder: Path, calibration_object: bool) -> None:
+    def start(self, folder: Path, calibration_object: bool, accuracy_only: bool = False) -> None:
         with self.lock:
             if self.busy():
                 raise Busy(f"another 3D model is being built ({self.folder.name}); try again when it finishes")
+            st = folder / "recon" / "status.json"
+            if st.exists():
+                try:
+                    cur = json.loads(st.read_text())
+                except (json.JSONDecodeError, OSError):
+                    cur = {}
+                if cur.get("state") == "running" and pid_alive(cur.get("pid")):
+                    raise Busy("this model is already being built")
             out = folder / "recon"
             out.mkdir(exist_ok=True)
             (out / "status.json").write_text(json.dumps(dict(stage="queued", state="running", at=time.time())))
-            cmd = [self.python, "-m", "footscan.cli", "reconstruct", str(folder)]
-            if calibration_object:
+            if accuracy_only:
+                cmd = [self.python, "-m", "footscan.cli", "accuracy", str(folder)]
+                if (folder / "calipers.json").exists():
+                    cmd += ["--calipers", str(folder / "calipers.json")]
+            else:
+                cmd = [self.python, "-m", "footscan.cli", "reconstruct", str(folder)]
+            if calibration_object and not accuracy_only:
                 cmd.append("--calibration-object")
                 if (folder / "calipers.json").exists():
                     cmd += ["--calipers", str(folder / "calipers.json")]
@@ -87,10 +114,14 @@ def summary(folder: Path, runner: ReconRunner | None = None) -> dict:
     out = folder / "recon"
     if not (out / "status.json").exists():
         return dict(state="none")
-    status = json.loads((out / "status.json").read_text())
+    try:
+        status = json.loads((out / "status.json").read_text())
+    except (json.JSONDecodeError, OSError):
+        return dict(state="running", stage="starting")  # being written this instant
     # A process that died without writing "done"/"failed" (killed, crashed).
+    # The process id survives a restart of the web server; the runner doesn't.
     running_here = runner is not None and runner.busy() and runner.folder == folder
-    if status.get("state") == "running" and not running_here:
+    if status.get("state") == "running" and not running_here and not pid_alive(status.get("pid")):
         status.update(state="failed", error="the reconstruction process stopped unexpectedly")
     elapsed = status.get("elapsed_s") or 0
     if status.get("state") == "running" and status.get("at"):
@@ -98,7 +129,10 @@ def summary(folder: Path, runner: ReconRunner | None = None) -> dict:
     res = dict(state=status.get("state"), stage=status.get("stage"), elapsed_s=round(elapsed),
                error=status.get("error"))
     if (out / "report.json").exists() and res["state"] != "running":
-        r = json.loads((out / "report.json").read_text())
+        try:
+            r = json.loads((out / "report.json").read_text())
+        except (json.JSONDecodeError, OSError):
+            r = {}
         res.update(
             synthetic=r.get("synthetic"),
             seconds=r.get("seconds"),
@@ -113,12 +147,12 @@ def summary(folder: Path, runner: ReconRunner | None = None) -> dict:
             accuracy=r.get("accuracy"),
             plantar=r.get("plantar"),
         )
-    if (out / "plantar.json").exists():
+    if (out / "plantar.json").exists() and res["state"] == "done":
         p = json.loads((out / "plantar.json").read_text())
         res["medial_profile"] = p.get("medial_profile")
     if res["state"] == "failed" and (out / "log.txt").exists():
         res["log_tail"] = (out / "log.txt").read_text(errors="replace")[-2000:]
-    res["files"] = [f for f in RECON_FILES if (out / f).exists()]
+    res["files"] = [f for f in RECON_FILES if (out / f).exists()] if res["state"] == "done" else []
     if (folder / "calipers.json").exists():
         res["calipers"] = json.loads((folder / "calipers.json").read_text())
     return res

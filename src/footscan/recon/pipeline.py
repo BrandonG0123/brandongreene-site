@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
 import time
 import traceback
@@ -51,6 +52,27 @@ class Settings:
     mesh: mesh.MeshConfig = field(default_factory=mesh.MeshConfig)
 
 
+# Everything a build writes into recon/ (log.txt and status.json belong to the run that's starting).
+OUTPUTS = ("report.json", "accuracy.json", "plantar.json", "mesh.ply", "mesh_raw.ply", "mesh_foot.ply",
+           "plantar.ply", "points.ply", "viewer.bin", "floor.npy", "dense.npz")
+
+
+def clear_outputs(out: Path) -> None:
+    import shutil
+
+    for name in OUTPUTS:
+        (out / name).unlink(missing_ok=True)
+    for d in ("sparse_mm", "images", "colmap"):
+        shutil.rmtree(out / d, ignore_errors=True)
+
+
+def write_json_atomic(path: Path, obj) -> None:
+    """Write to a temporary file, then rename over the target: a reader sees the old or the new file, never half."""
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(obj, indent=1, default=_json_default))
+    os.replace(tmp, path)
+
+
 def frame_names(capture_dir: Path) -> tuple[list[str], dict]:
     meta_path = capture_dir / "capture.json"
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
@@ -60,6 +82,51 @@ def frame_names(capture_dir: Path) -> tuple[list[str], dict]:
     else:
         names = sorted(p.name for p in capture_dir.glob("*.jpg"))
     return names, meta
+
+
+def stage_images(capture_dir: Path, names: list[str], out: Path) -> tuple[Path, list[str], dict]:
+    """Put every photo the right way up in <recon>/images/ (links, or rotated copies).
+
+    One camera means one image size. A phone turned sideways mid-scan saves
+    a landscape frame among portrait ones; COLMAP's single-camera mode would
+    silently drop it. Turning the picture back 90 degrees is exact: it is the
+    same lens with the phone rolled a quarter-turn, which the camera solving
+    handles like any other tilt. Frames of any other size are left out and
+    listed.
+    """
+    import os
+    from collections import Counter
+
+    import cv2
+
+    staged = out / "images"
+    if staged.exists():
+        for p in staged.iterdir():
+            p.unlink()
+    staged.mkdir(parents=True, exist_ok=True)
+    sizes = {}
+    for n in names:
+        img = cv2.imread(str(capture_dir / n), cv2.IMREAD_REDUCED_GRAYSCALE_8)
+        if img is None:
+            continue
+        sizes[n] = (img.shape[1], img.shape[0])  # an eighth-size decode: enough to compare sizes, 64x faster
+    if not sizes:
+        raise RuntimeError("none of the photos could be read")
+    main = Counter(sizes.values()).most_common(1)[0][0]
+    kept, rotated, excluded = [], [], []
+    for n in names:
+        sz = sizes.get(n)
+        if sz == main:
+            os.symlink(os.path.relpath(capture_dir / n, staged), staged / n)
+            kept.append(n)
+        elif sz == (main[1], main[0]):
+            img = cv2.imread(str(capture_dir / n), cv2.IMREAD_COLOR)
+            cv2.imwrite(str(staged / n), cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE), [cv2.IMWRITE_JPEG_QUALITY, 97])
+            kept.append(n)
+            rotated.append(n)
+        else:
+            excluded.append(n)
+    return staged, kept, dict(rotated=rotated, excluded=excluded)
 
 
 def _sha256(path: Path) -> str:
@@ -102,26 +169,22 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
     settings = settings or Settings()
     out = capture_dir / "recon"
     out.mkdir(exist_ok=True)
-    status_path = out / "status.json"
+    clear_outputs(out)  # nothing from an earlier build may be mistaken for this one's
     t_start = time.time()
 
     def status(stage: str, state: str = "running", **extra):
-        status_path.write_text(json.dumps(dict(stage=stage, state=state, at=time.time(),
-                                                elapsed_s=round(time.time() - t_start, 1), **extra)))
+        write_json_atomic(out / "status.json", dict(stage=stage, state=state, at=time.time(), pid=os.getpid(),
+                                                    elapsed_s=round(time.time() - t_start, 1), **extra))
         log(f"[{stage}]")
 
-    names, meta = frame_names(capture_dir)
-    report: dict = dict(
-        capture=capture_dir.name,
-        synthetic=bool(meta.get("synthetic")),
-        not_a_medical_device=True,
-        started=time.strftime("%Y-%m-%dT%H:%M:%S"),
-        versions=_versions(),
-        inputs=dict(photos=len(names), sha256={n: _sha256(capture_dir / n) for n in names}),
-        warnings=[],
-    )
+    report: dict = dict(capture=capture_dir.name, not_a_medical_device=True,
+                        started=time.strftime("%Y-%m-%dT%H:%M:%S"), warnings=[])
     warn = report["warnings"].append
+    status("starting")
     try:
+        names, meta = frame_names(capture_dir)
+        report.update(synthetic=bool(meta.get("synthetic")), versions=_versions(),
+                      inputs=dict(photos=len(names), sha256={n: _sha256(capture_dir / n) for n in names}))
         if len(names) < 10:
             raise RuntimeError(f"only {len(names)} photos; at least 10 are needed (60+ is normal)")
         recorded = meta.get("mat_paper") or (meta.get("summary") or {}).get("mat_paper")
@@ -132,8 +195,15 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
         report["paper"] = paper
         board = markers.load_board(paper)
 
+        image_dir, names, staging = stage_images(capture_dir, names, out)
+        report["images"] = staging
+        if staging["rotated"]:
+            warn(f"{len(staging['rotated'])} photo(s) were taken with the phone turned sideways; turned upright and used")
+        if staging["excluded"]:
+            warn(f"{len(staging['excluded'])} photo(s) of a different size were left out: {', '.join(staging['excluded'])}")
+
         status("cameras")
-        sres = sfm.run(capture_dir, names, out / "colmap", settings.sfm, log=log)
+        sres = sfm.run(image_dir, names, out / "colmap", settings.sfm, log=log)
         report["sfm"] = sres.report
         rec = sres.reconstruction
         if sres.report["registered"] < WARN_REGISTERED_FRACTION * len(names):
@@ -146,7 +216,7 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
 
         status("scale")
         registered = sorted(img.name for img in rec.images.values() if img.has_pose)
-        dets = markers.detect_images(capture_dir, registered, paper)
+        dets = markers.detect_images(image_dir, registered, paper)
         sc = scale.recover(rec, dets, board)
         report["scale"] = sc.report
         if sc.report["residual_rms_mm"] > WARN_SCALE_RESIDUAL_MM:
@@ -162,8 +232,11 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
         rec.write(str(out / "sparse_mm"))
 
         status("depth")
-        P, V, C, drep = dense.run(rec, capture_dir, board, settings.dense, log=log)
+        P, V, C, drep = dense.run(rec, image_dir, board, settings.dense, log=log)
         report["dense"] = drep
+        if drep.get("box_from", "").startswith("mat area"):
+            warn("the surface had very little texture for the camera to lock onto, so the whole mat area was "
+                 "searched; expect a slower build and a patchier surface")
         write_ply_points(out / "points.ply", P, C)
 
         status("surface")
@@ -172,13 +245,8 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
 
         if calibration_object:
             status("accuracy")
-            acc = accuracy.evaluate(_load(out / "mesh.ply"), np.load(out / "floor.npy"), calipers)
-            acc["before_smoothing"] = accuracy.evaluate(_load(out / "mesh_raw.ply"), np.load(out / "floor.npy"),
-                                                        calipers)["surface_deviation"]
-            acc["synthetic"] = report["synthetic"]
-            (out / "accuracy.json").write_text(json.dumps(acc, indent=1))
-            report["accuracy"] = {k: acc[k] for k in ("surface_deviation", "completeness", "dimensions",
-                                                      "registration", "before_smoothing", "warnings")}
+            acc = _accuracy(out, calipers, report["synthetic"])
+            report["accuracy"] = _accuracy_summary(acc)
             report["warnings"].extend(acc["warnings"])
         (out / "dense.npz").unlink(missing_ok=True)
 
@@ -198,15 +266,64 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
 
         report["seconds"] = round(time.time() - t_start, 1)
         report["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-        (out / "report.json").write_text(json.dumps(report, indent=1, default=_json_default))
+        write_json_atomic(out / "report.json", report)
         status("done", "done", seconds=report["seconds"])
         return report
     except Exception as e:
         report["error"] = str(e)
         report["traceback"] = traceback.format_exc()
-        (out / "report.json").write_text(json.dumps(report, indent=1, default=_json_default))
+        write_json_atomic(out / "report.json", report)
         status("failed", "failed", error=str(e))
         raise
+    finally:
+        (out / "dense.npz").unlink(missing_ok=True)
+
+
+def _accuracy(out: Path, calipers: dict | None, synthetic: bool) -> dict:
+    floor = np.load(out / "floor.npy")
+    acc = accuracy.evaluate(_load(out / "mesh.ply"), floor, calipers)
+    acc["before_smoothing"] = accuracy.evaluate(_load(out / "mesh_raw.ply"), floor, calipers)["surface_deviation"]
+    acc["synthetic"] = synthetic
+    acc["calipers"] = calipers
+    write_json_atomic(out / "accuracy.json", acc)
+    return acc
+
+
+def _accuracy_summary(acc: dict) -> dict:
+    return {k: acc[k] for k in ("surface_deviation", "completeness", "dimensions", "registration",
+                                "before_smoothing", "warnings")}
+
+
+def recompute_accuracy(capture_dir, calipers: dict | None, log=print) -> dict:
+    """Redo only the accuracy study on an existing model (e.g. after entering caliper readings).
+
+    Seconds instead of a full rebuild: the surface doesn't change, only what
+    it is compared against. Refuses if the last build didn't finish, so a
+    stale surface is never scored as if it were current.
+    """
+    out = Path(capture_dir) / "recon"
+    t0 = time.time()
+
+    def status(stage, state, **extra):
+        write_json_atomic(out / "status.json", dict(stage=stage, state=state, at=time.time(), pid=os.getpid(), **extra))
+
+    status("accuracy", "running")
+    try:
+        report = json.loads((out / "report.json").read_text())
+        if report.get("error") or not (out / "mesh.ply").exists():
+            raise RuntimeError("the last build didn't finish; rebuild the model first")
+        acc = _accuracy(out, calipers, bool(report.get("synthetic")))
+    except Exception as e:
+        status("failed", "failed", error=str(e))
+        raise
+    old = set(report.get("accuracy", {}).get("warnings", []))
+    report["warnings"] = [w for w in report.get("warnings", []) if w not in old] + acc["warnings"]
+    report["accuracy"] = _accuracy_summary(acc)
+    report["accuracy_recomputed"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    write_json_atomic(out / "report.json", report)
+    status("done", "done", elapsed_s=round(time.time() - t0, 1), seconds=report.get("seconds"))
+    log(f"accuracy recomputed with calipers: {sorted(calipers or {})}")
+    return report
 
 
 def _load(path: Path):
@@ -230,18 +347,48 @@ def _surface_job(out_dir: str, cfg) -> dict:
 
 
 def in_clean_process(fn, *args):
-    """Run fn in a fresh Python process and return its result.
+    """Run fn(*args) in a fresh Python process and return its result.
 
     COLMAP and MeshLab each ship their own copy of the OpenMP threading
-    library; loading both into one process makes OpenMP abort. A fresh
-    ("spawned", not forked) process that never imports COLMAP keeps them
-    apart.
-    """
-    import multiprocessing as mp
-    from concurrent.futures import ProcessPoolExecutor
+    library; loading both into one process makes OpenMP abort. So the
+    surface step runs in a brand-new interpreter that never imports COLMAP.
 
-    with ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn")) as ex:
-        return ex.submit(fn, *args).result()
+    It is started as ``python -m footscan.recon.pipeline <module> <function>``
+    rather than with multiprocessing, whose "spawn" start re-runs the
+    caller's main script in the child: harmless for ``footscan reconstruct``,
+    but any script without an ``if __name__ == "__main__"`` guard would
+    start a second reconstruction inside the child and crash it.
+    Arguments and result travel as pickles in temporary files.
+    """
+    import pickle
+    import subprocess
+    import sys
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        arg_file, res_file = Path(tmp) / "args.pkl", Path(tmp) / "result.pkl"
+        arg_file.write_bytes(pickle.dumps((fn.__module__, fn.__name__, args)))
+        proc = subprocess.run([sys.executable, "-m", "footscan.recon.pipeline", str(arg_file), str(res_file)],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        if proc.returncode != 0 or not res_file.exists():
+            tail = (proc.stdout or "")[-1500:]
+            raise RuntimeError(f"the surface step stopped (exit {proc.returncode}):\n{tail}")
+        ok, value = pickle.loads(res_file.read_bytes())
+    if not ok:
+        raise RuntimeError(value)
+    return value
+
+
+def _child_main(arg_file: str, res_file: str) -> None:
+    import importlib
+    import pickle
+
+    module, name, args = pickle.loads(Path(arg_file).read_bytes())
+    try:
+        result = (True, getattr(importlib.import_module(module), name)(*args))
+    except Exception:  # noqa: BLE001 - reported to the parent with its traceback
+        result = (False, traceback.format_exc())
+    Path(res_file).write_bytes(pickle.dumps(result))
 
 
 def _json_default(o):
@@ -252,3 +399,9 @@ def _json_default(o):
     if isinstance(o, tuple):
         return list(o)
     raise TypeError(type(o).__name__)
+
+
+if __name__ == "__main__":
+    import sys
+
+    _child_main(sys.argv[1], sys.argv[2])

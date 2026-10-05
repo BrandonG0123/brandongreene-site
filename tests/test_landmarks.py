@@ -166,3 +166,45 @@ def test_synthetic_captures_never_enter_the_export(tmp_path):
     L.save_pick(folder, 1, {"landmarks": placed(0.0)}, ident)
     (folder / "capture.json").write_text(json.dumps({"synthetic": True}))
     assert L.export_rows([folder]) == []
+
+
+def test_footscan_measure_reads_a_pick_with_an_automatic_heel(tmp_path):
+    from footscan.cli import main
+
+    folder, ident = make_scan(tmp_path)
+    L.save_pick(folder, 1, {"landmarks": placed(0.0)}, ident)
+    out = tmp_path / "rows.csv"
+    assert main(["measure", str(folder / "landmarks" / "pick-1.json"), "-o", str(out)]) == 0
+    assert ",navicular_height_mm,18.0," in out.read_text()
+
+
+def test_floor_clicks_in_either_order_give_the_same_answer(tmp_path):
+    import trimesh
+
+    folder = tmp_path / "lidar2"
+    folder.mkdir()
+    floor = trimesh.Trimesh([[0, 0, 0], [400, 0, 0], [400, 400, 0], [0, 400, 0]], [[0, 1, 2], [0, 2, 3]])
+    trimesh.util.concatenate([synth.block_foot(0.0), floor]).export(folder / "mesh.ply")
+    ident = dict(foot="right", condition="fwb", session="S1", capture_id="lidar2", load_kg=None)
+    lm = placed(0.0)
+    results = []
+    for order in ([60, 100, 0], [300, 120, 0], [200, 300, 0]), ([200, 300, 0], [300, 120, 0], [60, 100, 0]):
+        lm.update(floor_a=order[0], floor_b=order[1], floor_c=order[2])
+        rec = L.save_pick(folder, 1, {"landmarks": lm}, ident)
+        assert rec["landmarks_used"]["heel_posterior"][2] < 25  # on the heel, not up the leg
+        results.append(rec["measures"])
+    assert results[0] == results[1]
+
+
+def test_malformed_input_is_a_clean_error(tmp_path):
+    folder, ident = make_scan(tmp_path)
+    for bad in ({"landmarks": {"navicular_tuberosity": [1e400, 0, 0]}},
+                {"landmarks": {"navicular_tuberosity": [True, 0, 0]}},
+                {"landmarks": "x"}):
+        with pytest.raises(L.LandmarkError):
+            L.save_pick(folder, 1, bad, ident)
+    rec = L.save_pick(folder, 1, {"landmarks": placed(0.0), "snapped": ["not", "a", "dict"]}, ident)
+    assert rec["snapped"] == {}
+    (folder / "landmarks" / "pick-x.json").write_text("{")
+    (folder / "landmarks" / "pick-9.json").write_text("{")
+    assert [p["pick"] for p in L.list_picks(folder)] == [1]

@@ -43,12 +43,14 @@ async function init() {
   }
   try {
     viewer = new MeshViewer($("canvas"), { onPick: place, onChange: drawLabels });
+    window.footscanViewer = viewer; // for debugging from the browser console
   } catch (e) {
     return showMsg(esc(e.message));
   }
   const buf = await fetch(`${base}/viewer.bin`).then((x) => x.arrayBuffer());
   viewer.load(parseViewerBin(buf));
   $("btn-color").hidden = !viewer.hasColor;
+  $("btn-upright").hidden = info.in_mat_frame;  // reconstructions are already upright (mat frame)
   $("snap").checked = viewer.hasColor;
   $("snap").disabled = !viewer.hasColor;
   $("msg").hidden = true;
@@ -66,8 +68,14 @@ function showMsg(html) {
 // From the clicked landmarks when there are enough, else the reconstruction's
 // provisional frame, else plain axes.
 function footAxes() {
-  const up = info.provisional_frame?.up || [0, 0, 1];
   const p = points;
+  let up = info.provisional_frame?.up || viewer.basis.up;
+  if (p.floor_a && p.floor_b && p.floor_c) {
+    // imported scan: the clicked floor says which way is up (toward the ankles)
+    up = vec.norm(vec.cross(vec.sub(p.floor_b, p.floor_a), vec.sub(p.floor_c, p.floor_a)));
+    const ank = p.malleolus_medial || p.malleolus_lateral || p.navicular_tuberosity;
+    if (ank && vec.dot(vec.sub(ank, p.floor_a), up) < 0) up = up.map((v) => -v);
+  }
   if (p.mtpj1_medial && p.mtpj5_lateral && (p.malleolus_medial || p.malleolus_lateral)) {
     const fore = vec.sub(p.mtpj1_medial, vec.sub(p.mtpj1_medial, p.mtpj5_lateral).map((v) => v / 2));
     const malls = [p.malleolus_medial, p.malleolus_lateral].filter(Boolean);
@@ -93,8 +101,24 @@ function viewDirection(name) {
   return null;
 }
 
+// Imported scans can arrive lying on their side (many apps export y-up).
+// Cycle the viewer's "up" through the six axis directions until it looks right.
+const UPS = [[0, 0, 1], [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, -1]];
+let upIndex = 0;
+function setUp(up) {
+  const east = Math.abs(up[0]) > 0.9 ? [0, 1, 0] : [1, 0, 0];
+  const e = vec.norm(vec.sub(east, up.map((u) => u * vec.dot(east, up))));
+  viewer.setBasis({ east: e, north: vec.cross(up, e), up });
+}
+function cycleUp() {
+  upIndex = (upIndex + 1) % UPS.length;
+  setUp(UPS[upIndex]);
+  viewer.home();
+}
+
 function turnTo(name) {
   if (name === "home") return viewer.home();
+  if (name === "upright") return cycleUp();
   const d = viewDirection(name);
   if (!d) return;
   // Frame the whole foot from that side; zoom in from there if needed.
@@ -119,8 +143,10 @@ function selectPick(n) {
   if (dirty && !confirm("Leave this pick without saving?")) return;
   current = n;
   const rec = pickRecord(n);
-  points = rec ? structuredClone(rec.landmarks) : {};
-  snapped = rec?.snapped ? { ...rec.snapped } : {};
+  // A stale pick was clicked on an older model: its points don't sit on this
+  // surface, so it is re-picked from scratch rather than patched.
+  points = rec && !rec.stale ? structuredClone(rec.landmarks) : {};
+  snapped = rec?.snapped && !rec.stale ? { ...rec.snapped } : {};
   dirty = false;
   active = info.spec.find((l) => !points[l.key] && !l.optional)?.key ?? null;
   renderPicks();

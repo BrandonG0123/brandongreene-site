@@ -137,6 +137,57 @@ What the synthetic run already shows:
 - **Run time:** under 6 minutes for 31 small photos. Real scans have more
   and larger photos, so expect longer; reconstructions run one at a time.
 
+## Skin, texture and smoothing (synthetic experiment)
+
+Skin has far less texture than a dotted calibration object. To see what
+that costs, a smooth foot-sized dome (half-ellipsoid, 240 x 92 x 58 mm) was
+rendered twice, 31 photos each at 540 x 960, once dotted like pen speckle
+and once with a faint skin-like mottling (a guess at skin: a few percent of
+brightness variation at 0.8, 3 and 9 mm scales), and reconstructed.
+Surface error is measured against the true dome in the mat frame (no
+alignment at all). Run 2026-10-05:
+
+| | median | 95th pct | signed mean | surface within 1 mm |
+|---|---|---|---|---|
+| dotted, no smoothing | 0.104 mm | 0.375 mm | +0.047 mm | 99.98 % |
+| dotted, Taubin 10 steps (default) | 0.098 mm | 0.348 mm | +0.048 mm | 99.97 % |
+| skin-like, no smoothing | 0.107 mm | 0.313 mm | +0.075 mm | 71.4 % |
+| skin-like, Taubin 10 steps (default) | 0.105 mm | 0.307 mm | +0.075 mm | 70.9 % |
+
+What it says:
+
+- **Plain skin costs coverage, not accuracy.** Where the surface is found
+  it is as accurate; but almost 30 % of it wasn't found at all, and COLMAP
+  found only 10 points on the plain dome, so the pipeline had to fall back
+  to searching the whole mat area (now with a quick low-resolution pass to
+  find the subject first: 135 s instead of more than 15 minutes).
+  **Dot the foot with a washable marker, or wear a speckled sock** (both are
+  choices on the capture page): that is the difference between 71 % and
+  100 % of the surface.
+- **Smoothing helps on smooth shapes** (95th percentile 0.375 -> 0.348 mm)
+  where it slightly hurt on the sharp-edged calibration object. Feet are
+  smooth, so the default (10 Taubin steps) stays.
+
+Synthetic, so: the right *direction* and rough size of each effect, not a
+phone's accuracy.
+
+## First contact with real photos
+
+The one real capture so far (114 iPhone frames of a shoe on a black desk,
+no mat, 2026-09-25) was run through the camera-solving step on 2026-10-05.
+It found three real problems, now fixed, that the rendered scenes had not:
+
+| Problem | Effect on the real capture | Fix |
+|---|---|---|
+| Lens distortion solved from the first two photos | distortion came out k1 = 0.7, k2 = -2.0 (a phone's video is nearly distortion-free); only 2 of 114 photos placed | hold distortion and lens centre fixed while placing photos, solve them in a final adjustment: 40 placed, k1 = 0.02, k2 = -0.04 |
+| One photo taken with the phone sideways | silently dropped (one camera = one image size) | turned upright before solving; listed in the report |
+| Big jumps between kept photos | the capture kept one photo per 0.6 s; when the phone swung 25-47 degrees between two, nothing linked them and the photos split into 4 unconnected groups (40, 39, 23, 13) | capture now keeps a "bridging" photo whenever the view has turned 8 degrees since the last, and says "slow down" when turning faster than 35 degrees a second; the report says when photos split into groups |
+
+The split shoe capture is still split (its photos were taken with the old
+rule); a new capture is needed to see the bridging work. A foot scan also
+has the printed mat in every photo, which gives far more to link photos
+than a plain black desk.
+
 ## Not done / known limits
 
 - **Real photos.** Everything above needs repeating on real captures:

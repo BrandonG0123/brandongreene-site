@@ -250,13 +250,44 @@ export function nextMissing(coverage, view) {
   return missing.sort((a, b) => dist(a) - dist(b))[0];
 }
 
+/** Angle in degrees between two viewing directions given as {azimuth, elevation}. */
+export function viewAngle(a, b) {
+  const r = Math.PI / 180;
+  const v = (x) => [Math.cos(x.elevation * r) * Math.cos(x.azimuth * r), Math.cos(x.elevation * r) * Math.sin(x.azimuth * r), Math.sin(x.elevation * r)];
+  const p = v(a), q = v(b);
+  const d = Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]));
+  return Math.acos(d) / r;
+}
+
+/**
+ * How fast the view is turning, degrees per second, from recent
+ * {t (ms), view} samples (the last ``windowMs``).
+ */
+export function angularSpeed(samples, now, windowMs = 600) {
+  const recent = samples.filter((s) => s.view && now - s.t <= windowMs);
+  if (recent.length < 2) return 0;
+  let deg = 0;
+  for (let i = 1; i < recent.length; i++) deg += viewAngle(recent[i - 1].view, recent[i].view);
+  const dt = (recent[recent.length - 1].t - recent[0].t) / 1000;
+  return dt > 0 ? deg / dt : 0;
+}
+
 /**
  * Decide whether to keep the current frame.
+ *
  * Keeps frames that are sharp and well exposed, at most one per minInterval,
  * and stops piling frames into a cell that is already well covered.
+ *
+ * Bridging: if the view has turned ``bridgeDeg`` or more since the last kept
+ * photo, keep one now (after only ``bridgeIntervalMs``), even in a full cell.
+ * The 3-D reconstruction links photos through what neighbouring photos have
+ * in common; on a real capture, gaps of 25-47 degrees between kept photos
+ * split it into pieces that couldn't be joined.
  */
-export function shouldCapture({ sharpOk, exposureOk, now, lastCaptureAt, cell, coverage, maxPerCell = 6, minIntervalMs = 600 }) {
+export function shouldCapture({ sharpOk, exposureOk, now, lastCaptureAt, cell, coverage, maxPerCell = 6, minIntervalMs = 600,
+  view = null, lastView = null, bridgeDeg = 8, bridgeIntervalMs = 250 }) {
   if (!sharpOk || !exposureOk) return false;
+  if (view && lastView && viewAngle(view, lastView) >= bridgeDeg && now - lastCaptureAt >= bridgeIntervalMs) return true;
   if (now - lastCaptureAt < minIntervalMs) return false;
   if (cell && coverage.counts.get(cell) >= maxPerCell) return false;
   return true;

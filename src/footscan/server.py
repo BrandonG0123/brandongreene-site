@@ -387,8 +387,33 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             given = query_param(self.path, "key")
             return bool(given) and hmac.compare_digest(given, studio_key)
 
+        def host_is_loopback_name(self) -> bool:
+            """The address the browser typed is this computer's own name.
+
+            Without this, any web page could "rebind" its own domain name to
+            127.0.0.1 and read the studio as if it were on this computer (DNS
+            rebinding). The browser still sends that page's domain as the Host,
+            so only localhost / 127.0.0.1 / [::1] count.
+            """
+            from urllib.parse import urlsplit
+
+            host = urlsplit("//" + (self.headers.get("Host") or "")).hostname or ""
+            return host in ("localhost", "127.0.0.1", "::1")
+
         def is_operator(self) -> bool:
-            return local_check(self) or self.has_studio_cookie() or self.has_studio_key()
+            return (local_check(self) and self.host_is_loopback_name()) or self.has_studio_cookie() or self.has_studio_key()
+
+        def cross_site(self) -> bool:
+            """A change requested by some other web site (its Origin isn't this server).
+
+            Browsers attach an Origin header to every cross-site POST/PUT/DELETE,
+            so a page elsewhere can't use the operator's browser to delete
+            submissions or start builds here (cross-site request forgery).
+            """
+            from urllib.parse import urlsplit
+
+            origin = self.headers.get("Origin")
+            return bool(origin) and urlsplit(origin).netloc.lower() != (self.headers.get("Host") or "").lower()
 
         def require_local(self):
             if not self.is_operator():
@@ -422,11 +447,13 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
         def route(self, method: str):
             path, _, query = self.path.partition("?")
             try:
+                if method != "GET" and self.cross_site():
+                    raise Forbidden("request from another web site refused")
                 if path.startswith("/api/"):
                     return self.api(method, path.strip("/").split("/")[1:])
                 if method != "GET":
                     return self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
-                if path == "/studio" or path.startswith("/studio/"):
+                if self.is_studio_path(path):
                     if not self.is_operator():
                         return self.studio_locked(path)
                     if self.has_studio_key() and not self.has_studio_cookie():
@@ -444,6 +471,20 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                 self.send_json({"error": f"invalid input: {e}"}, HTTPStatus.BAD_REQUEST)
             except FileNotFoundError:
                 self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+            except (TypeError, OverflowError, AttributeError) as e:
+                # Input of the wrong shape (a list where a number was expected, ...):
+                # answer, rather than dropping the connection.
+                self.send_json({"error": f"invalid input: {e}"}, HTTPStatus.BAD_REQUEST)
+
+        def is_studio_path(self, path: str) -> bool:
+            """Anything that ends up inside web/studio, however it was spelt.
+
+            The Mac's disk ignores letter case (/STUDIO/ is /studio/) and a raw
+            client can send /assets/../studio/; resolve the path first, then ask.
+            """
+            target = (web_dir / path.lstrip("/")).resolve()
+            studio = (web_dir / "studio").resolve()
+            return str(target).lower() == str(studio).lower() or str(target).lower().startswith(str(studio).lower() + "/")
 
         def static(self, path: str, query: str = ""):
             rel = path.lstrip("/") or "index.html"
@@ -780,7 +821,17 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             if p[1:] == ["calipers"] and method == "PUT":
                 calipers = recon_jobs.validate_calipers(self.json_body())
                 write_json(d / "calipers.json", calipers)
-                return self.send_json({"ok": True, "calipers": calipers})
+                # A built model only needs its comparison redone, not a rebuild.
+                updating = False
+                meta = read_json(d / "capture.json")
+                built = recon_jobs.summary(d, runner).get("state") == "done"
+                if meta.get("condition") == "calibration" and built and (d / "recon" / "mesh.ply").exists():
+                    try:
+                        runner.start(d, calibration_object=True, accuracy_only=True)
+                        updating = True
+                    except recon_jobs.Busy:
+                        pass
+                return self.send_json({"ok": True, "calipers": calipers, "updating": updating})
             if p[1:] == ["mesh"] and method == "PUT":
                 ext = (query_param(self.path, "ext") or "").lower()
                 if ext not in MESH_TYPES:

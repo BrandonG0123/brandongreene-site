@@ -57,6 +57,8 @@ from .markers import Detection, to_colmap
 
 HOMOGRAPHY_TOL_PX = 1.5
 TRIANGULATION_TOL_PX = 2.0
+MIN_TRIANGULATION_DEG = 3.0          # rays this nearly parallel fix the corner's depth poorly
+SHEET_OUTLIER_SIGMA = 3.0            # corners this far outside the rest of their sheet's fit are dropped
 MIN_MARKERS_PER_SHEET_IN_PHOTO = 3   # fewer and the sheet's homography can't vouch for its corners
 MIN_VIEWS = 3                        # a corner must be seen (and kept) in at least this many photos
 MIN_CORNERS_PER_SHEET = 12           # three markers' worth before a sheet's scale is trusted
@@ -192,7 +194,7 @@ def recover(rec, detections: dict[str, list[Detection]], board: dict) -> ScaleRe
 
     focal = float(next(iter(cameras.values())).mean_focal_length()) if cameras else 1.0
     corners_model, printed, sheet_of = {}, {}, {}
-    n_dropped_tri = 0
+    n_dropped_tri = n_weak = 0
     for key, views in obs.items():
         views = list(views)
         while len(views) >= MIN_VIEWS:
@@ -203,9 +205,20 @@ def recover(rec, detections: dict[str, list[Detection]], board: dict) -> ScaleRe
             err_px = np.linalg.norm(reproject_norm(X, Rs, ts) - xy, axis=1) * focal
             worst = int(np.argmax(err_px))
             if err_px[worst] <= TRIANGULATION_TOL_PX:
-                corners_model[key] = X
-                printed[key] = np.r_[views[0][3], 0.0]
-                sheet_of[key] = views[0][2]
+                # A point behind a camera reprojects to the same pixel, and rays
+                # from photos taken from almost the same place pin depth down
+                # poorly: both pass the pixel test, so check them separately.
+                depth = (np.einsum("nij,j->ni", Rs, X) + ts)[:, 2]
+                centres = -np.einsum("nji,nj->ni", Rs, ts)
+                rays = X - centres
+                rays /= np.linalg.norm(rays, axis=1, keepdims=True)
+                widest = np.degrees(np.arccos(np.clip((rays @ rays.T).min(), -1, 1)))
+                if np.all(depth > 0) and widest >= MIN_TRIANGULATION_DEG:
+                    corners_model[key] = X
+                    printed[key] = np.r_[views[0][3], 0.0]
+                    sheet_of[key] = views[0][2]
+                else:
+                    n_weak += 1
                 break
             views.pop(worst)
             n_dropped_tri += 1
@@ -231,15 +244,17 @@ def recover(rec, detections: dict[str, list[Detection]], board: dict) -> ScaleRe
     Y = np.array([printed[k] for k in keys])
     if ref == 1:  # toe sheet only: place it at its nominal spot on the mat
         Y = Y + [*board["sheets"][1]["origin_mm"], 0.0]
-    R, t = _frame(scale, np.array([corners_model[k] for k in corners_model]), X, Y,
+    kept = [k for v in per_sheet.values() for k in v["keys"]]  # outliers left out of the floor plane too
+    R, t = _frame(scale, np.array([corners_model[k] for k in kept]), X, Y,
                   cameras=np.array([-R_.T @ t_ for R_, t_ in poses.values()]))
     result = ScaleResult(scale, R, t, corners_model, {})
 
     residual = np.linalg.norm(result.apply(X) - Y, axis=1)
     report = dict(
         corners_seen=n_seen,
-        corners_dropped_off_sheet=n_dropped_h,
+        corner_sightings_dropped=n_dropped_h,  # inconsistent with their sheet in that photo, or too few markers seen
         observations_dropped_triangulation=n_dropped_tri,
+        corners_poorly_triangulated=n_weak,
         corners_located=len(corners_model),
         reference_sheet=["heel", "toe"][ref],
         mm_per_model_unit=scale,
@@ -309,7 +324,27 @@ def _frame(scale: float, all_corners: np.ndarray, X_ref: np.ndarray, Y_ref: np.n
 
 
 def _fit_sheet(X: np.ndarray, Y: np.ndarray, keys: list) -> dict:
-    """Similarity fit for one sheet, with residuals and a bootstrap standard error of the scale."""
+    """Similarity fit for one sheet, with residuals and a bootstrap standard error of the scale.
+
+    Corners whose residual is far outside the rest (more than
+    SHEET_OUTLIER_SIGMA robust standard deviations, and over 0.5 mm) are
+    dropped and the fit redone, so one badly located corner can't move the
+    scale. The robust spread is 1.4826 x the median absolute deviation,
+    which equals the standard deviation for normal errors but ignores a few
+    wild ones.
+    """
+    keys = list(keys)
+    dropped = 0
+    for _ in range(3):
+        s, R, t = umeyama(X, Y)
+        dist = np.linalg.norm(s * X @ R.T + t - Y, axis=1)
+        sigma = 1.4826 * np.median(np.abs(dist - np.median(dist)))
+        bad = dist > max(np.median(dist) + SHEET_OUTLIER_SIGMA * sigma, 0.5)
+        if not bad.any() or len(X) - bad.sum() < MIN_CORNERS_PER_SHEET:
+            break
+        X, Y = X[~bad], Y[~bad]
+        keys = [k for k, b in zip(keys, bad) if not b]
+        dropped += int(bad.sum())
     s, R, t = umeyama(X, Y)
     res = s * X @ R.T + t - Y
     dist = np.linalg.norm(res, axis=1)
@@ -334,6 +369,7 @@ def _fit_sheet(X: np.ndarray, Y: np.ndarray, keys: list) -> dict:
         residual_out_of_plane_rms_mm=_rms(res[:, 2]),
         scale_se_pct=None if se is None else round(100 * se / s, 4),
         scale_se_mm_per_250mm=None if se is None else round(se / s * FOOT_LENGTH_MM, 3),
+        outlier_corners_dropped=dropped,
         keys=keys,
     )
 

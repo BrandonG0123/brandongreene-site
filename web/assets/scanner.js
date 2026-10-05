@@ -14,7 +14,7 @@
 //      instructions say to start behind the heel). Guidance only.
 import {
   Coverage, SharpnessJudge, cellFor, describeCell, exposureStats, judgeExposure,
-  laplacianVariance, nextMissing, shouldCapture, steerTo, toGray, viewFromOrientation, wrap360,
+  angularSpeed, laplacianVariance, nextMissing, shouldCapture, steerTo, toGray, viewFromOrientation, wrap360,
 } from "./quality.js";
 import { Cues, ScreenAwake } from "./cues.js";
 import { MAX_HAMMING, estimateView, indexBoard } from "./mat-pose.js";
@@ -25,6 +25,8 @@ const DETECT_WIDTH = 960;
 const TICK_MS = 120;
 const DETECT_EVERY_TICKS = 2;
 const MIN_INTERVAL_MS = 600;
+const CHECK_INTERVAL_MS = 250;  // how often a photo is considered; bridging photos need this to be short
+const TOO_FAST_DEG_PER_S = 35;  // turning faster than this leaves gaps and blur: ask to slow down
 const MAT_FRESH_MS = 600;
 const MIN_MAT_MARKERS = 2;
 const RAD = Math.PI / 180;
@@ -81,6 +83,7 @@ export class Scanner {
     this.alpha0 = null;
     this.sensorOffset = null; // unit vector [cos, sin] of (mat azimuth - compass alpha)
     this.view = null;
+    this.viewSamples = [];
     this.viewSource = null;
     this.mat = null;
     this.matLostSince = null;
@@ -282,15 +285,22 @@ export class Scanner {
     this.viewSource = source;
     const hasView = view != null;
     const cell = view ? cellFor(view) : null;
+    if (view) {
+      this.viewSamples.push({ t: now, view });
+      while (this.viewSamples.length && now - this.viewSamples[0].t > 1000) this.viewSamples.shift();
+    }
+    const tooFast = this.capturing && angularSpeed(this.viewSamples, now) > TOO_FAST_DEG_PER_S;
 
-    if (this.capturing && now - this.lastOpportunityAt >= MIN_INTERVAL_MS) {
+    if (this.capturing && now - this.lastOpportunityAt >= CHECK_INTERVAL_MS) {
       const matOk = !this.requireMat || matVisible;
       const keep = matOk && shouldCapture({
         sharpOk: sharp.ok, exposureOk: exposure.ok, now, lastCaptureAt: this.lastCaptureAt,
+        view, lastView: this.lastKeptView,
         cell, coverage: this.coverage, minIntervalMs: MIN_INTERVAL_MS,
       });
       if (keep) {
         this.lastCaptureAt = now;
+        this.lastKeptView = view;
         this.grabFrame(src, w, h, {
           sharpScore, relative: sharp.relative, exposure: expo, view, cell, viewSource: source,
           mat: matVisible ? this.matRecord() : null,
@@ -309,8 +319,8 @@ export class Scanner {
     const progress = Math.min(kept / this.targetFrames, completeness ?? 1);
     const matMarkers = this.mat && now - this.mat.at < MAT_FRESH_MS ? this.mat.markers.length : 0;
     const steer = this.capturing && !done ? steerTo(view, next) : { arrived: false, angle: null, text: "" };
-    const guidance = this.guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now });
-    this.speak({ guidance, steer, done, sharp, exposure, matVisible });
+    const guidance = this.guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now, tooFast });
+    this.speak({ guidance, steer, done, sharp, exposure, matVisible, tooFast });
 
     this.onUpdate({
       sharp, exposure, hasView, viewSource: source, cell, next, kept, completeness, done, progress, steer,
@@ -329,7 +339,7 @@ export class Scanner {
   }
 
   /** Short spoken cues, and a sound when something needs attention. */
-  speak({ guidance, steer, done, sharp, exposure, matVisible }) {
+  speak({ guidance, steer, done, sharp, exposure, matVisible, tooFast = false }) {
     if (!this.capturing) return;
     if (done) {
       if (!this.doneAnnounced) {
@@ -340,10 +350,10 @@ export class Scanner {
       return;
     }
     this.doneAnnounced = false;
-    if (!exposure.ok || !sharp.ok || (this.requireMat && !matVisible)) {
+    if (!exposure.ok || !sharp.ok || (this.requireMat && !matVisible) || tooFast) {
       const problem = !exposure.ok
         ? (exposure.issue === "overexposed" ? "Too bright" : "Too dark")
-        : !sharp.ok ? "Hold steadier" : "Show the mat";
+        : !sharp.ok ? "Hold steadier" : tooFast ? "Slower" : "Show the mat";
       if (problem !== this.lastProblem) this.cues.problem();
       this.lastProblem = problem;
       this.cues.say(problem);
@@ -353,7 +363,7 @@ export class Scanner {
     this.cues.say(steer.text || guidance.text);
   }
 
-  guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now }) {
+  guidance({ sharp, exposure, hasView, cell, next, kept, done, matVisible, now, tooFast = false }) {
     if (!this.started) {
       return this.requireMat && !matVisible
         ? { text: "Point the phone at the mat so you can see the black squares, then tap Start.", tone: "" }
@@ -362,6 +372,7 @@ export class Scanner {
     if (!this.capturing) return { text: "Paused.", tone: "" };
     if (!exposure.ok) return { text: exposure.message, tone: "bad" };
     if (!sharp.ok) return { text: sharp.message, tone: "bad" };
+    if (tooFast && !done) return { text: "Slow down a little. Move the phone smoothly.", tone: "bad" };
     if (this.requireMat && this.matLostSince != null && now - this.matLostSince > 800)
       return { text: `Move back a bit, until you can see the black squares around ${this.subjectName}.`, tone: "bad" };
     if (done) return { text: "All done! Tap Finish.", tone: "done" };

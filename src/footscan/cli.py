@@ -35,6 +35,8 @@ def cmd_measure(args) -> int:
     rows, n_warn = [], 0
     for p in map(Path, args.scans):
         rec = json.loads(p.read_text())
+        if rec.get("landmarks_used"):  # a studio pick: includes landmarks found from the surface (heel)
+            rec = dict(rec, landmarks=rec["landmarks_used"])
         mesh = load_mesh(p.parent / rec["mesh"]) if rec.get("mesh") else None
         values, warnings = measure_scan(rec, mesh)
         for w in warnings:
@@ -116,6 +118,16 @@ def cmd_reconstruct(args) -> int:
     return 0
 
 
+def cmd_accuracy(args) -> int:
+    from .recon import pipeline
+
+    calipers = json.loads(Path(args.calipers).read_text()) if args.calipers else None
+    report = pipeline.recompute_accuracy(args.capture, calipers)
+    a = report["accuracy"]["surface_deviation"]
+    print(f"accuracy vs calibration object: median {a['median_mm']} mm, 95th percentile {a['p95_mm']} mm")
+    return 0
+
+
 def cmd_export_measures(args) -> int:
     from .landmarks import export_rows, list_picks
 
@@ -173,6 +185,11 @@ def main(argv=None) -> int:
                     help="the photos are of the printed calibration object: also run the accuracy study")
     rc.add_argument("--calipers", help="JSON of caliper measurements of the print, e.g. {\"length\": 149.9}")
     rc.set_defaults(func=cmd_reconstruct)
+
+    ac = sub.add_parser("accuracy", help="redo only the accuracy study of a built calibration-object model")
+    ac.add_argument("capture")
+    ac.add_argument("--calipers", help="JSON of caliper measurements of the print")
+    ac.set_defaults(func=cmd_accuracy)
 
     ex = sub.add_parser("export-measures", help="landmark picks of research captures -> repeatability CSV")
     ex.add_argument("--data", default="data", help="data folder (default: data/)")

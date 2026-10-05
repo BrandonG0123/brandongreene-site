@@ -220,7 +220,9 @@ function render(s) {
     const body = Object.fromEntries(new FormData(e.target));
     const r = await fetch(`${base}/calipers`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const out = await r.json().catch(() => ({}));
-    $("caliper-msg").textContent = r.ok ? "Saved. Rebuild to compare against them." : out.error || "Couldn't save.";
+    if (!r.ok) { $("caliper-msg").textContent = out.error || "Couldn't save."; return; }
+    $("caliper-msg").textContent = out.updating ? "Saved. Updating the comparison…" : "Saved. Build the model to compare against them.";
+    if (out.updating) setTimeout(refresh, 800);
   });
 }
 

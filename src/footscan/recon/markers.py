@@ -137,6 +137,8 @@ def guess_paper(image_dir: Path, names: list[str], sample: int = 8) -> str | Non
     step = max(1, len(names) // sample)
     for name in names[::step]:
         gray = cv2.imread(str(Path(image_dir) / name), cv2.IMREAD_GRAYSCALE)
+        if gray is None:
+            continue
         for paper in votes:
             votes[paper] += len(detect(gray, paper, name, det))
     best = max(votes, key=votes.get)

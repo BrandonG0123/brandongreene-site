@@ -110,7 +110,14 @@ def support_plane(condition: str, landmarks: dict, in_mat_frame: bool) -> dict |
     n = np.cross(b - a, c - a)
     if np.linalg.norm(n) < 1e-6:
         raise LandmarkError("the three floor points are in a line; spread them out")
-    return {"point": a.tolist(), "normal": (n / np.linalg.norm(n)).tolist()}
+    n /= np.linalg.norm(n)
+    # The order of the clicks decides which way the cross product points.
+    # "Up" is toward the foot: flip if the ankle bones are below the plane.
+    above = [np.asarray(landmarks[k], float) for k in ("malleolus_medial", "malleolus_lateral", "navicular_tuberosity")
+             if landmarks.get(k) is not None]
+    if above and np.mean([(p - a) @ n for p in above]) < 0:
+        n = -n
+    return {"point": a.tolist(), "normal": n.tolist()}
 
 
 def auto_heel_posterior(V: np.ndarray, lm: dict, plane: dict | None, foot: str) -> list[float] | None:
@@ -121,7 +128,12 @@ def auto_heel_posterior(V: np.ndarray, lm: dict, plane: dict | None, foot: str) 
     forward = from there toward the midpoint of the 1st and 5th MTP joints
     (flattened onto the floor), find the surface point farthest backward
     among those below the ankle bones, and repeat from it until it stops
-    moving. Without a floor, "flattened" uses the plane of the landmarks.
+    moving.
+
+    "Up" comes from the floor, or for a scan without one, from the sole's
+    three landmarks (under the heel, 1st and 5th met heads), turned to point
+    toward the ankle bones. With neither, there is no trustworthy "below
+    the ankle" and the heel must be clicked.
     """
     need = ("mtpj1_medial", "mtpj5_lateral")
     if any(k not in lm for k in need):
@@ -129,15 +141,18 @@ def auto_heel_posterior(V: np.ndarray, lm: dict, plane: dict | None, foot: str) 
     mall = [np.asarray(lm[k], float) for k in ("malleolus_medial", "malleolus_lateral") if k in lm]
     if not mall:
         return None
-    up = np.asarray(plane["normal"], float) if plane else None
-    if up is None:
-        # Without a floor: perpendicular to the forefoot line and the heel->toe direction, pointing to the ankles.
-        a, b = np.asarray(lm["mtpj1_medial"], float), np.asarray(lm["mtpj5_lateral"], float)
-        m = np.mean(mall, 0)
-        up = np.cross(b - a, (a + b) / 2 - m)
+    if plane:
+        up = np.asarray(plane["normal"], float)
+    elif all(k in lm for k in ("calc_plantar", "mth1_plantar", "mth5_plantar")):
+        a, b, c = (np.asarray(lm[k], float) for k in ("calc_plantar", "mth1_plantar", "mth5_plantar"))
+        up = np.cross(b - a, c - a)
+        if np.linalg.norm(up) < 1e-9:
+            return None
         up /= np.linalg.norm(up)
-        if (m - (a + b) / 2) @ up < 0:
-            up = -up
+    else:
+        return None
+    if (np.mean(mall, 0) - np.asarray(lm["mtpj1_medial"], float)) @ up < 0:
+        up = -up  # ankle bones are above the foot
     fore = (np.asarray(lm["mtpj1_medial"], float) + np.asarray(lm["mtpj5_lateral"], float)) / 2
     heel = np.mean(mall, 0)
     ceiling = min(float(p @ up) for p in mall)
@@ -167,7 +182,9 @@ def validate(body: dict, condition: str, bounds: np.ndarray) -> dict:
             raise LandmarkError(f"unknown landmark {k!r}")
         if v is None:
             continue
-        if not (isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) and math.isfinite(x) for x in v)):
+        if not (isinstance(v, list) and len(v) == 3
+                and all(isinstance(x, (int, float)) and not isinstance(x, bool) and abs(x) < 1e6 and math.isfinite(x)
+                        for x in v)):
             raise LandmarkError(f"{k}: expected [x, y, z] in millimetres")
         if not np.all((np.asarray(v) >= lo) & (np.asarray(v) <= hi)):
             raise LandmarkError(f"{k}: not on the scan")
@@ -186,8 +203,8 @@ def compute(record: dict, V: np.ndarray, F: np.ndarray, in_mat_frame: bool) -> d
     if record["condition"] in STANDING and plane is None and not warnings:
         warnings.append("a standing scan needs the floor: click the three floor points")
     record["support_plane"] = plane
-    if "heel_posterior" not in lm:
-        auto = auto_heel_posterior(V, lm, plane, record["foot"])
+    if "heel_posterior" not in lm or record.get("heel_posterior_auto"):
+        auto = auto_heel_posterior(V, {k: v for k, v in lm.items() if k != "heel_posterior"}, plane, record["foot"])
         if auto is not None:
             lm["heel_posterior"] = auto
             record["heel_posterior_auto"] = True
@@ -231,8 +248,12 @@ def list_picks(folder: Path) -> list[dict]:
     out = []
     mesh = mesh_path(folder)
     current = sha256(mesh) if mesh else None
-    for p in sorted(d.glob("pick-*.json"), key=lambda p: int(p.stem.split("-")[1])) if d.exists() else []:
-        rec = json.loads(p.read_text())
+    files = [p for p in d.glob("pick-*.json") if p.stem.split("-", 1)[1].isdigit()] if d.exists() else []
+    for p in sorted(files, key=lambda p: int(p.stem.split("-", 1)[1])):
+        try:
+            rec = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue  # a damaged file is skipped, not allowed to break the page
         rec["stale"] = rec.get("mesh_sha256") != current
         out.append(rec)
     return out
@@ -262,7 +283,8 @@ def save_pick(folder: Path, n: int, body: dict, ident: dict) -> dict:
         notes=str(body.get("notes", ""))[:1000],
         landmarks=lm,
         # which points were snapped to a sticker's centre (vs. placed where clicked)
-        snapped={k: bool(v) for k, v in (body.get("snapped") or {}).items() if k in lm},
+        snapped={k: bool(v) for k, v in (body.get("snapped") if isinstance(body.get("snapped"), dict) else {}).items()
+                 if k in lm},
     )
     record = compute(record, V, F, mat)
     (folder / "landmarks").mkdir(exist_ok=True)

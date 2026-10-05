@@ -22,6 +22,8 @@ already reads, so a pick *is* a Phase 0 scan record.
 ```
 
 Or *Download measurements CSV* via `/api/measurements.csv` in the studio.
+Only research captures are exported: customers' scans are not part of
+your repeatability study.
 
 ## The landmarks
 
@@ -54,6 +56,11 @@ instead.
 - **Blind re-picks.** *New pick* hides earlier picks, so a re-pick doesn't
   copy the last one. Picking error (protocol section 5) is only measurable
   if the picks are independent.
+- **Clicks are deliberate.** Only a still left click (or one-finger tap)
+  places a landmark; pinches, two-finger taps, drags and right-clicks never
+  do. Right-click, or press and hold, turns the view around that point.
+- **Imported scans lying on their side.** *Turn upright* cycles which way is
+  up; once the three floor points are clicked, the floor sets it.
 - **Stale picks.** Each pick records the SHA-256 of the mesh it was clicked
   on. Rebuild the model and old picks are marked stale and left out of the
   export, rather than silently measured on a surface they don't sit on.

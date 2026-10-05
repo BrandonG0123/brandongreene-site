@@ -110,7 +110,8 @@ def look_at(eye, target, roll_deg: float = 0.0, up=(0.0, 0.0, 1.0)) -> tuple[np.
 class Scene:
     paper: str = "letter"
     object_pose: np.ndarray = field(default_factory=lambda: np.eye(4))  # object -> mat (mm)
-    texture: str = "speckle"  # "speckle" (dots drawn on with a pen) or "plain" (bare plastic)
+    texture: str = "speckle"  # "speckle" (pen dots), "plain" (bare plastic), "skin" (faint mottling)
+    mesh_in: object = None    # object to render (object coordinates); default the calibration object
     toe_sheet_offset: tuple = (0.0, 0.0, 0.0)  # (dx mm, dy mm, rotation deg): a slightly crooked tape seam
     seed: int = 0
 
@@ -122,7 +123,7 @@ class Scene:
         board = json.loads((MAT_DIR / f"footscan-mat-{self.paper}.json").read_text())
         self.board = board
         self.sheet_w, self.sheet_h = board["sheet_mm"]
-        self.mesh = calib.build()
+        self.mesh = calib.build() if self.mesh_in is None else self.mesh_in.copy()
         self.mesh.apply_transform(self.object_pose)
         from trimesh.ray.ray_pyembree import RayMeshIntersector
 
@@ -188,12 +189,9 @@ class Scene:
             alb = np.where(inside, val, alb)
         return alb
 
-    def _object_albedo(self, p_world: np.ndarray) -> np.ndarray:
-        if self.texture == "plain":
-            return np.full(len(p_world), 0.78)
-        inv = np.linalg.inv(self.object_pose)
-        p = p_world @ inv[:3, :3].T + inv[:3, 3]  # texture is glued to the object, not the room
-        g = p / 1.2  # lattice spacing 1.2 mm: dots about a millimetre across
+    def _noise3(self, p: np.ndarray, spacing: float, offset: int = 0) -> np.ndarray:
+        """Smooth value noise in 0-1 with features about ``spacing`` mm across."""
+        g = p / spacing + offset * 17.3
         i0 = np.floor(g).astype(int)
         f = g - i0
         f = f * f * (3 - 2 * f)  # smoothstep blend: no visible lattice creases
@@ -204,7 +202,20 @@ class Scene:
                 for dz in (0, 1):
                     w = (f[:, 0] if dx else 1 - f[:, 0]) * (f[:, 1] if dy else 1 - f[:, 1]) * (f[:, 2] if dz else 1 - f[:, 2])
                     acc += w * n[(i0[:, 0] + dx) % 64, (i0[:, 1] + dy) % 64, (i0[:, 2] + dz) % 64]
-        dots = np.clip((acc - 0.62) / 0.08, 0, 1)
+        return acc
+
+    def _object_albedo(self, p_world: np.ndarray) -> np.ndarray:
+        if self.texture == "plain":
+            return np.full(len(p_world), 0.78)
+        inv = np.linalg.inv(self.object_pose)
+        p = p_world @ inv[:3, :3].T + inv[:3, 3]  # texture is glued to the object, not the room
+        if self.texture == "skin":
+            # A GUESS at skin under room light: faint mottling at three scales
+            # (pores ~0.8 mm, blotches ~3 mm, shading-like patches ~9 mm),
+            # a few percent of brightness each. Real skin decides.
+            return (0.70 + 0.05 * (self._noise3(p, 0.8) - 0.5) + 0.06 * (self._noise3(p, 3.0, 1) - 0.5)
+                    + 0.06 * (self._noise3(p, 9.0, 2) - 0.5))
+        dots = np.clip((self._noise3(p, 1.2) - 0.62) / 0.08, 0, 1)  # pen dots about a millimetre across
         return 0.80 - 0.62 * dots
 
     # -- rendering --------------------------------------------------------
@@ -312,7 +323,8 @@ def make_capture(out_dir: Path, *, scene: Scene | None = None, cameras: list[Cam
     out_dir.mkdir(parents=True, exist_ok=True)
     # Lengthwise on the mat (like a foot), slightly turned, between the marker columns.
     scene = scene or Scene(object_pose=object_pose(108.0, 279.4, 98.0), seed=seed)
-    centre = scene.object_pose[:3, 3] + scene.object_pose[:3, :3] @ [75.0, 35.0, 15.0]
+    b = scene.mesh.bounds  # already placed on the mat
+    centre = np.array([(b[0, 0] + b[1, 0]) / 2, (b[0, 1] + b[1, 1]) / 2, (b[1, 2]) * 0.45])
     cameras = cameras or ring_cameras(centre, seed=seed)
     rng = np.random.default_rng(seed + 1)
     frames = []
@@ -369,3 +381,24 @@ def foot_pose(yaw_deg: float = 0.0, origin=(100.0, 150.0)) -> np.ndarray:
     T[:3, :3] = [[c, -s, 0], [s, c, 0], [0, 0, 1]]
     T[:3, 3] = [origin[0], origin[1], 0.0]
     return T
+
+
+def dome_foot(length: float = 240.0, width: float = 92.0, height: float = 58.0):
+    """SYNTHETIC smooth, foot-sized dome: the top half of an ellipsoid, open at the floor.
+
+    Not a foot, but smooth and curved everywhere like one (no edges, no flat
+    faces), which is what the smoothing and low-texture experiments need. A
+    gentle forward-leaning bulge breaks the symmetry.
+    """
+    import trimesh
+
+    m = trimesh.creation.icosphere(subdivisions=6, radius=1.0)
+    v = m.vertices.copy()
+    v[:, 0] *= length / 2
+    v[:, 1] *= width / 2
+    v[:, 2] *= height
+    v[:, 2] *= 1.0 - 0.25 * np.clip(v[:, 0] / (length / 2), 0, 1)  # lower toward the toes
+    m = trimesh.Trimesh(v + [length / 2, width / 2, 0.0], m.faces, process=True)
+    m.update_faces(m.triangles_center[:, 2] > 0)
+    m.remove_unreferenced_vertices()
+    return m

@@ -129,3 +129,27 @@ test("steering points the right way around the subject", async () => {
   assert.ok(Math.abs(steerTo(at(15, 12), "top").angle) < 1, "pure lift points up");
   assert.ok(steerTo(at(15, 42), "low-0").angle === 180, "pure drop points down");
 });
+
+test("bridging: a big turn since the last kept photo is kept soon, even in a full cell", async () => {
+  const { shouldCapture, viewAngle, Coverage } = await import("../../web/assets/quality.js");
+  const coverage = new Coverage();
+  for (let i = 0; i < 6; i++) coverage.add("mid-0");
+  const base = { sharpOk: true, exposureOk: true, lastCaptureAt: 1000, cell: "mid-0", coverage };
+  const last = { azimuth: 0, elevation: 40 };
+  // small turn, full cell: no
+  assert.equal(shouldCapture({ ...base, now: 2000, view: { azimuth: 3, elevation: 40 }, lastView: last }), false);
+  // big turn: yes after 250 ms, even though the cell is full and 600 ms hasn't passed
+  assert.equal(shouldCapture({ ...base, now: 1300, view: { azimuth: 12, elevation: 40 }, lastView: last }), true);
+  assert.equal(shouldCapture({ ...base, now: 1100, view: { azimuth: 12, elevation: 40 }, lastView: last }), false);
+  // never a blurry one
+  assert.equal(shouldCapture({ ...base, sharpOk: false, now: 1300, view: { azimuth: 30, elevation: 40 }, lastView: last }), false);
+  assert.ok(Math.abs(viewAngle({ azimuth: 0, elevation: 0 }, { azimuth: 90, elevation: 0 }) - 90) < 1e-9);
+  assert.ok(Math.abs(viewAngle({ azimuth: 0, elevation: 90 }, { azimuth: 123, elevation: 90 })) < 1e-6);
+});
+
+test("turning speed is measured over the last moments", async () => {
+  const { angularSpeed } = await import("../../web/assets/quality.js");
+  const samples = [0, 100, 200, 300, 400, 500].map((t) => ({ t, view: { azimuth: t / 10, elevation: 0 } })); // 100 deg/s
+  assert.ok(Math.abs(angularSpeed(samples, 500) - 100) < 1);
+  assert.equal(angularSpeed([{ t: 0, view: { azimuth: 0, elevation: 0 } }], 0), 0);
+});

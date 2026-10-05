@@ -538,3 +538,39 @@ def test_landmarks_are_only_for_feet(servers):
     op, _, _ = servers
     cid = make_capture(op, condition="calibration")
     assert call(f"{op}/api/captures/{cid}/picks")[0] == 400
+
+
+# --------------------------------------------------------------------------
+# Other web sites can't act as the operator
+# --------------------------------------------------------------------------
+def test_dns_rebinding_host_is_not_the_operator(servers):
+    op, _, _ = servers  # this server treats the socket as local...
+    # ...but a page on evil.example rebinding its name to 127.0.0.1 sends its own Host
+    assert call(f"{op}/api/submissions", headers={"Host": "evil.example:8765"})[0] == 403
+    st, raw, _ = call(f"{op}/studio/index.html", headers={"Host": "evil.example"})
+    assert b"Studio locked" in raw
+    assert call(f"{op}/api/submissions", headers={"Host": "localhost"})[0] == 200
+
+
+def test_cross_site_changes_are_refused(servers):
+    op, _, data = servers
+    cid = make_capture(op)
+    host = op.split("//")[1]
+    assert call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": 150},
+                headers={"Origin": "https://evil.example"})[0] == 403
+    assert call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": 150},
+                headers={"Origin": f"http://{host}"})[0] == 200
+
+
+def test_studio_pages_locked_however_spelt(servers):
+    _, phone, _ = servers
+    for path in ("/STUDIO/index.html", "/Studio/", "/assets/../studio/index.html"):
+        st, raw, _ = call(f"{phone}{path}")
+        assert b"Studio locked" in raw or st == 404, path
+
+
+def test_wrong_shaped_input_gets_an_answer(servers):
+    op, _, _ = servers
+    cid = make_capture(op)
+    st, raw, _ = call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": [1, 2]})
+    assert st == 400 and b"invalid input" in raw

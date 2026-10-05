@@ -50,6 +50,7 @@ from . import calib
 from .geometry import SurfaceIndex
 
 REJECT_MM = 6.0
+ICP_MIN_REJECT_MM = 2.0
 ICP_ITERS = 60
 ICP_POINTS = 20_000  # alignment uses a random subset; the statistics use every sample
 
@@ -85,7 +86,11 @@ def icp(Q: np.ndarray, tree, ref_pts: np.ndarray, ref_nrm: np.ndarray, T0: np.nd
         d, idx = tree.query(X, distance_upper_bound=thr, workers=-1)
         use = np.isfinite(d)
         if it >= 5 and use.sum() > 100:
-            thr = min(reject, max(0.5, 3 * float(np.median(d[use]))))
+            # Tighten toward 3x the typical distance, but never below 2 mm:
+            # a scan with a scale error can't fit everywhere at once, and a
+            # threshold that keeps shrinking lets ICP lock onto one end of
+            # it, which *hides* the error it should reveal.
+            thr = min(reject, max(ICP_MIN_REJECT_MM, 3 * float(np.median(d[use]))))
             use &= d < thr
         if use.sum() < 100:
             break
@@ -103,7 +108,10 @@ def icp(Q: np.ndarray, tree, ref_pts: np.ndarray, ref_nrm: np.ndarray, T0: np.nd
         rms = float(np.sqrt(np.mean(np.einsum("ij,ij->i", x - p, n) ** 2)))
         if np.linalg.norm(sol[:3]) < 1e-7 and np.linalg.norm(sol[3:]) < 1e-5:
             break
-    return T, rms
+    X = Q @ T[:3, :3].T + T[:3, 3]
+    d, _ = tree.query(X, distance_upper_bound=ICP_MIN_REJECT_MM, workers=-1)
+    T_inliers = float(np.mean(np.isfinite(d)))  # share of the scan within 2 mm of the model once aligned
+    return T, rms, T_inliers
 
 
 def register(scan_pts: np.ndarray, ref) -> tuple[np.ndarray, dict]:
@@ -128,12 +136,15 @@ def register(scan_pts: np.ndarray, ref) -> tuple[np.ndarray, dict]:
         T0 = np.eye(4)
         T0[:3, :3] = Rz
         T0[:3, 3] = [calib.LENGTH / 2 - mid[0], calib.WIDTH / 2 - mid[1], 0.0]
-        T, rms = icp(Q, tree, ref_pts, ref_nrm, T0)
-        if best is None or rms < best[1]:
-            best = (T, rms, yaw)
-    T, rms, _ = best
+        T, rms, inl = icp(Q, tree, ref_pts, ref_nrm, T0)
+        # The right way round matches more of the surface; a wrong turn can
+        # still fit a part tightly, so compare coverage first, then tightness.
+        if best is None or (inl, -rms) > (best[2], -best[1]):
+            best = (T, rms, inl)
+    T, rms, inl = best
     tilt = np.degrees(np.arccos(np.clip(T[2, 2], -1, 1)))
-    return T, dict(icp_rms_mm=round(rms, 4), tilt_from_floor_deg=round(float(tilt), 3))
+    return T, dict(icp_rms_mm=round(rms, 4), tilt_from_floor_deg=round(float(tilt), 3),
+                   scan_within_2mm=round(inl, 4))
 
 
 # --------------------------------------------------------------------------
@@ -165,6 +176,7 @@ def _robust(P: np.ndarray, fn, keep: float = 2.5, rounds: int = 3):
         if ok.all() or ok.sum() < 20:
             break
         P = P[ok]
+        _, out = fn(P)  # the fit and the count always describe the same points
     return out, len(P)
 
 
@@ -223,8 +235,10 @@ def measure_dimensions(scan_ref: np.ndarray, floor_plane: tuple[np.ndarray, np.n
     ):
         o_axis, o_lo, o_hi = other
         span_ok = band & (scan_ref[:, o_axis] > o_lo) & (scan_ref[:, o_axis] < o_hi)
-        lo = span_ok & (np.abs(scan_ref[:, axis] - lo_pos) < 2.0)
-        hi = span_ok & (np.abs(scan_ref[:, axis] - hi_pos) < 2.0)
+        # Wide windows (+-6 mm): a scan a few percent too big still has its
+        # walls inside them, and must be measured, not dropped.
+        lo = span_ok & (np.abs(scan_ref[:, axis] - lo_pos) < 6.0)
+        hi = span_ok & (np.abs(scan_ref[:, axis] - hi_pos) < 6.0)
         if lo.sum() > 20 and hi.sum() > 20:
             out[key] = dict(value=round(float(np.median(scan_ref[hi, axis]) - np.median(scan_ref[lo, axis])), 3),
                             n=int(lo.sum() + hi.sum()))
@@ -292,6 +306,13 @@ def evaluate(scan_mesh, floor_pts: np.ndarray | None = None, calipers: dict | No
                           reference="model"))
 
     warnings = []
+    missing = [row["label"] for row in table if row["scan_mm"] is None]
+    if missing:
+        warnings.append(f"couldn't measure on the scan: {', '.join(missing)} (that part of the surface is missing "
+                        "or far from where it should be)")
+    if reg["scan_within_2mm"] < 0.9:
+        warnings.append(f"only {100 * reg['scan_within_2mm']:.0f}% of the scan lies within 2 mm of the object once "
+                        "lined up: the scan is badly off (wrong scale?) or includes something else")
     for row in table:
         if row.get("caliper_mm") is not None and abs(row["caliper_mm"] - row["model_mm"]) > calib.PRINT_TOLERANCE_MM:
             warnings.append(f"{row['label']}: the print measures {row['caliper_mm']} mm but the model says "

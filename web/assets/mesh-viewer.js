@@ -1,9 +1,9 @@
 // A small WebGL2 viewer for one scanned surface: orbit, zoom, pan, click to pick a point.
 //
 // Drag to turn (one finger or the mouse), scroll or pinch to zoom, drag with
-// two fingers / right button / shift to slide. A click that doesn't move
-// reports the exact point of the surface under it (onPick). Double-click
-// re-centres the turning on that point.
+// two fingers / right button / shift to slide. A left click or one-finger tap
+// that doesn't move reports the exact point of the surface under it
+// (onPick). Right-click, or press and hold, turns around that point instead.
 import {
   anglesFor, bounds, intersectMesh, lookAt, mat4Multiply, orbitEye, perspective, pixelRay, projectToScreen,
   vertexNormals,
@@ -205,23 +205,34 @@ export class MeshViewer {
       gl.uniform3fv(gl.getUniformLocation(this.pprog, "uEye"), new Float32Array(this.eye()));
       gl.uniform1f(gl.getUniformLocation(this.pprog, "uLift"), 1.5);
       gl.drawArrays(gl.POINTS, 0, this.markers.length);
-      // Which dots are actually on screen (not hidden behind the foot): read
-      // the pixel at each dot's centre right after drawing and compare colours.
-      const px = new Uint8Array(4);
-      for (const m of this.markers) {
-        const s = projectToScreen(m.position, viewProj, c.clientWidth, c.clientHeight);
-        m.visible = false;
-        if (!s) continue;
-        const x = Math.round(s[0] * dpr), y = Math.round(H - s[1] * dpr);
-        if (x < 0 || y < 0 || x >= W || y >= H) continue;
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-        m.visible = m.color.every((v, i) => Math.abs(px[i] / 255 - v) < 0.06);
-      }
       gl.bindVertexArray(null);
       bufs.forEach((b) => gl.deleteBuffer(b));
       gl.deleteVertexArray(vao);
     }
+    this.scheduleVisibility();
     this.onChange?.();
+  }
+
+  /**
+   * Which landmark dots can be seen from here (not hidden behind the foot):
+   * cast a ray from the eye to each dot and see whether the surface is hit
+   * first. Exact, but a few milliseconds per dot, so it runs once the view
+   * has stopped moving; labels hide while it moves.
+   */
+  scheduleVisibility() {
+    for (const m of this.markers) m.visible = false;
+    clearTimeout(this.visTimer);
+    this.visTimer = setTimeout(() => {
+      const eye = this.eye();
+      for (const m of this.markers) {
+        if (m.other) continue;
+        const d = [0, 1, 2].map((i) => m.position[i] - eye[i]);
+        const len = Math.hypot(...d);
+        const hit = intersectMesh(this.positions, this.indices, eye, d.map((v) => v / len));
+        m.visible = !hit || hit.t >= len - 1.5; // the first surface the ray meets is the dot's own
+      }
+      this.onChange?.();
+    }, 120);
   }
 
   pick(px, py) {
@@ -238,13 +249,23 @@ export class MeshViewer {
     c.addEventListener("contextmenu", (e) => e.preventDefault());
     c.addEventListener("pointerdown", (e) => {
       c.setPointerCapture(e.pointerId);
+      if (this.pointers.size === 0) this.gesture = { multi: false, button: e.button, moved: false };
+      else this.gesture.multi = true; // a second finger: this gesture is a pinch, never a click
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t0: performance.now(),
         pan: e.button === 2 || e.shiftKey });
+      clearTimeout(this.holdTimer);
+      if (e.pointerType !== "mouse" && this.pointers.size === 1) {
+        // press and hold (touch): turn around this point
+        this.holdTimer = setTimeout(() => {
+          if (!this.gesture.moved && !this.gesture.multi) { this.gesture.held = true; this.recentre(e.clientX, e.clientY); }
+        }, 550);
+      }
     });
     c.addEventListener("pointermove", (e) => {
       const p = this.pointers.get(e.pointerId);
       if (!p) return;
       const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (Math.hypot(e.clientX - p.x0, e.clientY - p.y0) >= 6) { this.gesture.moved = true; clearTimeout(this.holdTimer); }
       if (this.pointers.size === 2) {
         const [a, b] = [...this.pointers.values()];
         const before = Math.hypot(a.x - b.x, a.y - b.y);
@@ -265,18 +286,15 @@ export class MeshViewer {
     const end = (e) => {
       const p = this.pointers.get(e.pointerId);
       this.pointers.delete(e.pointerId);
+      clearTimeout(this.holdTimer);
       if (!p || this.pointers.size) return;
-      const moved = Math.hypot(e.clientX - p.x0, e.clientY - p.y0);
-      if (e.type === "pointerup" && moved < 6 && performance.now() - p.t0 < 600) {
-        const r = c.getBoundingClientRect();
-        const hit = this.pick(e.clientX - r.left, e.clientY - r.top);
-        const now = performance.now();
-        if (hit && this.lastClick && now - this.lastClick < 350) {
-          this.cam.target = hit.point; // double-click: turn around this point
-          this.draw();
-        } else if (hit) this.onPick?.(hit.point);
-        this.lastClick = now;
-      }
+      const g = this.gesture;
+      if (e.type !== "pointerup" || g.moved || g.multi || g.held || performance.now() - p.t0 > 600) return;
+      if (g.button === 2) return this.recentre(e.clientX, e.clientY); // right-click: turn around here
+      if (g.button !== 0 || p.pan) return;
+      const r = c.getBoundingClientRect();
+      const hit = this.pick(e.clientX - r.left, e.clientY - r.top);
+      if (hit) this.onPick?.(hit.point);
     };
     c.addEventListener("pointerup", end);
     c.addEventListener("pointercancel", end);
@@ -285,6 +303,15 @@ export class MeshViewer {
       this.zoom(Math.exp(e.deltaY * 0.0015));
       this.draw();
     }, { passive: false });
+  }
+
+  recentre(clientX, clientY) {
+    const r = this.canvas.getBoundingClientRect();
+    const hit = this.pick(clientX - r.left, clientY - r.top);
+    if (hit) {
+      this.cam.target = hit.point;
+      this.draw();
+    }
   }
 
   zoom(f) {

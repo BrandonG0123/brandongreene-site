@@ -83,6 +83,8 @@ class DenseConfig:
     min_tri_angle_deg: float = 5.0    # source/reference angle at the subject: too small = poor depth
     max_tri_angle_deg: float = 45.0   # too large = the surface looks too different
     discontinuity_rel: float = 0.015  # depth jump (fraction of depth) treated as an object edge
+    max_height_mm: float = 250.0      # top of the search box: ankle and lower-leg landmarks fit under it
+    near_fraction: float = 0.6        # nothing is searched nearer a camera than this x its nearest sparse points
     consistency_px: float = 1.0
     consistency_depth_rel: float = 0.01
     min_consistent: int = 2
@@ -144,7 +146,16 @@ def load_views(rec, image_dir, max_image_size: int) -> list[View]:
         if img.name not in P:
             continue
         cam = img.camera
-        f, cx, cy, k1, k2 = (float(v) for v in cam.params)
+        prm = [float(v) for v in cam.params]
+        model = cam.model_name if hasattr(cam, "model_name") else str(cam.model)
+        if "RADIAL" in model and len(prm) == 5:
+            f, cx, cy, k1, k2 = prm
+        elif "SIMPLE_RADIAL" in model and len(prm) == 4:
+            (f, cx, cy, k1), k2 = prm, 0.0
+        elif "SIMPLE_PINHOLE" in model and len(prm) == 3:
+            (f, cx, cy), k1, k2 = prm, 0.0, 0.0
+        else:
+            raise ValueError(f"dense reconstruction supports RADIAL, SIMPLE_RADIAL or SIMPLE_PINHOLE lenses, not {model}")
         K = np.array([[f, 0, cx - 0.5], [0, f, cy - 0.5], [0, 0, 1.0]])
         dist = np.array([k1, k2, 0, 0, 0])
         bgr = cv2.imread(str(image_dir / img.name), cv2.IMREAD_COLOR)
@@ -165,7 +176,7 @@ def load_views(rec, image_dir, max_image_size: int) -> list[View]:
     return views
 
 
-def subject_box(rec, board: dict, margin: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def subject_box(rec, board: dict, margin: float, max_height: float = 250.0):
     """Box (mm, mat frame) around what stands on the mat, from COLMAP's sparse points.
 
     Points on the paper (z ~ 0) or far off the mat (the room) are ignored;
@@ -173,20 +184,46 @@ def subject_box(rec, board: dict, margin: float) -> tuple[np.ndarray, np.ndarray
     rather than min/max keep a few stray points from inflating the box. The
     box bottom goes slightly below the paper so the floor around the subject
     is reconstructed too (the accuracy study uses it as the table top).
-    Returns (lo, hi, centre).
+    The box stops ``max_height`` above the paper: the leg keeps going up,
+    toward the cameras looking down, and a box reaching the cameras would make
+    the depth search start at the lens.
+
+    Smooth, plain skin can give COLMAP very few points to work with. Then the
+    box is simply the space above the mat's middle (where the foot must be),
+    which is larger, so slower, but still correct.
+    Returns (lo, hi, centre, source).
     """
-    xyz = np.array([p.xyz for p in rec.points3D.values()])
+    xyz = np.array([p.xyz for p in rec.points3D.values()]).reshape(-1, 3)
     W, H = board["sheet_mm"]
     on_mat = (xyz[:, 0] > -20) & (xyz[:, 0] < W + 20) & (xyz[:, 1] > -20) & (xyz[:, 1] < 2 * H + 20)
-    above = on_mat & (xyz[:, 2] > 2.0) & (xyz[:, 2] < 400)
-    if above.sum() < 30:
-        raise RuntimeError("found almost nothing standing on the mat (fewer than 30 points above the paper)")
-    sub = xyz[above]
-    lo = np.percentile(sub, 0.5, axis=0) - margin
-    hi = np.percentile(sub, 99.5, axis=0) + margin
+    above = on_mat & (xyz[:, 2] > 2.0) & (xyz[:, 2] < max_height)
+    if above.sum() >= 30:
+        sub = xyz[above]
+        lo = np.percentile(sub, 0.5, axis=0) - margin
+        hi = np.percentile(sub, 99.5, axis=0) + margin
+        centre = np.median(sub, axis=0)
+        source = "sparse points"
+    else:
+        lo = np.array([-10.0, -10.0, 0.0])
+        hi = np.array([W + 10.0, 2 * H + 10.0, 150.0])
+        centre = np.array([W / 2, H, 30.0])
+        source = f"mat area (only {int(above.sum())} sparse points above the paper)"
     lo[2] = -3.0
-    centre = np.median(sub, axis=0)
-    return lo, hi, centre
+    hi[2] = min(hi[2], max_height)
+    return lo, hi, centre, source
+
+
+def near_limits(rec, views: list, lo, hi, fraction: float) -> dict[str, float]:
+    """Per photo: the nearest depth worth searching (a fraction of its nearest sparse points' depth)."""
+    xyz = np.array([p.xyz for p in rec.points3D.values()]).reshape(-1, 3)
+    inside = np.all((xyz >= lo) & (xyz <= hi), axis=1)
+    pts = xyz[inside] if inside.sum() >= 10 else xyz
+    out = {}
+    for v in views:
+        z = (pts @ v.R.T + v.t)[:, 2]
+        z = z[z > 0]
+        out[v.name] = fraction * float(np.percentile(z, 2)) if len(z) >= 5 else 1.0
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -250,10 +287,13 @@ def _box_mean(img: np.ndarray, k: int) -> np.ndarray:
     return cv2.boxFilter(img, cv2.CV_32F, (k, k), normalize=True, borderType=cv2.BORDER_REFLECT)
 
 
-def depth_map(ref: View, sources: list[View], lo, hi, cfg: DenseConfig) -> DepthMap | None:
+def depth_map(ref: View, sources: list[View], lo, hi, cfg: DenseConfig, near: float = 1.0) -> DepthMap | None:
     import cv2
 
     tmin, tmax = ray_box_depths(ref, lo, hi)
+    tmin = np.maximum(tmin, near)  # never search right up against the lens
+    tmax = np.where(tmax > tmin, tmax, np.nan)
+    tmin = np.where(np.isfinite(tmax), tmin, np.nan)
     valid = np.isfinite(tmin)
     if valid.sum() < 100 or not sources:
         return None
@@ -309,7 +349,10 @@ def depth_map(ref: View, sources: list[View], lo, hi, cfg: DenseConfig) -> Depth
             cov = _box_mean(I * Wp, k) - mu_r * mu_s
             ncc = cov / np.sqrt(var_r * var_s + 1e-10)
             cst = 1.0 - ncc
-            cst[(Wp < 0) | (var_s < 1e-8)] = 2.0  # sampled outside the source photo
+            # A window that reaches past the source photo's edge compares
+            # against the -1 fill value: no match there.
+            outside = _box_mean((Wp < 0).astype(np.float32), k) > 0
+            cst[outside | (var_s < 1e-8)] = 2.0
             costs[j] = cst
         agg = np.partition(costs, m - 1, axis=0)[:m].mean(0) if m < len(rel) else costs.mean(0)
         agg[(d < tmin) | (d > tmax) | ~np.isfinite(tmin)] = np.inf
@@ -448,6 +491,40 @@ def voxel_merge(P, N, C, voxel: float):
     return Pm, Nm, Cm
 
 
+def locate_subject(rec, image_dir, views, lo, hi, centre, cfg: DenseConfig, log=print):
+    """Find the subject with a quick, coarse depth pass when COLMAP found too little on it.
+
+    The full-detail search over the whole mat area is slow (most of every
+    photo, every depth from the paper to the top of the box). A pass at a
+    quarter of the resolution, on every other photo, with coarser depth
+    steps, takes a small fraction of that and is plenty to see where the
+    subject stands; the full pass then searches only around it.
+    """
+    import dataclasses
+
+    coarse = dataclasses.replace(cfg, max_image_size=max(320, cfg.max_image_size // 3), plane_step_px=1.0,
+                                 max_planes=96, min_planes=32, min_consistent=1)
+    small = load_views(rec, image_dir, coarse.max_image_size)[::2]
+    src = choose_sources(small, centre, coarse)
+    near = near_limits(rec, small, lo, hi, cfg.near_fraction)
+    maps = {}
+    for v in small:
+        sources = [small[j] for j in src[v.name] if j < len(small)]
+        dm = depth_map(v, sources, lo, hi, coarse, near[v.name])
+        if dm is not None:
+            maps[v.name] = dm
+    P, _, _ = fuse(small, maps, coarse, log=lambda *a: None)
+    up = P[(P[:, 2] > 3.0) & np.all((P >= lo) & (P <= hi), axis=1)] if len(P) else P
+    log(f"dense: quick pass found {len(up)} points on the subject")
+    if len(up) < 200:
+        return None
+    new_lo = np.percentile(up, 1, axis=0) - cfg.box_margin_mm
+    new_hi = np.percentile(up, 99, axis=0) + cfg.box_margin_mm
+    new_lo[2] = -3.0
+    new_hi[2] = min(new_hi[2], cfg.max_height_mm)
+    return np.maximum(new_lo, lo), np.minimum(new_hi, hi), np.median(up, axis=0)
+
+
 def run(rec, image_dir, board: dict, cfg: DenseConfig = DenseConfig(), log=print):
     """Depth maps for every registered photo, fused into one point cloud (mat frame, mm).
 
@@ -456,11 +533,17 @@ def run(rec, image_dir, board: dict, cfg: DenseConfig = DenseConfig(), log=print
     """
     t0 = time.time()
     views = load_views(rec, image_dir, cfg.max_image_size)
-    lo, hi, centre = subject_box(rec, board, cfg.box_margin_mm)
+    lo, hi, centre, box_source = subject_box(rec, board, cfg.box_margin_mm, cfg.max_height_mm)
+    if box_source.startswith("mat area"):
+        found = locate_subject(rec, image_dir, views, lo, hi, centre, cfg, log)
+        if found is not None:
+            lo, hi, centre = found
+            box_source += "; narrowed by a quick low-resolution pass"
+    near = near_limits(rec, views, lo, hi, cfg.near_fraction)
     sources = choose_sources(views, centre, cfg)
     maps = {}
     for i, v in enumerate(views, 1):
-        dm = depth_map(v, [views[j] for j in sources[v.name]], lo, hi, cfg)
+        dm = depth_map(v, [views[j] for j in sources[v.name]], lo, hi, cfg, near[v.name])
         if dm is not None:
             maps[v.name] = dm
         if i % 5 == 0 or i == len(views):
@@ -471,6 +554,7 @@ def run(rec, image_dir, board: dict, cfg: DenseConfig = DenseConfig(), log=print
         views=len(views),
         depth_maps=len(maps),
         box_mm=dict(lo=[round(float(v), 1) for v in lo], hi=[round(float(v), 1) for v in hi]),
+        box_from=box_source,
         points=int(len(P)),
         valid_depth_fraction=round(float(np.mean([np.isfinite(m.depth).mean() for m in maps.values()])), 3) if maps else 0,
         seconds=round(time.time() - t0, 1),
