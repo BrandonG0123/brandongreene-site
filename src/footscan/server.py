@@ -39,6 +39,15 @@ GET  /api/captures/<id>/recon                           its progress and results
 GET  /api/captures/<id>/recon/<file>                    mesh.ply, report.json, ... (download)
 PUT  /api/captures/<id>/calipers                        caliper readings of the calibration object
 POST/GET /api/submissions/<id>/scans/<key>/recon[/<file>]   the same for a customer's scan
+GET  /api/captures/<id>/viewer.bin                      the 3-D model for the landmark viewer
+GET  /api/captures/<id>/picks                           landmark spec + saved picks (Phase 3)
+PUT  /api/captures/<id>/picks/<n>                       save pick n {landmarks: {name: [x, y, z]}} -> measurements
+DELETE /api/captures/<id>/picks/<n>
+(the same three under /api/submissions/<id>/scans/<key>/)
+GET  /api/measurements.csv                              every research capture's picks, for the repeatability study
+
+The server itself needs only the standard library; saving a pick loads
+numpy and trimesh to compute the measurements.
 GET  /api/studio                                        scan address to share
 
 Phones only allow camera and motion-sensor access on secure origins, so
@@ -462,6 +471,9 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             if parts[:1] == ["captures"]:
                 self.require_local()
                 return self.api_captures(method, parts[1:])
+            if parts == ["measurements.csv"] and method == "GET":
+                self.require_local()
+                return self.measurements_csv()
             if parts == ["studio"] and method == "GET":
                 self.require_local()
                 return self.send_json(self.studio_info())
@@ -620,6 +632,12 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                         if not f.is_file():
                             raise FileNotFoundError
                         return self.send_file(f, "image/jpeg")
+                if rest[2] in ("picks", "viewer.bin"):
+                    self.require_local()
+                    scan = meta["scans"][key]
+                    return self.picks_api(method, scan_dir, rest[2:], dict(
+                        foot=scan["foot"], condition=scan["condition"], session=meta["id"],
+                        capture_id=f"{meta['id']}-{key}", load_kg=scan.get("load_kg")))
                 if rest[2] == "recon":
                     self.require_local()
                     scan = meta["scans"][key]
@@ -671,6 +689,58 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                                       headers={"Content-Disposition": f'attachment; filename="{download}"'})
             raise FileNotFoundError
 
+        # -- landmarks (Phase 3, operator only) -----------------------------
+        def picks_api(self, method: str, folder: Path, rest: list[str], ident: dict):
+            from . import landmarks as lm_mod
+
+            if ident.get("foot") not in FEET:
+                raise BadRequest("landmarks are for foot scans")
+            if rest == ["viewer.bin"] and method == "GET":
+                f = lm_mod.viewer_path(folder)
+                if f is None:
+                    raise FileNotFoundError
+                return self.send_file(f, "application/octet-stream")
+            if rest == ["picks"] and method == "GET":
+                mat = lm_mod.in_mat_frame(folder)
+                frame = None
+                if (folder / "recon" / "plantar.json").exists():  # the reconstruction's provisional foot frame
+                    frame = read_json(folder / "recon" / "plantar.json").get("frame")
+                return self.send_json(dict(
+                    foot=ident["foot"], condition=ident["condition"], in_mat_frame=mat, provisional_frame=frame,
+                    has_model=lm_mod.viewer_path(folder) is not None,
+                    spec=lm_mod.spec(ident["condition"], mat), picks=lm_mod.list_picks(folder)))
+            if len(rest) == 2 and rest[0] == "picks" and rest[1].isdigit():
+                n = int(rest[1])
+                if method == "PUT":
+                    try:
+                        return self.send_json(lm_mod.save_pick(folder, n, self.json_body(), ident))
+                    except lm_mod.LandmarkError as e:
+                        raise BadRequest(str(e)) from None
+                if method == "DELETE":
+                    (folder / "landmarks" / f"pick-{n}.json").unlink(missing_ok=True)
+                    return self.send_json({"ok": True})
+            raise FileNotFoundError
+
+        def measurements_csv(self):
+            import csv
+            import io
+
+            from . import landmarks as lm_mod
+            from .cli import FIELDS
+
+            folders = sorted(f.parent for f in captures_dir.glob("*/capture.json")) if captures_dir.exists() else []
+            buf = io.StringIO()
+            w = csv.DictWriter(buf, fieldnames=FIELDS)
+            w.writeheader()
+            w.writerows(lm_mod.export_rows(folders))
+            data = buf.getvalue().encode()
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="scan_measurements.csv"')
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
         # -- research captures (operator only) -----------------------------
         def api_captures(self, method: str, p: list[str]):
             if not p and method == "GET":
@@ -699,6 +769,11 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     if not f.is_file():
                         raise FileNotFoundError
                     return self.send_file(f, "image/jpeg")
+            if p[1:2] in (["picks"], ["viewer.bin"]):
+                meta = read_json(d / "capture.json")
+                return self.picks_api(method, d, p[1:], dict(
+                    foot=meta.get("foot"), condition=meta.get("condition"), session=meta.get("session"),
+                    capture_id=meta.get("capture_id", p[0]), load_kg=meta.get("load_kg")))
             if p[1:2] == ["recon"]:
                 meta = read_json(d / "capture.json")
                 return self.recon_api(method, d, p[2:], meta.get("condition") == "calibration")
@@ -773,9 +848,12 @@ def import_mesh(src: Path, dst: Path) -> dict:
         units, factor = "cm", 10.0
     else:
         units, factor = "mm", 1.0
+    from .recon import viewer_data
+
     mesh = loaded.copy()
     mesh.apply_scale(factor)
     mesh.export(dst)
+    viewer_data.write(mesh, dst.parent / "viewer.bin")
     ext = [round(float(v), 1) for v in sorted(mesh.extents, reverse=True)]
     return dict(
         source_file=src.name, vertices=int(len(mesh.vertices)), faces=int(len(mesh.faces)),

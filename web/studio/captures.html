@@ -108,8 +108,11 @@
           <div><dt>Created</dt><dd>${esc(c.created?.replace("T", " "))}</dd></div>
         </dl>
         ${c.notes ? `<p class="hint" style="margin:8px 0 0">${esc(c.notes)}</p>` : ""}
-        ${c.status === "complete" && c.frame_files?.length && c.condition !== "object"
-          ? `<p style="margin:10px 0 0"><a class="btn secondary" href="/studio/model.html?capture=${encodeURIComponent(c.capture_id)}">3D model</a></p>` : ""}
+        <p class="btn-row" style="margin:10px 0 0">
+          ${c.status === "complete" && c.frame_files?.length && c.condition !== "object"
+            ? `<a class="btn secondary" href="/studio/model.html?capture=${encodeURIComponent(c.capture_id)}">3D model</a>` : ""}
+          ${c.foot && (c.frame_files?.length || c.mesh)
+            ? `<a class="btn secondary" href="/studio/landmarks.html?capture=${encodeURIComponent(c.capture_id)}">Landmarks</a>` : ""}</p>
       </div></article>`;
     }).join("");
   }

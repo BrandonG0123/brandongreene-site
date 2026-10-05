@@ -11,7 +11,8 @@ Outputs (all in millimetres, mat frame unless noted):
     floor.npy         dense points on the paper (for the accuracy study's table top)
     (the surface step runs in its own process: see in_clean_process)
     mesh_raw.ply      Poisson surface, cut at the floor and trimmed to the data
-    mesh.ply          after hole filling, Taubin smoothing and decimation (the result)
+    mesh.ply          after hole filling, Taubin smoothing and decimation (the result), coloured
+    viewer.bin        the same mesh in a compact form for the studio's 3-D viewer
     accuracy.json     calibration-object captures only: scan vs. model
     mesh_foot.ply     foot scans standing on the mat: the mesh in the (provisional) foot frame
     plantar.ply       ... its downward-facing underside (arch), foot frame
@@ -34,7 +35,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import accuracy, dense, markers, mesh, plantar, scale, sfm
+from . import accuracy, dense, markers, mesh, plantar, scale, sfm, viewer_data
 
 # Thresholds for warnings (not failures).
 WARN_REGISTERED_FRACTION = 0.8
@@ -84,7 +85,12 @@ def _versions() -> dict:
 def write_ply_points(path: Path, P: np.ndarray, C: np.ndarray | None = None) -> None:
     import trimesh
 
-    colors = None if C is None else np.repeat((np.clip(C, 0, 1) * 255).astype(np.uint8)[:, None], 3, 1)
+    if C is None:
+        colors = None
+    else:
+        C = np.asarray(C)
+        C = np.repeat(C[:, None], 3, 1) if C.ndim == 1 else C
+        colors = (np.clip(C, 0, 1) * 255).astype(np.uint8)
     trimesh.PointCloud(P, colors=colors).export(path)
 
 
@@ -161,7 +167,7 @@ def reconstruct(capture_dir, *, calibration_object: bool = False, calipers: dict
         write_ply_points(out / "points.ply", P, C)
 
         status("surface")
-        np.savez(out / "dense.npz", P=P, V=V)
+        np.savez(out / "dense.npz", P=P, V=V, C=C)
         report["mesh"] = in_clean_process(_surface_job, str(out), settings.mesh)
 
         if calibration_object:
@@ -216,7 +222,10 @@ def _surface_job(out_dir: str, cfg) -> dict:
     final, stages, floor, rep = mesh.run(z["P"], z["V"], cfg)
     np.save(out / "floor.npy", floor.astype(np.float32))
     stages["trimmed"].export(out / "mesh_raw.ply")
+    if "C" in z.files:
+        mesh.color_vertices(final, z["P"], z["C"])
     final.export(out / "mesh.ply")
+    viewer_data.write(final, out / "viewer.bin")
     return rep
 
 

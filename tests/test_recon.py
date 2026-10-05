@@ -219,32 +219,10 @@ def test_caliper_values_become_the_reference_and_print_errors_are_flagged():
 # --------------------------------------------------------------------------
 # plantar surface + provisional foot frame
 # --------------------------------------------------------------------------
-def _block_foot(yaw_deg: float, foot: str = "right", toes_toward_mat: bool = True):
-    """SYNTHETIC 'foot': a 240 x 90 x 25 mm block with a 12 mm high arch
-    tunnel under the inside 36 mm (x 70-150 mm) and a leg over the heel.
-    (Wider than the profile's "inside third", so the test isn't decided by
-    which side of a boundary a vertex happens to fall.)
-    Returned in mat coordinates, floor-cut (no bottom faces), like a scan."""
-    import manifold3d as m3
-    import trimesh
+def _block_foot(yaw_deg: float, foot: str = "right"):
+    import synth
 
-    M = m3.Manifold
-    body = M.cube((240.0, 90.0, 25.0))
-    medial_y0 = 54.0 if foot == "right" else 0.0  # medial = +y (the foot's left) for a right foot
-    tunnel = M.cube((80.0, 36.0, 12.0)).translate((70.0, medial_y0, 0.0))
-    leg = M.cylinder(120.0, 30.0, 30.0, 64).translate((45.0, 45.0, 20.0))
-    solid = (body - tunnel) + leg
-    mm = solid.to_mesh()
-    m = trimesh.Trimesh(np.asarray(mm.vert_properties)[:, :3], np.asarray(mm.tri_verts), process=True)
-    v, f = trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=2.0)
-    m = trimesh.Trimesh(v, f, process=True)
-    m.update_faces(~((m.face_normals[:, 2] < -0.99) & (m.triangles_center[:, 2] < 0.01)))  # floor cut
-    m.remove_unreferenced_vertices()
-    T = np.eye(4)
-    T[:3, :3] = rot([0, 0, 1], yaw_deg)
-    T[:3, 3] = [100.0, 150.0, 0.0]
-    m.apply_transform(T)
-    return m
+    return synth.block_foot(yaw_deg, foot)
 
 
 def test_provisional_frame_points_forward_and_measures_the_footprint():

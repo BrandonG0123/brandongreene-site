@@ -6,6 +6,7 @@
     footscan serve [--host 0.0.0.0 --https]
     footscan calib-object -o calibration-object.stl
     footscan reconstruct data/captures/<id> [--calibration-object] [--calipers calipers.json]
+    footscan export-measures -o data/raw/scan_trials.csv     (landmark picks -> repeatability input)
 """
 
 from __future__ import annotations
@@ -115,6 +116,25 @@ def cmd_reconstruct(args) -> int:
     return 0
 
 
+def cmd_export_measures(args) -> int:
+    from .landmarks import export_rows, list_picks
+
+    folders = sorted(p.parent for p in (Path(args.data) / "captures").glob("*/capture.json"))
+    rows = export_rows(folders)
+    stale = sum(1 for f in folders for r in list_picks(f) if r.get("stale"))
+    out = Path(args.output)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=FIELDS)
+        w.writeheader()
+        w.writerows(rows)
+    picks = len({(r["capture_id"], r["pick"]) for r in rows})
+    print(f"wrote {len(rows)} rows ({picks} picks) to {out}")
+    if stale:
+        print(f"skipped {stale} pick(s) made on a model that has since been rebuilt; re-pick them", file=sys.stderr)
+    return 0
+
+
 def cmd_serve(args) -> int:
     from .server import serve
 
@@ -153,6 +173,11 @@ def main(argv=None) -> int:
                     help="the photos are of the printed calibration object: also run the accuracy study")
     rc.add_argument("--calipers", help="JSON of caliper measurements of the print, e.g. {\"length\": 149.9}")
     rc.set_defaults(func=cmd_reconstruct)
+
+    ex = sub.add_parser("export-measures", help="landmark picks of research captures -> repeatability CSV")
+    ex.add_argument("--data", default="data", help="data folder (default: data/)")
+    ex.add_argument("-o", "--output", required=True)
+    ex.set_defaults(func=cmd_export_measures)
 
     sv = sub.add_parser("serve", help="run the local website (capture, library, break-in tracker)")
     sv.add_argument("--host", default="127.0.0.1", help="use 0.0.0.0 to reach it from your phone")

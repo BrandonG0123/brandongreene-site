@@ -130,9 +130,12 @@ mesh. Palpate them on the body and place markers:
 - a fine washable skin marker for bisection lines on the posterior heel and
   lower leg, with a sticker dot at each end of each line
 
-The stickers show up in the scan texture; the Phase 3 viewer places the
-landmark on the sticker centre. That converts a hard anatomical judgement
-into an easy visual one.
+The stickers show up in the scan's colour; the Phase 3 viewer snaps each
+click to the sticker's centre. That converts a hard anatomical judgement
+into an easy visual one. Use a colour that contrasts with skin (green or
+blue), and put the two dots of each bisection line as far apart as the
+anatomy allows: an angle from two dots 14 mm apart changes by about 2° for
+every half-millimetre of placement error.
 
 **Keep markers on within a session; remove and re-palpate between
 sessions.** That is what lets the analysis separate palpation error from

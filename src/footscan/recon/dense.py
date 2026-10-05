@@ -97,6 +97,7 @@ class View:
     K: np.ndarray          # OpenCV pixel convention
     R: np.ndarray          # world (mat mm) -> camera
     t: np.ndarray
+    rgb: np.ndarray | None = None  # uint8, undistorted: colours the surface (skin-marker stickers)
 
     @property
     def center(self) -> np.ndarray:
@@ -126,7 +127,7 @@ class DepthMap:
 # loading
 # --------------------------------------------------------------------------
 def load_views(rec, image_dir, max_image_size: int) -> list[View]:
-    """Undistorted grayscale views with OpenCV-convention intrinsics.
+    """Undistorted views (grayscale for matching, colour for the surface) with OpenCV-convention intrinsics.
 
     COLMAP's RADIAL lens model (u = x (1 + k1 r^2 + k2 r^4)) is the same
     formula as OpenCV's with only k1, k2 non-zero, so OpenCV can remove the
@@ -146,11 +147,11 @@ def load_views(rec, image_dir, max_image_size: int) -> list[View]:
         f, cx, cy, k1, k2 = (float(v) for v in cam.params)
         K = np.array([[f, 0, cx - 0.5], [0, f, cy - 0.5], [0, 0, 1.0]])
         dist = np.array([k1, k2, 0, 0, 0])
-        bgr = cv2.imread(str(image_dir / img.name), cv2.IMREAD_GRAYSCALE)
+        bgr = cv2.imread(str(image_dir / img.name), cv2.IMREAD_COLOR)
         if bgr is None:
             raise FileNotFoundError(img.name)
         und = cv2.undistort(bgr, K, dist, None, K)
-        s = min(1.0, max_image_size / max(und.shape))
+        s = min(1.0, max_image_size / max(und.shape[:2]))
         if s < 1.0:
             und = cv2.resize(und, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
             K = K.copy()
@@ -159,7 +160,8 @@ def load_views(rec, image_dir, max_image_size: int) -> list[View]:
             K[0, 2] = s * (K[0, 2] + 0.5) - 0.5
             K[1, 2] = s * (K[1, 2] + 0.5) - 0.5
         R, t = P[img.name]
-        views.append(View(img.name, und.astype(np.float32) / 255.0, K, R, t))
+        gray = cv2.cvtColor(und, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255.0
+        views.append(View(img.name, gray, K, R, t, cv2.cvtColor(und, cv2.COLOR_BGR2RGB)))
     return views
 
 
@@ -421,9 +423,10 @@ def fuse(views: list[View], maps: dict[str, DepthMap], cfg: DenseConfig, log=pri
         keep = count >= cfg.min_consistent
         pts.append(acc[keep] / (count[keep, None] + 1))
         nrm.append(Vw[keep])
-        col.append(v.gray[uv_r[keep, 1], uv_r[keep, 0]])
+        img = v.rgb if v.rgb is not None else v.gray
+        col.append(img[uv_r[keep, 1], uv_r[keep, 0]] / (255.0 if v.rgb is not None else 1.0))
     if not pts:
-        return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros(0)
+        return np.zeros((0, 3)), np.zeros((0, 3)), np.zeros((0, 3))
     P, N, C = np.vstack(pts), np.vstack(nrm), np.concatenate(col)
     log(f"dense: {len(P):,} consistent points before merging")
     return voxel_merge(P, N, C, cfg.voxel_mm)
@@ -438,7 +441,10 @@ def voxel_merge(P, N, C, voxel: float):
     Pm = np.stack([np.bincount(inv, P[:, i], n) for i in range(3)], 1) / counts[:, None]
     Nm = np.stack([np.bincount(inv, N[:, i], n) for i in range(3)], 1)
     Nm /= np.linalg.norm(Nm, axis=1, keepdims=True) + 1e-12
-    Cm = np.bincount(inv, C, n) / counts
+    if C.ndim == 1:
+        Cm = np.bincount(inv, C, n) / counts
+    else:  # colour: average each channel
+        Cm = np.stack([np.bincount(inv, C[:, i], n) for i in range(C.shape[1])], 1) / counts[:, None]
     return Pm, Nm, Cm
 
 
@@ -446,7 +452,7 @@ def run(rec, image_dir, board: dict, cfg: DenseConfig = DenseConfig(), log=print
     """Depth maps for every registered photo, fused into one point cloud (mat frame, mm).
 
     Returns points, view directions (unit vectors toward the cameras that saw
-    each point: used to orient surface normals), intensities, report.
+    each point: used to orient surface normals), RGB colours (0-1), report.
     """
     t0 = time.time()
     views = load_views(rec, image_dir, cfg.max_image_size)

@@ -329,3 +329,43 @@ def make_capture(out_dir: Path, *, scene: Scene | None = None, cameras: list[Cam
                  cameras={f["file"]: c.to_json() for f, c in zip(frames, cameras)})
     (out_dir / "truth.json").write_text(json.dumps(truth))
     return truth
+
+
+def block_foot(yaw_deg: float = 0.0, foot: str = "right", origin=(100.0, 150.0), floor_cut: bool = True):
+    """SYNTHETIC 'foot' for tests: exact, simple geometry with known answers.
+
+    In its own coordinates (x forward, y toward the foot's left, z up), mm:
+    a 240 x 90 x 25 body whose back end is a half-cylinder (a rounded heel,
+    rearmost point (0, 45)); a 12 mm high arch tunnel under the inner 36 mm
+    (x 70-150; inner = left for a right foot); a 30 mm radius leg standing
+    over the heel at (45, 45). Then turned by ``yaw_deg`` and placed at
+    ``origin`` on the mat. ``floor_cut`` removes the bottom faces, as a
+    standing scan has none.
+    """
+    import manifold3d as m3
+    import trimesh
+
+    M = m3.Manifold
+    body = M.cube((195.0, 90.0, 25.0)).translate((45.0, 0.0, 0.0)) + M.cylinder(25.0, 45.0, 45.0, 128).translate((45.0, 45.0, 0.0))
+    medial_y0 = 54.0 if foot == "right" else 0.0
+    tunnel = M.cube((80.0, 36.0, 12.0)).translate((70.0, medial_y0, 0.0))
+    leg = M.cylinder(120.0, 30.0, 30.0, 96).translate((45.0, 45.0, 20.0))
+    solid = (body - tunnel) + leg
+    mm = solid.to_mesh()
+    m = trimesh.Trimesh(np.asarray(mm.vert_properties)[:, :3], np.asarray(mm.tri_verts), process=True)
+    v, f = trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=2.0)
+    m = trimesh.Trimesh(v, f, process=True)
+    if floor_cut:
+        m.update_faces(~((m.face_normals[:, 2] < -0.99) & (m.triangles_center[:, 2] < 0.01)))
+        m.remove_unreferenced_vertices()
+    m.apply_transform(foot_pose(yaw_deg, origin))
+    return m
+
+
+def foot_pose(yaw_deg: float = 0.0, origin=(100.0, 150.0)) -> np.ndarray:
+    """Foot coordinates -> mat coordinates for block_foot."""
+    c, s = np.cos(np.radians(yaw_deg)), np.sin(np.radians(yaw_deg))
+    T = np.eye(4)
+    T[:3, :3] = [[c, -s, 0], [s, c, 0], [0, 0, 1]]
+    T[:3, 3] = [origin[0], origin[1], 0.0]
+    return T

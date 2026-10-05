@@ -68,8 +68,14 @@ def test_calibration_object_recovered(run):
 
 def test_outputs_written(run):
     d, _, _ = run
-    for name in ("report.json", "mesh.ply", "mesh_raw.ply", "points.ply", "accuracy.json", "status.json"):
+    for name in ("report.json", "mesh.ply", "mesh_raw.ply", "points.ply", "accuracy.json", "status.json", "viewer.bin"):
         assert (d / "recon" / name).exists(), name
+    from footscan.recon import viewer_data
+
+    v = viewer_data.read(d / "recon" / "viewer.bin")
+    assert v["colors"] is not None and len(v["colors"]) == len(v["vertices"])
+    # the rendered object is light grey with dark speckle: colours must vary, not be one flat value
+    assert v["colors"].std() > 10
     assert json.loads((d / "recon" / "status.json").read_text())["state"] == "done"
 
 

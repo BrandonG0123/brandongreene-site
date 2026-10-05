@@ -193,6 +193,15 @@ function footCard(s) {
   </section>`;
 }
 
+function landmarksCard(s) {
+  const isFoot = capture ? !!meta?.foot : true;
+  if (!isFoot) return "";
+  const href = `/studio/landmarks.html?${capture ? `capture=${encodeURIComponent(capture)}` : `submission=${encodeURIComponent(submission)}&scan=${encodeURIComponent(scanKey)}`}`;
+  return `<section class="card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+    <div><h2 style="margin:0;font-size:1.2rem">Landmarks</h2><p class="muted" style="margin:4px 0 0">Click the skin markers on the model to get the measurements.</p></div>
+    <a class="btn" href="${href}">Open landmarks</a></div></section>`;
+}
+
 function filesCard(s) {
   if (!s.files?.length) return "";
   const NAMES = { "mesh.ply": "Surface (final)", "mesh_raw.ply": "Surface (before smoothing)", "mesh_foot.ply": "Surface in foot frame",
@@ -204,7 +213,7 @@ function filesCard(s) {
 
 function render(s) {
   $("root").innerHTML = buildCard(s) + (s.state === "done" ? warningsCard(s) + accuracyCard(s) + calipersCard(s) +
-    footCard(s) + qualityCard(s) + filesCard(s) : calipersCard(s));
+    landmarksCard(s) + footCard(s) + qualityCard(s) + filesCard(s) : calipersCard(s));
   $("btn-build")?.addEventListener("click", build);
   $("caliper-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();

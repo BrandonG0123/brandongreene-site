@@ -489,3 +489,52 @@ def test_customer_scan_recon_writes_what_the_pipeline_needs(servers):
     meta = json.loads((data / "submissions" / sub["id"] / key / "capture.json").read_text())
     assert meta["foot"] == key.split("-")[0] and meta["condition"] == key.split("-")[1]
     assert meta["mat_paper"] == "a4" and meta["frames"] == [{"file": "frame_0001.jpg"}]
+
+
+# --------------------------------------------------------------------------
+# Phase 3: landmarks
+# --------------------------------------------------------------------------
+def test_landmark_endpoints(servers):
+    import synth
+    from footscan.recon import viewer_data
+    from test_landmarks import placed
+
+    op, phone, data = servers
+    st, raw, _ = call(f"{op}/api/captures", "POST", {"condition": "fwb", "foot": "right", "session": "S1", "load_kg": 40})
+    cid = json.loads(raw)["id"]
+    base = f"{op}/api/captures/{cid}"
+    info = body(call(f"{base}/picks"))
+    assert info["has_model"] is False and info["picks"] == []
+    assert call(f"{base}/viewer.bin")[0] == 404
+    assert call(f"{base}/picks/1", "PUT", {"landmarks": {}})[0] == 400  # no model yet
+
+    recon = data / "captures" / cid / "recon"
+    recon.mkdir()
+    m = synth.block_foot(0.0)
+    m.export(recon / "mesh.ply")
+    viewer_data.write(m, recon / "viewer.bin")
+    info = body(call(f"{base}/picks"))
+    assert info["has_model"] and info["in_mat_frame"] and "navicular_tuberosity" in [s["key"] for s in info["spec"]]
+    st, raw, _ = call(f"{base}/viewer.bin")
+    assert st == 200 and raw[:4] == b"FSV1"
+
+    assert call(f"{phone}/api/captures/{cid}/picks/1", "PUT", {"landmarks": placed(0.0)})[0] == 403
+    st, raw, _ = call(f"{base}/picks/1", "PUT", {"landmarks": placed(0.0)})
+    assert st == 200, raw
+    assert json.loads(raw)["measures"]["navicular_height_mm"] == 18.0
+    assert call(f"{base}/picks/1", "PUT", {"landmarks": {"elbow": [0, 0, 0]}})[0] == 400
+
+    st, raw, h = call(f"{op}/api/measurements.csv")
+    assert st == 200 and "attachment" in h["Content-Disposition"]
+    lines = raw.decode().strip().splitlines()
+    assert lines[0].startswith("foot,condition,source") and any(",navicular_height_mm,18.0," in ln for ln in lines)
+    assert call(f"{phone}/api/measurements.csv")[0] == 403
+
+    assert body(call(f"{base}/picks/1", "DELETE"))["ok"]
+    assert body(call(f"{base}/picks"))["picks"] == []
+
+
+def test_landmarks_are_only_for_feet(servers):
+    op, _, _ = servers
+    cid = make_capture(op, condition="calibration")
+    assert call(f"{op}/api/captures/{cid}/picks")[0] == 400

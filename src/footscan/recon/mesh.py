@@ -200,6 +200,27 @@ def meshlab_finish(mesh, cfg: MeshConfig):
     return smoothed, trimesh.Trimesh(fin.vertex_matrix(), fin.face_matrix(), process=True)
 
 
+def color_vertices(mesh, P: np.ndarray, C: np.ndarray, k: int = 6) -> None:
+    """Give each vertex the colour of the photographed points around it.
+
+    Inverse-distance weighted average of the ``k`` nearest dense points'
+    colours (nearer points count more). The surface itself is unchanged; the
+    colour is what makes skin-marker stickers visible for landmarking.
+    """
+    from scipy.spatial import cKDTree
+
+    if len(P) == 0 or C is None or len(C) != len(P):
+        return
+    C = np.asarray(C, float)
+    if C.ndim == 1:
+        C = np.repeat(C[:, None], 3, 1)
+    d, idx = cKDTree(P).query(mesh.vertices, min(k, len(P)))
+    w = 1.0 / (d + 0.05)
+    rgb = (w[..., None] * C[idx]).sum(1) / w.sum(1, keepdims=True)
+    alpha = np.full((len(rgb), 1), 255)
+    mesh.visual.vertex_colors = np.hstack([np.clip(rgb * 255, 0, 255), alpha]).astype(np.uint8)
+
+
 def surface_distance(a, b, n: int = 50_000, seed: int = 0) -> np.ndarray:
     """Distances from points spread evenly over mesh a's surface to mesh b's surface."""
     import trimesh
