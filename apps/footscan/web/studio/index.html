@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submissions — footscan studio</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .toolbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tabs button { font: inherit; font-weight: 600; font-size: 0.9rem; border: 1px solid var(--line); background: var(--surface); color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+    .tabs button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; min-width: 640px; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 0.95rem; }
+    th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); background: var(--surface-2); }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr { cursor: pointer; }
+    tbody tr:hover td { background: var(--surface-2); }
+    td a { font-weight: 650; color: var(--ink); text-decoration: none; }
+    .share { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+    @media (max-width: 560px) { .share { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body data-area="studio">
+<main class="wrap">
+  <div class="toolbar">
+    <div>
+      <p class="eyebrow">Studio</p>
+      <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0">Submissions</h1>
+    </div>
+    <div class="tabs" id="tabs" role="group" aria-label="Filter by status">
+      <button data-status="received" aria-pressed="true">New</button>
+      <button data-status="needs_rescan" aria-pressed="false">Waiting for rescan</button>
+      <button data-status="uploading" aria-pressed="false">Unfinished</button>
+      <button data-status="archived" aria-pressed="false">Archived</button>
+      <button data-status="" aria-pressed="false">All</button>
+    </div>
+  </div>
+
+  <div class="card share" style="margin-bottom:18px">
+    <div>
+      <strong>Scan page to share</strong>
+      <p id="share" style="margin:4px 0 0" class="hint">Checking…</p>
+    </div>
+    <a class="btn secondary" href="/?demo=1" target="_blank">Preview scan page (demo)</a>
+  </div>
+
+  <div class="callout warn" style="margin-bottom:18px">
+    <p><strong>CAD output isn't built yet.</strong> Scans arrive here, but turning them into a printable TPU insole
+      needs reconstruction, landmarks and the generator (Phases 2–4), and the Phase 0 repeatability gate has to pass
+      first. Until then, no submission can produce an insole.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Sent</th><th>Scans</th><th>Photos</th><th>Use</th><th>Flags</th><th>Status</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  import { STATUS, esc, fmtDate } from "/assets/studio.js";
+  const $ = (id) => document.getElementById(id);
+  let all = [], filter = "received";
+
+  fetch("/api/studio").then((r) => r.json()).then((info) => {
+    $("share").innerHTML = info.phones_can_connect
+      ? `Send people to <strong class="mono">${esc(info.scan_url)}</strong> (same Wi-Fi). They'll see a certificate warning once.`
+      : `Phones can't reach this server yet. Stop it and restart with <span class="mono">footscan serve --host 0.0.0.0 --https</span>.`;
+  });
+
+  async function load() {
+    const r = await fetch("/api/submissions");
+    if (!r.ok) { $("rows").innerHTML = `<tr><td colspan="7">Can't load submissions (${r.status}).</td></tr>`; return; }
+    all = await r.json();
+    for (const b of $("tabs").querySelectorAll("button")) {
+      const n = b.dataset.status ? all.filter((s) => s.status === b.dataset.status).length : all.length;
+      b.textContent = `${b.textContent.replace(/ \(\d+\)$/, "")} (${n})`;
+    }
+    render();
+  }
+
+  function render() {
+    const rows = all.filter((s) => !filter || s.status === filter);
+    if (!rows.length) {
+      $("rows").innerHTML = `<tr><td colspan="7" class="muted" style="text-align:center;padding:36px">Nothing here yet.</td></tr>`;
+      return;
+    }
+    $("rows").innerHTML = rows.map((s) => {
+      const scans = Object.values(s.scans);
+      const done = scans.filter((x) => x.status === "complete").length;
+      const photos = scans.reduce((n, x) => n + (x.frame_files?.length ?? 0), 0);
+      const before = (s.flags || []).filter((f) => f.level === "before_wear").length;
+      const use = s.survey?.sport || { everyday: "Everyday", on_feet: "On feet all day", sport: "Sport" }[s.survey?.use] || "—";
+      const st = STATUS[s.status] || { label: s.status, cls: "" };
+      const href = `/studio/submission.html?id=${encodeURIComponent(s.id)}`;
+      return `<tr data-href="${href}"><td><a href="${href}">${esc(s.name)}</a></td>
+        <td>${fmtDate(s.submitted || s.created)}</td><td class="mono">${done}/${scans.length}</td>
+        <td class="mono">${photos}</td><td>${esc(use)}</td>
+        <td>${before ? `<span class="badge stop">${before} before wear</span>` : "—"}</td>
+        <td><span class="badge ${st.cls}">${st.label}</span></td></tr>`;
+    }).join("");
+  }
+
+  $("rows").addEventListener("click", (e) => {
+    const tr = e.target.closest("tr[data-href]");
+    if (tr && !e.target.closest("a")) location.href = tr.dataset.href;
+  });
+  $("tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    filter = b.dataset.status;
+    $("tabs").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    render();
+  });
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Library — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .toolbar { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filters select { width: auto; }
+    .cap { display: grid; grid-template-columns: 132px 1fr; gap: 16px; padding: 14px; }
+    .cap:target { outline: 3px solid var(--accent); }
+    .cap img, .cap .noimg { width: 132px; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
+    .cap h3 { margin: 0 0 6px; font-size: 1rem; }
+    .cap dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px 14px; margin: 10px 0 0; font-size: 0.88rem; }
+    .cap dt { color: var(--muted); font-size: 0.75rem; }
+    .cap dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    @media (max-width: 480px) { .cap { grid-template-columns: 1fr; } .cap img, .cap .noimg { width: 100%; } }
+    .counts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  </style>
+</head>
+<body data-area="studio">
+<main class="wrap">
+  <div class="toolbar">
+    <div>
+      <p class="eyebrow">Phase 0 data</p>
+      <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0">Capture library</h1>
+    </div>
+    <div class="filters">
+      <select id="f-cond" aria-label="Filter by condition">
+        <option value="">All conditions</option>
+        <option value="nwb">nwb</option><option value="nwb_relaxed">nwb_relaxed</option>
+        <option value="swb">swb</option><option value="fwb">fwb</option>
+        <option value="object">object</option>
+        <option value="calibration">calibration</option>
+      </select>
+      <select id="f-foot" aria-label="Filter by foot"><option value="">Both feet</option><option value="right">Right</option><option value="left">Left</option></select>
+      <a class="btn" href="/studio/capture.html">New capture</a>
+    </div>
+  </div>
+
+  <div class="callout brand" style="margin-bottom:18px">
+    <p><strong>Repeatability target:</strong> 10 captures per condition, across at least 2 sessions. The counts below
+      track progress toward the Phase 0 study. Captures become measurements once reconstruction and landmarking exist.</p>
+  </div>
+  <div class="counts" id="counts"></div>
+  <div class="grid" id="list" aria-live="polite"><p class="muted">Loading…</p></div>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  let all = [];
+
+  async function load() {
+    try {
+      const r = await fetch("/api/captures");
+      all = await r.json();
+    } catch {
+      $("list").innerHTML = `<div class="callout stop"><p>Can't reach the footscan server. Start it with <span class="mono">footscan serve</span>.</p></div>`;
+      return;
+    }
+    render();
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: "center" });
+  }
+
+  function render() {
+    const cond = $("f-cond").value, foot = $("f-foot").value;
+    // Phase 0 counts photo scans only: LiDAR imports and object tests are a
+    // different method and would muddy the repeatability numbers.
+    const complete = all.filter((c) => c.status === "complete" && c.method !== "imported_mesh" && c.measurable !== false);
+    $("counts").innerHTML = ["nwb", "nwb_relaxed", "swb", "fwb"].map((k) => {
+      const n = complete.filter((c) => c.condition === k && (!foot || c.foot === foot)).length;
+      const sessions = new Set(complete.filter((c) => c.condition === k && (!foot || c.foot === foot)).map((c) => c.session)).size;
+      const cls = n >= 10 && sessions >= 2 ? "ok" : n ? "warn" : "";
+      return `<span class="badge ${cls}">${k}: ${n}/10 · ${sessions} session${sessions === 1 ? "" : "s"}</span>`;
+    }).join("");
+
+    const rows = all.filter((c) => (!cond || c.condition === cond) && (!foot || c.foot === foot));
+    if (!rows.length) {
+      $("list").innerHTML = `<div class="card" style="text-align:center;padding:40px">
+        <h3>No captures yet</h3><p class="muted">Real captures you save from the capture page appear here.</p>
+        <a class="btn" href="/studio/capture.html">Make the first capture</a></div>`;
+      return;
+    }
+    $("list").innerHTML = rows.map((c) => {
+      const s = c.summary || {};
+      const thumb = c.mesh
+        ? `<div class="noimg" style="display:grid;place-items:center;font-weight:700;color:var(--brand)">3D</div>`
+        : c.frame_files?.length
+        ? `<img src="/api/captures/${esc(c.capture_id)}/frames/1.jpg" alt="First frame of ${esc(c.capture_id)}" loading="lazy">`
+        : `<div class="noimg"></div>`;
+      const status = c.status === "complete" ? `<span class="badge ok">complete</span>` : `<span class="badge warn">${esc(c.status)}</span>`;
+      const cov = s.coverage_completeness == null ? "—" : `${Math.round(100 * s.coverage_completeness)}%`;
+      return `<article class="card cap" id="${esc(c.capture_id)}">${thumb}<div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+          <span class="badge brand">${esc(c.condition)}</span>${c.foot ? `<span class="badge">${esc(c.foot)} foot</span>` : c.condition === "calibration" ? `<span class="badge">accuracy study</span>` : `<span class="badge warn">not measurable</span>`}${status}</div>
+        <h3 class="mono">${esc(c.capture_id)}</h3>
+        <dl>
+          <div><dt>Session</dt><dd>${esc(c.session)}</dd></div>
+          <div><dt>Load</dt><dd>${c.load_kg == null ? "—" : esc(c.load_kg) + " kg"}</dd></div>
+          ${c.mesh
+            ? `<div><dt>3D model</dt><dd>${c.mesh.extents_mm[0]} × ${c.mesh.extents_mm[1]} × ${c.mesh.extents_mm[2]} mm</dd></div>`
+            : `<div><dt>Frames</dt><dd>${c.frame_files?.length ?? 0}</dd></div>`}
+          <div><dt>Coverage</dt><dd>${cov}</dd></div>
+          <div><dt>Texture</dt><dd>${esc(c.method)}</dd></div>
+          <div><dt>Created</dt><dd>${esc(c.created?.replace("T", " "))}</dd></div>
+        </dl>
+        ${c.notes ? `<p class="hint" style="margin:8px 0 0">${esc(c.notes)}</p>` : ""}
+        <p class="btn-row" style="margin:10px 0 0">
+          ${c.status === "complete" && c.frame_files?.length && c.condition !== "object"
+            ? `<a class="btn secondary" href="/studio/model.html?capture=${encodeURIComponent(c.capture_id)}">3D model</a>` : ""}
+          ${c.foot && (c.frame_files?.length || c.mesh)
+            ? `<a class="btn secondary" href="/studio/landmarks.html?capture=${encodeURIComponent(c.capture_id)}">Landmarks</a>` : ""}</p>
+      </div></article>`;
+    }).join("");
+  }
+
+  $("f-cond").addEventListener("change", render);
+  $("f-foot").addEventListener("change", render);
+  load();
+</script>
+</body>
+</html>

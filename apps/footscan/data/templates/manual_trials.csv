@@ -1,0 +1,8 @@
+foot,condition,source,session,capture_id,pick,load_kg,measure,value,scan_id
+right,fwb,manual,S1,M-S1-01,1,,foot_length_mm,,
+right,fwb,manual,S1,M-S1-01,1,,truncated_foot_length_mm,,
+right,fwb,manual,S1,M-S1-01,1,,dorsal_height_50_mm,,
+right,fwb,manual,S1,M-S1-01,1,,ahi,,
+right,fwb,manual,S1,M-S1-01,1,,navicular_height_mm,,
+right,fwb,manual,S1,M-S1-01,1,,rearfoot_angle_deg,,
+right,fwb,manual,S1,M-S1-01,1,,calcaneal_angle_deg,,

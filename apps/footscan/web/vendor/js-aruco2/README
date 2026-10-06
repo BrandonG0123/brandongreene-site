@@ -1,0 +1,2 @@
+js-aruco2 2.0.0 (MIT), https://github.com/damianofalcioni/js-aruco2
+Only aruco.js and cv.js are vendored, unmodified. Used for ARUCO_MIP_36h12 marker detection.

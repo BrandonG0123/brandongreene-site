@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Print the scan mat — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    main.wrap { max-width: 780px; }
+    .download { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 18px 0; }
+    .download a { display: grid; gap: 4px; padding: 18px; border-radius: var(--radius); border: 2px solid var(--brand);
+      text-decoration: none; background: var(--surface); }
+    .download a strong { font-size: 1.15rem; color: var(--ink); }
+    .download a span { color: var(--muted); font-size: 0.9rem; }
+    .download a:hover { background: var(--brand-soft); }
+    .howto { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: 16px; }
+    .howto li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; align-items: start; }
+    .howto li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--brand);
+      color: var(--brand-ink); display: grid; place-items: center; font-weight: 700; }
+    .howto p { margin: 0 0 6px; }
+    .howto p:last-child { margin-bottom: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 0.95rem; vertical-align: top; }
+    th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  </style>
+</head>
+<body data-area="customer">
+<main class="wrap">
+  <p class="eyebrow">Scan mat</p>
+  <h1 style="font-size:clamp(1.8rem,4vw,2.6rem);margin:0 0 10px">Print the paper mat</h1>
+  <p class="muted" style="max-width:62ch;font-size:1.05rem">A photo can show the shape of your foot, but not how big
+    it is. The black squares are a known size, so they work like a ruler in the picture. You print two pages on plain
+    paper. Black and white is fine.</p>
+  <div class="diagram" id="mat-diagram" style="max-width:200px;margin:18px auto 0"></div>
+
+  <div class="download stagger">
+    <a href="/mat/footscan-mat-letter.pdf">
+      <strong>US Letter PDF</strong><span>8.5 × 11 in · 2 pages · opens here, then print or share</span></a>
+    <a href="/mat/footscan-mat-a4.pdf">
+      <strong>A4 PDF</strong><span>210 × 297 mm · 2 pages · opens here, then print or share</span></a>
+  </div>
+
+  <div class="card">
+    <ol class="howto stagger">
+      <li><div>
+        <p><strong>Print both pages at 100%.</strong></p>
+        <p class="muted">In the print box, find where it says size or scale, and set it to <strong>100%</strong> (it
+          may say "Actual size"). Turn <strong>off</strong> "Fit to page". If you forget, the printer shrinks the mat a
+          little, and then every measurement is wrong.</p></div></li>
+      <li><div>
+        <p><strong>Check it with a ruler.</strong></p>
+        <p class="muted">Sheet 1 has two black bars. One should be exactly <strong>10 cm</strong> long. The other
+          should be exactly <strong>4 inches</strong>. Pick the one that matches your ruler. Put the ruler's 0 at the
+          start of the bar and look at the number where the bar stops. Type that number into the app before you scan.
+          If the number is wrong, print the pages again.</p></div></li>
+      <li><div>
+        <p><strong>Tape the two sheets together.</strong></p>
+        <p class="muted">Put sheet 1 (heel) at the bottom and sheet 2 (toes) at the top, so the dashed lines meet. Let
+          the edges touch, don't overlap them. Tape can go anywhere except on the black squares.</p></div></li>
+      <li><div>
+        <p><strong>Tape the mat flat to a hard floor.</strong></p>
+        <p class="muted">Not carpet. If the paper curls or slides, the measurement goes wrong. Keep it flat and clean,
+          and try not to let a bright light shine off the paper.</p></div></li>
+      <li><div>
+        <p><strong>Put your bare foot in the middle</strong>, with your heel at the sheet 1 end.</p>
+        <p class="muted">Your foot goes inside the ring of black squares, without covering any of them.</p></div></li>
+    </ol>
+  </div>
+
+  <section>
+    <h2>If something goes wrong</h2>
+    <table>
+      <thead><tr><th>What you see</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>The bar stops at about 9.6 cm, not 10</td><td>The printer shrank the page. Print again with size set
+          to 100% ("Actual size").</td></tr>
+        <tr><td>Tapping a PDF does nothing</td><td>Try the "Save" links lower down, or open this page on a computer.
+          On a phone the PDF opens in this same tab, so tap the back arrow to come back.</td></tr>
+        <tr><td>The app keeps asking you to move back</td><td>Hold the phone further away so more black squares show,
+          move any shiny light, and flatten the mat. If the squares printed grey instead of black, print again.</td></tr>
+        <tr><td>The squares look grey or fuzzy</td><td>Print again at a better quality, or use a different printer.
+          The camera looks for sharp black edges.</td></tr>
+        <tr><td>You only have one paper size</td><td>Either size is fine. Print the one your printer takes. The app
+          knows both.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Printing from a phone</h2>
+    <p class="muted" style="max-width:66ch">Tap a PDF above and it opens right here. Then tap the share button and
+      choose <strong>Print</strong>, and set size to 100%. If your phone can't print, open this page on a computer
+      instead, or save the file first:</p>
+    <p><a href="/mat/footscan-mat-letter.pdf?download=1">Save the Letter PDF</a> ·
+       <a href="/mat/footscan-mat-a4.pdf?download=1">Save the A4 PDF</a></p>
+  </section>
+
+  <p><a class="btn" href="/">Back to scanning</a></p>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module">
+  import { DIAGRAM_CSS, matDiagram } from "/assets/diagrams.js";
+  document.head.insertAdjacentHTML("beforeend", `<style>${DIAGRAM_CSS}</style>`);
+  document.getElementById("mat-diagram").innerHTML = matDiagram();
+</script>
+</body>
+</html>

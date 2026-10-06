@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Landmarks — footscan</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <style>
+    .lm-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+    @media (max-width: 900px) { .lm-layout { grid-template-columns: 1fr; } }
+    .stage-col { position: sticky; top: 12px; }
+    @media (max-width: 900px) { .stage-col { position: static; } }
+    .viewport { position: relative; border-radius: var(--radius); overflow: hidden; background:
+      radial-gradient(circle at 50% 35%, var(--surface), var(--surface-2)); border: 1px solid var(--line);
+      height: min(68vh, 720px); }
+    @media (max-width: 900px) { .viewport { height: 56vh; } }
+    .viewport canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+    .viewport .labels { position: absolute; inset: 0; pointer-events: none; }
+    .viewport .labels span { position: absolute; transform: translate(10px, -50%); font: 700 0.72rem var(--font);
+      background: rgba(20, 24, 22, 0.78); color: #fff; padding: 2px 6px; border-radius: 6px; white-space: nowrap; }
+    .toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .toolbar button { font-size: 0.8rem; padding: 6px 10px; min-height: 0; background: rgba(255, 255, 255, 0.92);
+      color: #1b1f1d; border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 999px; cursor: pointer; }
+    .toolbar button[aria-pressed="true"] { background: var(--brand); color: #fff; }
+    .viewport .msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; }
+    .prompt { position: absolute; top: 10px; left: 10px; right: 10px; background: rgba(20, 24, 22, 0.82); color: #fff;
+      border-radius: 12px; padding: 10px 12px; font-size: 0.88rem; pointer-events: none; }
+    .prompt strong { color: #fff; }
+    .lm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+    .lm-list li { display: grid; grid-template-columns: 18px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px;
+      border-radius: 10px; cursor: pointer; border: 1px solid transparent; }
+    .lm-list li:hover { background: var(--surface-2); }
+    .lm-list li.active { border-color: var(--brand); background: var(--brand-soft); }
+    .lm-list .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line); }
+    .lm-list li.done .dot { border-color: #fff; box-shadow: 0 0 0 1px var(--line); }
+    .lm-list .name { font-size: 0.92rem; }
+    .lm-list .where { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .lm-list button { font-size: 0.75rem; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px; }
+    .picks { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+    .picks button { font-size: 0.82rem; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+      background: var(--surface); color: var(--ink); cursor: pointer; }
+    .picks button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+    table.meas { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    table.meas td { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+    table.meas td:last-child { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .panel-card { margin: 0 0 14px; }
+  </style>
+</head>
+<body data-area="studio">
+<main class="wrap" style="max-width:1280px">
+  <p class="eyebrow">Phase 3 · landmarks</p>
+  <h1 style="font-size:clamp(1.6rem,4vw,2.3rem);margin:0 0 4px" id="title">Landmarks</h1>
+  <p class="muted" style="margin:0 0 16px" id="back"></p>
+  <div class="lm-layout">
+    <div class="stage-col">
+    <div class="viewport" id="viewport">
+      <canvas id="canvas" aria-label="3-D scan. Drag to turn, scroll or pinch to zoom, click to place the selected landmark."></canvas>
+      <div class="labels" id="labels"></div>
+      <div class="prompt" id="prompt" hidden></div>
+      <div class="msg" id="msg"><p class="muted">Loading the 3-D model…</p></div>
+    </div>
+      <div class="toolbar" id="toolbar" hidden>
+        <button data-view="medial">Inner side</button><button data-view="lateral">Outer side</button>
+        <button data-view="posterior">Back</button><button data-view="top">Top</button>
+        <button data-view="plantar">Underneath</button><button data-view="home">Reset</button>
+        <button id="btn-color" aria-pressed="true">Colour</button>
+        <button data-view="upright" id="btn-upright" hidden title="The scan lies on its side? Turn it until it stands up">Turn upright</button>
+      </div>
+    </div>
+    <aside>
+      <section class="card panel-card">
+        <div class="picks" id="picks" role="group" aria-label="Picks"></div>
+        <p class="hint" id="pick-note" style="margin:0 0 10px"></p>
+        <ol class="lm-list" id="lm-list"></ol>
+        <p class="hint" id="snap-note" role="status" style="margin:10px 0 0;min-height:1.2em"></p>
+        <label class="hint" style="display:flex;gap:8px;align-items:center;margin:8px 0 0">
+          <input type="checkbox" id="snap" checked> Snap to the sticker's centre</label>
+        <label class="hint" style="display:flex;gap:8px;align-items:center;margin:6px 0 0">
+          <input type="checkbox" id="auto-turn" checked> Turn to each landmark</label>
+        <label class="hint" style="display:flex;gap:8px;align-items:center;margin:6px 0 0">
+          <input type="checkbox" id="show-others"> Show other picks (off while re-picking: keep it blind)</label>
+        <div class="btn-row" style="margin-top:14px">
+          <button class="btn" id="btn-save" disabled>Save pick</button>
+        </div>
+        <p class="errors" id="save-error" role="alert"></p>
+      </section>
+      <section class="card panel-card" id="results" hidden></section>
+      <p class="hint">Click the centre of each sticker. Drag to turn, scroll or pinch to zoom, shift-drag or two fingers
+        to slide. Right-click (or press and hold) to turn around a point.</p>
+    </aside>
+  </div>
+</main>
+<script type="module" src="/assets/layout.js"></script>
+<script type="module" src="/assets/landmarks-page.js"></script>
+</body>
+</html>
