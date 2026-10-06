@@ -574,3 +574,24 @@ def test_wrong_shaped_input_gets_an_answer(servers):
     cid = make_capture(op)
     st, raw, _ = call(f"{op}/api/captures/{cid}/calipers", "PUT", {"length": [1, 2]})
     assert st == 400 and b"invalid input" in raw
+
+
+def test_public_server_hides_from_search_engines(tmp_path):
+    handler = make_handler(WEB_DIR, tmp_path, local_check=lambda h: False, studio_key=KEY, allow_indexing=False)
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    url = f"http://127.0.0.1:{httpd.server_address[1]}"
+    try:
+        st, raw, h = call(f"{url}/robots.txt")
+        assert st == 200 and b"Disallow: /\n" in raw
+        st, _, h = call(f"{url}/")
+        assert h["X-Robots-Tag"] == "noindex, nofollow"
+    finally:
+        httpd.shutdown()
+
+
+def test_studio_path_check_is_part_based(servers):
+    """Compare whole path parts: /studio-old/ is not inside /studio/ (and Windows paths use backslashes)."""
+    _, phone, _ = servers
+    st, raw, _ = call(f"{phone}/studio-old/x.html")
+    assert st == 404 and b"Studio locked" not in raw

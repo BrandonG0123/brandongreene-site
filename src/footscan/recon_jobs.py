@@ -41,10 +41,26 @@ class Busy(Exception):
 
 
 def pid_alive(pid) -> bool:
+    """Is a process with this id still running?"""
     import os
 
     if not isinstance(pid, int) or pid <= 0:
         return False
+    if os.name == "nt":
+        # On Windows os.kill(pid, 0) is not a harmless check: signal 0 is
+        # CTRL_C_EVENT, which would interrupt the build. Ask Windows instead.
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION, STILL_ACTIVE = 0x1000, 259
+        k32 = ctypes.windll.kernel32
+        handle = k32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            return bool(k32.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == STILL_ACTIVE
+        finally:
+            k32.CloseHandle(handle)
     try:
         os.kill(pid, 0)  # signal 0: "does it exist?", sends nothing
     except ProcessLookupError:

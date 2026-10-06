@@ -84,6 +84,25 @@ def frame_names(capture_dir: Path) -> tuple[list[str], dict]:
     return names, meta
 
 
+def link_or_copy(src: Path, dst: Path) -> None:
+    """A second name for a photo without copying it, where the system allows.
+
+    Symbolic links need administrator rights on Windows; hard links don't
+    (same drive), and a copy always works.
+    """
+    import shutil
+
+    try:
+        os.symlink(os.path.relpath(src, dst.parent), dst)
+        return
+    except OSError:
+        pass
+    try:
+        os.link(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+
+
 def stage_images(capture_dir: Path, names: list[str], out: Path) -> tuple[Path, list[str], dict]:
     """Put every photo the right way up in <recon>/images/ (links, or rotated copies).
 
@@ -117,7 +136,7 @@ def stage_images(capture_dir: Path, names: list[str], out: Path) -> tuple[Path, 
     for n in names:
         sz = sizes.get(n)
         if sz == main:
-            os.symlink(os.path.relpath(capture_dir / n, staged), staged / n)
+            link_or_copy(capture_dir / n, staged / n)
             kept.append(n)
         elif sz == (main[1], main[0]):
             img = cv2.imread(str(capture_dir / n), cv2.IMREAD_COLOR)

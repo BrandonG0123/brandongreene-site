@@ -154,7 +154,8 @@ def cmd_export_measures(args) -> int:
 def cmd_serve(args) -> int:
     from .server import serve
 
-    serve(args.host, args.port, args.https, args.public, data_dir=Path(args.data) if args.data else None)
+    serve(args.host, args.port, args.https, args.public, data_dir=Path(args.data) if args.data else None,
+          allow_indexing=True if args.allow_indexing else None)
     return 0
 
 
@@ -208,6 +209,8 @@ def main(argv=None) -> int:
                     help="behind a tunnel or proxy on the internet: trust nothing as local; studio needs the key")
     sv.add_argument("--data", help="data folder (default: data/). A separate folder keeps demos and tests "
                                    "out of your real library")
+    sv.add_argument("--allow-indexing", action="store_true",
+                    help="let search engines index the site (with --public it is hidden from them by default)")
     sv.set_defaults(func=cmd_serve)
 
     args = ap.parse_args(argv)

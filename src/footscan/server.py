@@ -306,7 +306,7 @@ def load_studio_key(path: Path) -> str:
 
 def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check=is_loopback,
                  studio_key: str | None = None, secure_cookie: bool = False,
-                 submissions_per_hour: int = SUBMISSIONS_PER_HOUR):
+                 submissions_per_hour: int = SUBMISSIONS_PER_HOUR, allow_indexing: bool = True):
     runner = recon_jobs.ReconRunner()
     captures_dir = data_dir / "captures"
     submissions_dir = data_dir / "submissions"
@@ -322,6 +322,10 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
         def end_headers(self):
             for k, v in SECURITY_HEADERS.items():
                 self.send_header(k, v)
+            if not allow_indexing:
+                # Keep search engines out (every page, every file) until the
+                # operator decides otherwise: see serve --allow-indexing.
+                self.send_header("X-Robots-Tag", "noindex, nofollow")
             super().end_headers()
 
         def client_id(self) -> str:
@@ -453,6 +457,13 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                     return self.api(method, path.strip("/").split("/")[1:])
                 if method != "GET":
                     return self.send_error(HTTPStatus.METHOD_NOT_ALLOWED)
+                if path == "/robots.txt":
+                    body = b"User-agent: *\nDisallow: /\n" if not allow_indexing else b"User-agent: *\nDisallow: /studio/\nDisallow: /api/\n"
+                    self.send_response(HTTPStatus.OK)
+                    self.send_header("Content-Type", "text/plain; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    return self.wfile.write(body)
                 if self.is_studio_path(path):
                     if not self.is_operator():
                         return self.studio_locked(path)
@@ -482,9 +493,11 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
             The Mac's disk ignores letter case (/STUDIO/ is /studio/) and a raw
             client can send /assets/../studio/; resolve the path first, then ask.
             """
-            target = (web_dir / path.lstrip("/")).resolve()
-            studio = (web_dir / "studio").resolve()
-            return str(target).lower() == str(studio).lower() or str(target).lower().startswith(str(studio).lower() + "/")
+            target = Path(str((web_dir / path.lstrip("/")).resolve()).casefold())
+            studio = Path(str((web_dir / "studio").resolve()).casefold())
+            # Path.is_relative_to compares whole path parts, with the right
+            # separator for the operating system (\ on Windows, / elsewhere).
+            return target == studio or target.is_relative_to(studio)
 
         def static(self, path: str, query: str = ""):
             rel = path.lstrip("/") or "index.html"
@@ -967,13 +980,16 @@ def lan_ip() -> str | None:
 
 
 def serve(host: str = "127.0.0.1", port: int = 8765, https: bool = False, public: bool = False,
-          data_dir: Path | None = None) -> None:
+          data_dir: Path | None = None, allow_indexing: bool | None = None) -> None:
     """Run the site. ``public``: reachable from the internet through a tunnel or
     proxy, so nothing is trusted for being "local" and only the studio key
     opens the studio."""
     studio_key = load_studio_key(ROOT / ".studio_key")
+    if allow_indexing is None:
+        allow_indexing = not public  # on the internet, hidden from search engines unless asked otherwise
     handler = make_handler(data_dir=(data_dir or DATA_DIR).resolve(), studio_key=studio_key,
-                           secure_cookie=https or public, local_check=never_local if public else is_loopback)
+                           secure_cookie=https or public, local_check=never_local if public else is_loopback,
+                           allow_indexing=allow_indexing)
     httpd = ThreadingHTTPServer((host, port), handler)
     scheme = "http"
     if https:

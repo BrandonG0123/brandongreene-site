@@ -109,7 +109,10 @@ To try the studio on test data without touching your library:
 `footscan serve --data .demo-data`.
 
 **On the internet.** See [docs/HOSTING.md](docs/HOSTING.md): use `--public`
-behind a tunnel, and read the checklist first.
+behind a tunnel, and read the checklist first. For the real setup (tank,
+Windows 11, `footscan.brandongreene.dev` on the existing Cloudflare Tunnel),
+follow [docs/DEPLOY-TANK.md](docs/DEPLOY-TANK.md). With `--public` the app is
+hidden from search engines unless started with `--allow-indexing`.
 
 **Not built yet:** turning scans into a TPU print file. That needs the
 generator (Phase 4), and the Phase 0 repeatability gate has to pass first.
