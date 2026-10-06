@@ -205,7 +205,7 @@ def subject_box(rec, board: dict, margin: float, max_height: float = 250.0):
         source = "sparse points"
     else:
         lo = np.array([-10.0, -10.0, 0.0])
-        hi = np.array([W + 10.0, 2 * H + 10.0, 150.0])
+        hi = np.array([W + 10.0, 2 * H + 10.0, max_height])  # tall enough for the lower-leg dots
         centre = np.array([W / 2, H, 30.0])
         source = f"mat area (only {int(above.sum())} sparse points above the paper)"
     lo[2] = -3.0

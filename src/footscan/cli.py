@@ -38,6 +38,10 @@ def cmd_measure(args) -> int:
         if rec.get("landmarks_used"):  # a studio pick: includes landmarks found from the surface (heel)
             rec = dict(rec, landmarks=rec["landmarks_used"])
         mesh = load_mesh(p.parent / rec["mesh"]) if rec.get("mesh") else None
+        if mesh is not None and rec.get("support_plane"):
+            from .landmarks import foot_surface
+
+            mesh = foot_surface(mesh[0], mesh[1], rec["support_plane"], rec["landmarks"])
         values, warnings = measure_scan(rec, mesh)
         for w in warnings:
             print(f"[{p.name}] warning: {w}", file=sys.stderr)

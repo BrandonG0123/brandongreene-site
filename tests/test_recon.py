@@ -268,3 +268,14 @@ def test_foot_frame_mesh_keeps_faces_pointing_outward_for_both_feet():
         top = np.abs(fm.triangles_center[:, 2] - 25.0) < 0.01  # the block's top (not the leg)
         assert (fm.face_normals[top, 2] > 0.99).mean() > 0.9, foot
         assert len(out["plantar"].faces) > 0
+
+
+def test_fallback_search_box_reaches_the_lower_leg():
+    """With almost no sparse points (plain skin), the box still covers the leg dots (~150-250 mm up)."""
+    class NoPoints:  # a reconstruction with no sparse points (pycolmap isn't imported in tests: see pipeline)
+        points3D: dict = {}
+
+    rec = NoPoints()
+    board = {"sheet_mm": [215.9, 279.4]}
+    lo, hi, centre, source = dense.subject_box(rec, board, 15.0, max_height=250.0)
+    assert source.startswith("mat area") and hi[2] == 250.0

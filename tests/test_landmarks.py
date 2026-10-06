@@ -152,7 +152,21 @@ def test_imported_standing_scan_uses_three_floor_clicks(tmp_path):
     assert any("floor" in w for w in rec["warnings"]) and rec["measures"]["navicular_height_mm"] is None
     lm.update(floor_a=[60, 100, 300], floor_b=[300, 120, 300], floor_c=[200, 300, 300])
     rec = L.save_pick(folder, 1, {"landmarks": lm}, ident)
-    assert rec["measures"]["navicular_height_mm"] == pytest.approx(18, abs=1e-6)
+    m = rec["measures"]
+    # The floor is in the mesh but must not be measured as part of the foot
+    # (it once made this 240 mm foot 558 mm long and put the heel in a corner of the floor).
+    assert m["navicular_height_mm"] == pytest.approx(18, abs=1e-6)
+    assert m["foot_length_mm"] == pytest.approx(240, abs=0.05)
+    assert m["ahi"] == pytest.approx(25 / 180, abs=1e-3)
+    assert m["calcaneal_angle_deg"] == pytest.approx(math.degrees(math.atan2(2, 14)), abs=0.05)
+    heel = np.asarray(rec["landmarks_used"]["heel_posterior"]) - [100, 150, 300]
+    assert heel[0] == pytest.approx(0, abs=0.05) and heel[1] == pytest.approx(45, abs=2.5)
+    # footscan measure, reading the saved pick, agrees
+    from footscan.cli import main
+
+    out = tmp_path / "rows.csv"
+    main(["measure", str(folder / "landmarks" / "pick-1.json"), "-o", str(out)])
+    assert ",foot_length_mm,240.0," in out.read_text()
 
 
 def test_nwb_asks_for_the_sole_landmarks():
@@ -191,7 +205,8 @@ def test_floor_clicks_in_either_order_give_the_same_answer(tmp_path):
     for order in ([60, 100, 0], [300, 120, 0], [200, 300, 0]), ([200, 300, 0], [300, 120, 0], [60, 100, 0]):
         lm.update(floor_a=order[0], floor_b=order[1], floor_c=order[2])
         rec = L.save_pick(folder, 1, {"landmarks": lm}, ident)
-        assert rec["landmarks_used"]["heel_posterior"][2] < 25  # on the heel, not up the leg
+        # the rearmost point of the rounded heel (x = 100 on the mat), not the leg (whose back is at x = 115)
+        assert rec["landmarks_used"]["heel_posterior"][0] == pytest.approx(100, abs=0.05)
         results.append(rec["measures"])
     assert results[0] == results[1]
 
@@ -208,3 +223,14 @@ def test_malformed_input_is_a_clean_error(tmp_path):
     (folder / "landmarks" / "pick-x.json").write_text("{")
     (folder / "landmarks" / "pick-9.json").write_text("{")
     assert [p["pick"] for p in L.list_picks(folder)] == [1]
+
+
+def test_clicks_on_a_model_rebuilt_meanwhile_are_refused(tmp_path):
+    folder, ident = make_scan(tmp_path)
+    shown = L.sha256(folder / "recon" / "mesh.ply")  # what the page loaded
+    synth.block_foot(1.0).export(folder / "recon" / "mesh.ply")  # rebuilt while the page was open
+    with pytest.raises(L.LandmarkError, match="rebuilt"):
+        L.save_pick(folder, 1, {"landmarks": placed(0.0), "mesh_sha256": shown}, ident)
+    assert not (folder / "landmarks" / "pick-1.json").exists()
+    current = L.sha256(folder / "recon" / "mesh.ply")
+    assert L.save_pick(folder, 1, {"landmarks": placed(0.0), "mesh_sha256": current}, ident)["stale"] is False

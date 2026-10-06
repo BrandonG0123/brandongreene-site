@@ -749,6 +749,9 @@ def make_handler(web_dir: Path = WEB_DIR, data_dir: Path = DATA_DIR, local_check
                 return self.send_json(dict(
                     foot=ident["foot"], condition=ident["condition"], in_mat_frame=mat, provisional_frame=frame,
                     has_model=lm_mod.viewer_path(folder) is not None,
+                    # the model's fingerprint: saves send it back, so clicks on a model
+                    # that was rebuilt meanwhile are refused instead of mislabelled
+                    mesh_sha256=lm_mod.sha256(lm_mod.mesh_path(folder)) if lm_mod.mesh_path(folder) else None,
                     spec=lm_mod.spec(ident["condition"], mat), picks=lm_mod.list_picks(folder)))
             if len(rest) == 2 and rest[0] == "picks" and rest[1].isdigit():
                 n = int(rest[1])

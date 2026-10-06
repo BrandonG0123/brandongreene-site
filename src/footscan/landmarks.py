@@ -192,6 +192,45 @@ def validate(body: dict, condition: str, bounds: np.ndarray) -> dict:
     return out
 
 
+FLOOR_CLEARANCE_MM = 2.0
+
+
+def foot_surface(V: np.ndarray, F: np.ndarray, plane: dict | None, landmarks: dict) -> tuple[np.ndarray, np.ndarray]:
+    """The foot (and leg) on its own, without the floor it stands on.
+
+    An imported LiDAR scan includes the floor, and every measurement that
+    looks for an extreme ("rearmost point", "longest toe") would find the
+    floor's edge instead (a 240 mm test foot measured 558 mm). So: drop the
+    triangles lying within FLOOR_CLEARANCE_MM of the floor, then keep only
+    the connected pieces of surface that carry a clicked landmark. That
+    removes the floor and any bumps of floor noise that survive the height
+    cut. The few millimetres of foot right at the floor go too; the heel's
+    rearmost point and the toe tip sit well above that.
+    """
+    import trimesh
+
+    if plane is None:
+        return V, F
+    p0, n = np.asarray(plane["point"], float), np.asarray(plane["normal"], float)
+    centres = V[F].mean(1)
+    above = (centres - p0) @ n > FLOOR_CLEARANCE_MM
+    F2 = F[above]
+    if len(F2) == 0:
+        return V, F
+    labels = trimesh.graph.connected_component_labels(trimesh.Trimesh(V, F2, process=False).face_adjacency,
+                                                      node_count=len(F2))
+    pts = [np.asarray(v, float) for k, v in landmarks.items() if k not in FLOOR_KEYS and v is not None]
+    if pts:
+        from scipy.spatial import cKDTree
+
+        _, near = cKDTree(V[F2].mean(1)).query(np.array(pts))
+        F2 = F2[np.isin(labels, labels[near])]
+    # Only the vertices those triangles use: the measurements look at
+    # vertices, and leftover floor corners would still be "the rearmost point".
+    used = np.unique(F2)
+    return V[used], np.searchsorted(used, F2)
+
+
 def compute(record: dict, V: np.ndarray, F: np.ndarray, in_mat_frame: bool) -> dict:
     """Fill in support plane, automatic heel, measurements and warnings for one pick."""
     lm = dict(record["landmarks"])
@@ -203,6 +242,7 @@ def compute(record: dict, V: np.ndarray, F: np.ndarray, in_mat_frame: bool) -> d
     if record["condition"] in STANDING and plane is None and not warnings:
         warnings.append("a standing scan needs the floor: click the three floor points")
     record["support_plane"] = plane
+    V, F = foot_surface(V, F, plane, lm)
     if "heel_posterior" not in lm or record.get("heel_posterior_auto"):
         auto = auto_heel_posterior(V, {k: v for k, v in lm.items() if k != "heel_posterior"}, plane, record["foot"])
         if auto is not None:
@@ -268,6 +308,12 @@ def save_pick(folder: Path, n: int, body: dict, ident: dict) -> dict:
         raise LandmarkError("this scan has no 3-D model yet; build it first")
     if not 1 <= n <= 99:
         raise LandmarkError("pick number must be 1-99")
+    current = sha256(mesh_file)
+    shown = body.get("mesh_sha256")
+    if shown is not None and shown != current:
+        # The page was opened on a model that has since been rebuilt: its
+        # clicks belong to the old surface and must not be stamped as current.
+        raise LandmarkError("the 3-D model was rebuilt after this page was opened; reload the page and pick again")
     m = trimesh.load(mesh_file, force="mesh", process=False)
     V, F = np.asarray(m.vertices, float), np.asarray(m.faces)
     lm = validate(body, ident["condition"], m.bounds)
@@ -278,7 +324,7 @@ def save_pick(folder: Path, n: int, body: dict, ident: dict) -> dict:
         session=ident.get("session") or "", capture_id=ident["capture_id"], pick=n,
         load_kg=ident.get("load_kg"), units="mm",
         mesh=str(Path("..") / mesh_file.relative_to(folder)),
-        mesh_sha256=sha256(mesh_file), coordinates="mat frame" if mat else "imported mesh",
+        mesh_sha256=current, coordinates="mat frame" if mat else "imported mesh",
         picked_at=time.strftime("%Y-%m-%dT%H:%M:%S"),
         notes=str(body.get("notes", ""))[:1000],
         landmarks=lm,

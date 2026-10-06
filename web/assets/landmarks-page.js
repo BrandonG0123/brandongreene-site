@@ -247,7 +247,7 @@ $("btn-save").addEventListener("click", async () => {
   $("btn-save").disabled = true;
   $("save-error").textContent = "";
   const r = await fetch(`${base}/picks/${current}`, {
-    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ landmarks: points, snapped }),
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ landmarks: points, snapped, mesh_sha256: info.mesh_sha256 }),
   });
   const rec = await r.json().catch(() => ({}));
   if (!r.ok) {
