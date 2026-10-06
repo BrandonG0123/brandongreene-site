@@ -1,0 +1,45 @@
+# Caddy config for tank (Windows 11).
+#
+# Place at:  C:\caddy\Caddyfile
+# Test:      caddy validate --config C:\caddy\Caddyfile
+# Run:       caddy run --config C:\caddy\Caddyfile
+#
+# Note: Caddy accepts forward slashes in paths on Windows. Use them — backslashes
+# are escape characters in the Caddyfile and will bite you.
+#
+# This block listens on plain HTTP on localhost only. That is deliberate:
+# cloudflared connects to it from the same machine and Cloudflare terminates
+# HTTPS at the edge. Caddy must NOT try to get its own certificate here, because
+# nothing from the public internet reaches this port directly.
+
+http://localhost:8080 {
+	root * C:/srv/brandongreene-site/dist
+	encode zstd gzip
+
+	# Clean URLs: /projects resolves to /projects/index.html, which is how Astro
+	# lays the build out.
+	try_files {path} {path}/index.html {path}.html
+	file_server
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		-Server
+	}
+
+	# Fingerprinted filenames and self-hosted fonts never change content.
+	@immutable path /fonts/* /_astro/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+	# HTML revalidates so a deploy is visible immediately.
+	@html path *.html /
+	header @html Cache-Control "public, max-age=0, must-revalidate"
+
+	handle_errors {
+		rewrite * /404.html
+		file_server
+	}
+}

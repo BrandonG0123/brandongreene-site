@@ -1,283 +1,298 @@
-# Brief for the agent on `tank`
+# Brief for the agent on `tank` (Windows 11)
 
-Self-contained instructions for getting Brandon's site serving on his domain
-from the `tank` machine. You should not need the conversation this came from.
+Self-contained instructions for serving Brandon's site on his domain from the
+`tank` machine. You should not need the conversation this came from.
 
----
-
-## Two things Brandon must supply before you can finish
-
-**Do not guess either of these. Stop and ask him.**
-
-1. **The domain.** He registered one but has not said which. It goes in exactly
-   two places: `SITE` in `astro.config.mjs` (on his Mac, before building) and the
-   first line of the Caddyfile (here).
-2. **Whether the site should be indexable yet.** Default is **no** — see
-   "Indexing" below. `/about` and `/resume` still contain visible
-   `[To fill in: ...]` placeholder text.
+**Target machine:** Windows 11. It also runs a Minecraft server. It goes down
+roughly once a week, so everything below must survive a reboot without a human.
 
 ---
 
-## What this is
+## The facts you need
 
-A static site. Astro, no framework, no database, no server-side runtime. The
-build output is a folder of plain HTML, CSS, fonts and images. Serving it is
-"point a web server at this directory."
+| | |
+|---|---|
+| Domain | `brandongreene.dev` |
+| Repo | `https://github.com/BrandonG0123/brandongreene-site.git` |
+| DNS | Already on Cloudflare nameservers (`adam`/`elly.ns.cloudflare.com`) |
+| Existing records | MX only, for Namecheap email forwarding — **do not touch these** |
+| A / CNAME | None yet. The tunnel creates it. |
 
-Seven pages, ~160 KB of assets, 5.9 KB of JavaScript total.
+`SITE` in `astro.config.mjs` is already set to `https://brandongreene.dev`.
+Canonical URLs, sitemap, RSS, robots.txt, the résumé header and the generated
+social cards all derive from it. Nothing else needs the domain typed into it.
 
 ---
 
-## Architecture you are implementing
+## What you are building
 
 ```
-Brandon's Mac                 tank (you)                      internet
-┌─────────────┐              ┌──────────────────────┐        ┌──────────┐
-│ npm run     │  transport   │ /var/www/brandon...  │ tunnel │          │
-│ build       │ ───────────▶ │ Caddy serves :80     │ ─────▶ │ visitors │
-└─────────────┘              │ cloudflared dials out│        └──────────┘
-                             └──────────────────────┘
+tank (Windows 11)                              internet
+┌────────────────────────────────┐            ┌──────────┐
+│ git clone + npm run build      │            │          │
+│   └─ C:\srv\...\dist           │   tunnel   │ visitors │
+│ Caddy serves it on :8080       │ ─────────▶ │          │
+│ cloudflared dials out          │            └──────────┘
+└────────────────────────────────┘
 ```
+
+A static site: plain HTML, CSS, fonts, images. No database, no server-side
+runtime. Seven pages, 5.9 KB of JavaScript total.
 
 **Why a Cloudflare Tunnel and not port forwarding.** Brandon is a minor and the
-site carries his real name. A DNS A record pointing at this machine publishes his
-home IP address, which geolocates to his neighbourhood. The tunnel makes an
-*outbound* connection instead, so:
+site carries his real name. A DNS A record pointing here would publish his home
+IP, which geolocates to his neighbourhood. The tunnel dials *outbound* instead:
 
-- his home IP never appears in public DNS
-- no router ports are opened — the existing Minecraft forwarding is untouched
-- it works behind CGNAT
+- his home IP never enters public DNS
+- **no router ports opened and no Windows Firewall inbound rules needed** —
+  cloudflared talks to `localhost`, so nothing listens to the outside world
+- the Minecraft server's existing port forwarding is untouched
 - a changing residential IP breaks nothing
-- HTTPS certificates are handled by Cloudflare
+- Cloudflare terminates HTTPS, so Caddy serves plain HTTP on localhost
 
-**Do not replace this with port forwarding.** It is a deliberate privacy
-decision, not an implementation detail.
+**Do not replace this with port forwarding.** It is a privacy decision, not an
+implementation detail. Caddy is deliberately bound to `localhost:8080` — not
+`:80`, not `:443` — to keep that true and to stay out of the way of anything
+else on this machine.
 
 ---
 
-## Step 1 — Report back what you're working with
+## Step 0 — Report back before changing anything
 
-Before changing anything, tell Brandon:
-
-```bash
-uname -a                       # OS and architecture
-cat /etc/os-release 2>/dev/null
-node --version 2>/dev/null || echo "no node"
-systemctl --version 2>/dev/null | head -1 || echo "no systemd"
-which caddy nginx cloudflared 2>/dev/null
-ip -4 addr show | grep inet    # local address, for rsync from the Mac
+```powershell
+winver
+node --version
+git --version
+Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue
+Get-Service | Where-Object {$_.Name -like "*cloudflared*" -or $_.Name -like "*caddy*"}
 ```
 
-This brief assumes Linux with systemd. **If tank is Windows or macOS, say so and
-stop** — the service setup differs and Brandon should decide how to proceed.
-
-Also note what else is running. A Minecraft server uses port 25565; the web
-server needs 80. They do not conflict, but confirm nothing else holds 80.
+Tell Brandon what's installed and whether 8080 is free. If something already
+holds 8080, pick another free port and change it in **both** the Caddyfile and
+the cloudflared config.
 
 ---
 
-## Step 2 — Get the files here
+## Step 1 — Install the tooling
 
-Two transports. Pick based on whether Node is installed.
+Using winget (built into Windows 11), in an **Administrator** PowerShell:
 
-### Option A — git clone and build here (needs Node 22+)
+```powershell
+winget install --id Git.Git -e
+winget install --id OpenJS.NodeJS.LTS -e
+winget install --id Cloudflare.cloudflared -e
+```
 
-Self-sufficient: you can rebuild without Brandon's Mac being on.
+Close and reopen PowerShell afterwards so PATH updates.
 
-```bash
-git clone <REPO-URL> ~/brandongreene-site
-cd ~/brandongreene-site
+Caddy: if `winget install --id CaddyServer.Caddy -e` works, use it. Otherwise
+download `caddy_windows_amd64.zip` from
+<https://github.com/caddyserver/caddy/releases/latest>, extract `caddy.exe` to
+`C:\caddy\`, and add that folder to PATH.
+
+Verify all four:
+
+```powershell
+git --version; node --version; caddy version; cloudflared --version
+```
+
+---
+
+## Step 2 — Get the site and build it
+
+```powershell
+mkdir C:\srv -Force
+cd C:\srv
+git clone https://github.com/BrandonG0123/brandongreene-site.git
+cd brandongreene-site
 npm ci
-npm run build        # output lands in ./dist
+npm run build
 ```
 
-`<REPO-URL>` does not exist yet — Brandon has to create the remote. See
-"Creating the remote" at the bottom of this file.
+Output lands in `C:\srv\brandongreene-site\dist`. Confirm `dist\index.html`
+exists before continuing.
 
-### Option B — receive a prebuilt folder (no Node needed)
+**To update later:** `git pull; npm ci; npm run build` — Caddy serves the folder
+directly, so no restart is needed.
 
-Brandon runs `npm run deploy` on his Mac, which builds, runs the accessibility,
-link and budget checks, and rsyncs `dist/` here. You only need the destination
-directory to exist and be writable, plus SSH access from his Mac.
+### A check you must not skip
 
-```bash
-sudo mkdir -p /var/www/brandongreene
-sudo chown -R "$USER":"$USER" /var/www/brandongreene
+The build must contain **only** the real project. Placeholder entries exist in
+the repo for layout work and are stripped from production builds by design:
+
+```powershell
+Get-ChildItem C:\srv\brandongreene-site\dist\projects
 ```
 
-**Option B is the lower-risk default.** It keeps the verification gate on the
-Mac, so a build that fails accessibility checks never reaches the server.
+Expect `foot-scanner` and `index.html` and nothing else. If any `slot-*` folder
+appears, **stop and tell Brandon** — something is wrong and the site must not go
+live with fabricated project entries on it.
 
 ---
 
-## Step 3 — Web server
+## Step 3 — Caddy
 
-Install Caddy. Chosen over nginx because it obtains and renews HTTPS
-certificates by itself, with no certbot job to forget about.
+Copy `deploy\Caddyfile.windows` from the repo to `C:\caddy\Caddyfile`. It is
+already written for Windows paths and for serving on localhost only.
 
-```bash
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
-  | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
-  | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update && sudo apt install caddy
+```powershell
+caddy validate --config C:\caddy\Caddyfile
+caddy run --config C:\caddy\Caddyfile
 ```
 
-Copy `deploy/Caddyfile` from this repo to `/etc/caddy/Caddyfile`. **Change the
-domain on the first line.** Then:
+In a second window:
 
-```bash
-sudo systemctl reload caddy
-sudo systemctl status caddy
-curl -sI http://localhost | head -1      # expect HTTP/1.1 200
+```powershell
+curl.exe -sI http://localhost:8080/ | Select-Object -First 1          # 200
+curl.exe -sI http://localhost:8080/projects | Select-Object -First 1  # 200
 ```
 
-The Caddyfile already handles clean URLs, the 404 page, immutable caching for
-fingerprinted assets and fonts, revalidating HTML, and a content security policy
-matching the fact that the site loads nothing from third parties.
+Then stop it (Ctrl+C) and make it a service — **this machine reboots weekly, so
+a foreground process is not acceptable.**
 
-If nginx is already installed and in use, `deploy/nginx.conf` is the equivalent,
-with install notes at the top. You will need certbot for HTTPS in that case.
+Caddy has no built-in Windows service installer. Two documented options; pick
+one and verify it actually survives a reboot:
+
+1. **NSSM** (simplest):
+   ```powershell
+   winget install --id NSSM.NSSM -e
+   nssm install Caddy "C:\caddy\caddy.exe" "run --config C:\caddy\Caddyfile"
+   nssm start Caddy
+   ```
+2. **Task Scheduler** — new task, trigger "At startup", action
+   `C:\caddy\caddy.exe run --config C:\caddy\Caddyfile`, run whether user is
+   logged on or not, highest privileges.
 
 ---
 
 ## Step 4 — Cloudflare Tunnel
 
-Free, no plan upgrade.
+Brandon must authorise in a browser when prompted. The domain is already on
+Cloudflare nameservers, so there is nothing to change at the registrar.
 
-Brandon must first add the domain to Cloudflare (dashboard → Add a site → Free)
-and repoint the nameservers at his registrar. That is his step, not yours.
-
-Then here:
-
-```bash
-curl -L https://pkg.cloudflare.com/cloudflared-linux-amd64.deb -o cloudflared.deb
-sudo dpkg -i cloudflared.deb
-
-cloudflared tunnel login                   # prints a URL for Brandon to authorise
-cloudflared tunnel create brandongreene    # note the tunnel ID
-cloudflared tunnel route dns brandongreene <DOMAIN>
+```powershell
+cloudflared tunnel login
+cloudflared tunnel create brandongreene
+cloudflared tunnel route dns brandongreene brandongreene.dev
+cloudflared tunnel route dns brandongreene www.brandongreene.dev
 ```
 
-`/etc/cloudflared/config.yml`:
+Note the tunnel ID and credentials file path printed by `create` — on Windows
+the credentials land in `C:\Users\<user>\.cloudflared\<TUNNEL-ID>.json`.
+
+Create `C:\Users\<user>\.cloudflared\config.yml`:
 
 ```yaml
 tunnel: brandongreene
-credentials-file: /root/.cloudflared/<TUNNEL-ID>.json
+credentials-file: C:\Users\<user>\.cloudflared\<TUNNEL-ID>.json
 
 ingress:
-  - hostname: <DOMAIN>
-    service: http://localhost:80
-  - hostname: www.<DOMAIN>
-    service: http://localhost:80
+  - hostname: brandongreene.dev
+    service: http://localhost:8080
+  - hostname: www.brandongreene.dev
+    service: http://localhost:8080
   - service: http_status:404
 ```
 
-Survive reboots — **important, this machine goes down roughly weekly**:
+Install as a Windows service so it returns after a reboot:
 
-```bash
-sudo cloudflared service install
-sudo systemctl enable --now cloudflared
-sudo systemctl enable caddy
+```powershell
+cloudflared service install
+Start-Service cloudflared
+Get-Service cloudflared
+```
+
+**`route dns` only adds A/CNAME records. It must not disturb the existing MX
+records** — Brandon's email forwarding depends on them. Verify after:
+
+```powershell
+nslookup -type=MX brandongreene.dev
+```
+
+Four `eforward*.registrar-servers.com` entries should still be there.
+
+---
+
+## Step 5 — Indexing. Read this before telling Brandon you're done.
+
+`/about` and `/resume` still display literal `[To fill in: ...]` placeholder
+text. This site is for college admissions readers roughly two years out. A
+half-finished page indexed under his real name is a long-lived cost that is hard
+to undo.
+
+The suppression switch is applied **at build time**:
+
+```powershell
+$env:PUBLIC_ALLOW_INDEXING="false"; npm run build
+```
+
+Every page then sends `noindex, nofollow` and `/robots.txt` serves `Disallow: /`.
+
+**Build with the flag set.** Only drop it when Brandon explicitly confirms the
+pre-launch checklist in `DEPLOY.md` is complete — including that his parents have
+seen the site. Do not make that call yourself.
+
+Confirm which mode is live:
+
+```powershell
+curl.exe -s https://brandongreene.dev/robots.txt
 ```
 
 ---
 
-## Indexing — read before you finish
+## Step 6 — Verify
 
-The site has a **build-time** switch that keeps it out of search engines. It is
-set on Brandon's Mac when building, **not here**. Setting anything on this
-server will not change it.
-
-```bash
-PUBLIC_ALLOW_INDEXING=false npm run deploy     # on his Mac
+```powershell
+curl.exe -sI https://brandongreene.dev | Select-Object -First 1                    # 200
+curl.exe -sI https://brandongreene.dev/projects | Select-Object -First 1           # 200
+curl.exe -sI https://brandongreene.dev/projects/foot-scanner | Select-Object -First 1
+curl.exe -sI https://brandongreene.dev/nope | Select-Object -First 1               # 404
+curl.exe -sI https://brandongreene.dev/og/foot-scanner.png | Select-Object -First 1
+curl.exe -s  https://brandongreene.dev/robots.txt
 ```
 
-That makes every page send `noindex, nofollow` and `/robots.txt` serve
-`Disallow: /`.
+Then **reboot tank and re-run those**. If the site does not come back by itself,
+the services are not configured correctly and the weekly downtime becomes
+permanent downtime.
 
-**Default to indexing disabled.** `/about` and `/resume` currently display
-`[To fill in: ...]` markers. This site is for college admissions readers two
-years from now; a half-finished page indexed under his real name is a long-lived
-cost. Only remove the flag when Brandon explicitly confirms the pre-launch
-checklist in `DEPLOY.md` is done, including that his parents have seen it.
-
-Check which mode is live:
-
-```bash
-curl -s https://<DOMAIN>/robots.txt
-```
-
----
-
-## Verify
-
-```bash
-curl -sI https://<DOMAIN> | head -1              # 200
-curl -sI https://<DOMAIN>/projects | head -1     # 200, clean URL works
-curl -sI https://<DOMAIN>/nope | head -1         # 404
-curl -s  https://<DOMAIN>/robots.txt             # expected indexing mode
-curl -sI https://<DOMAIN>/og/foot-scanner.png | head -1   # 200, social card
-```
-
-Then ask Brandon to open it on his phone. That check cannot be done from here.
+Finally, ask Brandon to open it on his phone. That check cannot be done here.
 
 ---
 
 ## Troubleshooting
 
-**Nothing loads.** Isolate the two services:
+**Nothing loads.** Isolate the two halves:
 
-```bash
-sudo systemctl status caddy cloudflared
-curl -sI http://localhost | head -1
+```powershell
+curl.exe -sI http://localhost:8080/ | Select-Object -First 1
+Get-Service cloudflared
 ```
 
-If localhost works and the domain doesn't, the problem is the tunnel or DNS. If
-localhost fails too, it's Caddy or the files.
+Localhost works but the domain doesn't → tunnel or DNS. Localhost fails too →
+Caddy or the files.
 
-**404 on `/projects` but `/projects/` works.** The `try_files` directive is wrong
-— compare against `deploy/Caddyfile`.
+**404 on `/projects` but `/projects/` works.** The `try_files` line is wrong.
+Compare against `deploy\Caddyfile.windows`.
 
-**Stale content.** HTML is set to revalidate, so this is usually browser cache.
-Cloudflare also caches: purge from the dashboard under Caching → Purge Everything.
+**Caddy won't start.** Backslashes in the Caddyfile are escape characters — paths
+must use forward slashes (`C:/srv/...`).
 
-**Certificate errors on a `.dev` domain.** `.dev` is HSTS-preloaded, so browsers
-refuse plain HTTP entirely. Through the tunnel Cloudflare terminates TLS; check
-the domain's SSL/TLS mode in Cloudflare is **Full**, not Flexible.
+**Certificate errors.** `.dev` is on the HSTS preload list, so browsers refuse
+plain HTTP for it entirely. Cloudflare terminates TLS at the edge; check the
+domain's SSL/TLS mode in the Cloudflare dashboard is **Full**, not Flexible.
 
----
-
-## Creating the remote (Brandon's step, on his Mac)
-
-The repository is local-only and has no remote. No `gh` CLI is installed and no
-SSH keys exist on his Mac, so this cannot be automated — he has to do it:
-
-1. Create an empty repo at <https://github.com/new>. No README, no .gitignore —
-   the repo already has both. Public or private both work.
-2. Then on his Mac:
-
-```bash
-cd ~/code/brandongreene-site
-git remote add origin https://github.com/<USERNAME>/brandongreene-site.git
-git push -u origin main
-```
-
-macOS keychain will prompt for credentials on first push. GitHub requires a
-personal access token rather than a password.
-
-The repo has been scanned: no secrets, no credentials, no email address, no
-phone number in tracked files. `deploy/deploy.env` — which would hold this
-machine's address — is correctly gitignored and must stay that way.
+**Stale content after a rebuild.** HTML is set to revalidate, so it's usually
+browser cache. Cloudflare also caches — purge under Caching → Purge Everything.
 
 ---
 
 ## Constraints that are not yours to change
 
-- No port forwarding; the tunnel exists for a privacy reason.
-- Do not enable indexing without Brandon's explicit go-ahead.
-- Do not commit `deploy/deploy.env`, scan data, or anything under `data/`.
-- Do not edit site content. If copy looks wrong, report it — the site has strict
-  rules about never stating unverified claims, and the content was written
-  against evidence.
+- **No port forwarding.** The tunnel exists for a privacy reason.
+- **Do not enable indexing** without Brandon's explicit go-ahead.
+- **Do not touch the MX records.** Email forwarding depends on them.
+- **Do not edit site content.** The site has strict rules about never stating
+  unverified claims, and every line was written against evidence. If something
+  reads wrong, report it rather than fixing it.
+- **Do not commit anything from this machine** — in particular its address or
+  any tunnel credentials.
