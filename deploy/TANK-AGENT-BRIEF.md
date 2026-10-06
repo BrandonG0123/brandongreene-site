@@ -286,6 +286,24 @@ browser cache. Cloudflare also caches — purge under Caching → Purge Everythi
 
 ---
 
+## Also on tank: footscan (footscan.brandongreene.dev)
+
+The repo also carries footscan, a Python app, at `apps/footscan/`. It is not
+part of the static site and Caddy does not serve it: it runs as its own
+Windows service on `localhost:8765`, and the tunnel gets one more ingress
+rule for `footscan.brandongreene.dev`. Everything is in
+`apps/footscan/docs/DEPLOY-TANK.md`; follow it after this brief is done.
+
+Two points that brief stresses and that apply here too:
+
+- Put **Cloudflare Access** in front of `footscan.brandongreene.dev` before
+  anyone else gets the link: the app accepts foot photos and health-screening
+  answers from whoever opens it.
+- Its data folder (`C:\srv\footscan-data`) and studio key
+  (`apps\footscan\.studio_key`) never get committed.
+
+---
+
 ## Constraints that are not yours to change
 
 - **No port forwarding.** The tunnel exists for a privacy reason.
