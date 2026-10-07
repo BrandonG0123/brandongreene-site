@@ -18,5 +18,20 @@ export default defineConfig({
     }),
   ],
   build: { inlineStylesheets: 'auto' },
+  vite: {
+    // Pre-bundle the animation and 3D libraries when the dev server starts.
+    // Otherwise Vite discovers them mid-session, re-optimises, and any open tab
+    // gets "504 Outdated Optimize Dep" on its scripts — which silently drops the
+    // page into its no-JavaScript state.
+    optimizeDeps: {
+      include: [
+        'motion',
+        'three',
+        'three/addons/controls/OrbitControls.js',
+        'three/addons/loaders/STLLoader.js',
+        'three/addons/loaders/GLTFLoader.js',
+      ],
+    },
+  },
   prefetch: false,
 });

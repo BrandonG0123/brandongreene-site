@@ -1,4 +1,6 @@
 ---
+import fs from 'node:fs';
+import path from 'node:path';
 import type { CollectionEntry } from 'astro:content';
 import StatusBadge from './StatusBadge.astro';
 
@@ -12,18 +14,35 @@ const { projects, entryCounts = {} } = Astro.props;
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// A still of the project's 3D model, rendered offline from its real viewer by
+// `npm run render:models`. Only shown if it exists.
+const still = (slug: string) =>
+  fs.existsSync(path.join(process.cwd(), 'public/models/stills', `${slug}.webp`)) ? `/models/stills/${slug}` : null;
 ---
 
 <ul class="project-index" data-project-list>
   {
     projects.map((p, i) => {
       const count = entryCounts[p.id] ?? 0;
+      const media = still(p.id);
       return (
         <li data-areas={p.data.areas.join(' ')}>
           {/* The whole card is clickable via a stretched link on the title, so
               there is exactly one link per card for keyboard and screen-reader
               users, not an outer <a> wrapping block content. */}
-          <article class="card" data-card>
+          <article class:list={['card', { 'card--media': media }]} data-card>
+            {/* Decorative: the card's text says what the project is; the model is
+                described in full, with its own caption, on the project page. */}
+            {media && (
+              <div class="card__media" aria-hidden="true">
+                <picture>
+                  <source srcset={`${media}.avif`} type="image/avif" />
+                  <img src={`${media}.webp`} alt="" width="1200" height="750" loading="lazy" decoding="async" />
+                </picture>
+                <span class="card__scan" />
+              </div>
+            )}
             <span class="card__index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
 
             <div class="card__main">
@@ -86,6 +105,36 @@ const fmt = (d: Date) =>
   .project-index > li:first-child:not(:only-child) .card { padding-block: var(--space-6); }
   .project-index > li:first-child:not(:only-child) .card__title { font-size: var(--step-3); }
 
+  @media (min-width: 60rem) {
+    /* Text centred vertically against the object: rows 2-3 between two
+       flexible spacer rows. */
+    .project-index > li:first-child .card--media,
+    .project-index > li:only-child .card--media {
+      grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr);
+      grid-template-rows: 1fr auto auto 1fr;
+      column-gap: var(--space-6);
+      align-items: start;
+      min-height: 22rem;
+    }
+    .project-index > li:first-child .card--media .card__index,
+    .project-index > li:only-child .card--media .card__index { grid-row: 2; }
+    .project-index > li:first-child .card--media .card__main,
+    .project-index > li:only-child .card--media .card__main { grid-column: 2; grid-row: 2; }
+    .project-index > li:first-child .card--media .card__meta,
+    .project-index > li:only-child .card--media .card__meta { grid-row: 3; }
+    .project-index > li:first-child .card--media .card__media,
+    .project-index > li:only-child .card--media .card__media {
+      grid-column: 3;
+      grid-row: 1 / span 4;
+      margin-bottom: 0;
+      align-self: stretch;
+      aspect-ratio: auto;
+      min-height: 100%;
+    }
+    .project-index > li:first-child .card--media .card__arrow,
+    .project-index > li:only-child .card--media .card__arrow { display: none; }
+  }
+
   .card {
     --mx: 50%;
     --my: 50%;
@@ -109,6 +158,56 @@ const fmt = (d: Date) =>
       0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
       0 1.5rem 3rem -1.5rem color-mix(in srgb, var(--accent) 35%, transparent);
   }
+
+  /* ---- media: the project's 3D object, as a hologram still ---- */
+  .card__media {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+    background: var(--bg);
+    aspect-ratio: 16 / 10;
+    max-width: 100%;
+  }
+  /* The still is framed for the wide viewer; crop in on the object. */
+  .card__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 58%;
+    transform: scale(1.32);
+    transition: transform 1.2s var(--ease-out), filter 0.6s;
+    filter: saturate(0.9) brightness(0.92);
+  }
+  .card:hover .card__media img,
+  .card:focus-within .card__media img {
+    transform: scale(1.4);
+    filter: saturate(1.1) brightness(1.05);
+  }
+  /* A scan line sweeps the still on hover — the same gesture as the viewer. */
+  .card__scan {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ice) 32%, transparent) 50%, transparent 52%);
+    background-size: 100% 220%;
+    background-position: 0 -120%;
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .card:hover .card__scan,
+  .card:focus-within .card__scan {
+    opacity: 1;
+    animation: card-scan 1.6s var(--ease-out) infinite;
+  }
+  @keyframes card-scan {
+    from { background-position: 0 -120%; }
+    to { background-position: 0 120%; }
+  }
+
+  /* Cards with media: image across the top on small cards. */
+  .card--media { grid-template-columns: auto minmax(0, 1fr); }
+  .card--media .card__media { grid-column: 1 / -1; margin-bottom: var(--space-3); }
 
   .card__index {
     grid-row: span 2;
@@ -178,12 +277,63 @@ const fmt = (d: Date) =>
 
   @media (max-width: 40rem) {
     .card { grid-template-columns: minmax(0, 1fr); padding: var(--space-5) var(--space-6) var(--space-5) var(--space-4); }
-    .card__index { grid-row: auto; padding-top: 0; }
+    /* ---- media: the project's 3D object, as a hologram still ---- */
+  .card__media {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+    background: var(--bg);
+    aspect-ratio: 16 / 10;
+    max-width: 100%;
+  }
+  /* The still is framed for the wide viewer; crop in on the object. */
+  .card__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 58%;
+    transform: scale(1.32);
+    transition: transform 1.2s var(--ease-out), filter 0.6s;
+    filter: saturate(0.9) brightness(0.92);
+  }
+  .card:hover .card__media img,
+  .card:focus-within .card__media img {
+    transform: scale(1.4);
+    filter: saturate(1.1) brightness(1.05);
+  }
+  /* A scan line sweeps the still on hover — the same gesture as the viewer. */
+  .card__scan {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ice) 32%, transparent) 50%, transparent 52%);
+    background-size: 100% 220%;
+    background-position: 0 -120%;
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .card:hover .card__scan,
+  .card:focus-within .card__scan {
+    opacity: 1;
+    animation: card-scan 1.6s var(--ease-out) infinite;
+  }
+  @keyframes card-scan {
+    from { background-position: 0 -120%; }
+    to { background-position: 0 120%; }
+  }
+
+  /* Cards with media: image across the top on small cards. */
+  .card--media { grid-template-columns: auto minmax(0, 1fr); }
+  .card--media .card__media { grid-column: 1 / -1; margin-bottom: var(--space-3); }
+
+  .card__index { grid-row: auto; padding-top: 0; }
     .card__meta, .placeholder-flag { grid-column: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .card, .card__arrow { transition: none; }
-    .card:hover .card__arrow { transform: none; }
+    .card, .card__arrow, .card__media img { transition: none; }
+    .card:hover .card__arrow, .card:hover .card__media img { transform: none; }
+    .card:hover .card__scan, .card:focus-within .card__scan { animation: none; opacity: 0; }
   }
 </style>

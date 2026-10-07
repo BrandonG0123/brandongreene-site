@@ -149,25 +149,33 @@ export function createRenderer(
   window.addEventListener('themechange', () => { colours = readColours(); });
 
   // World → screen. Frame the action: x from -1.2 to 2.6 m, y from -0.1 to 3.25 m.
-  const view = { x0: -1.0, x1: 1.9, y0: -0.08, y1: 3.15 };
+  // BASE is the region that must always be visible: feet to the top of the
+  // toss. The live view is re-derived from it on every resize — never from the
+  // previous view, which would let one bad measurement poison every later one.
+  const BASE = { x0: -1.0, x1: 1.9, y0: -0.12, y1: 3.15 } as const;
+  const view = { ...BASE };
   const sx = (x: number) => ((x - view.x0) / (view.x1 - view.x0)) * W;
   const sy = (y: number) => H - ((y - view.y0) / (view.y1 - view.y0)) * H;
   const P = (v: Vec) => [sx(v[0]), sy(v[1])] as const;
 
   const resize = () => {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
     const r = canvas.getBoundingClientRect();
+    // Hidden or not yet laid out: nothing sensible to measure. Bail rather than
+    // compute an aspect ratio of 0/0.
+    if (r.width < 2 || r.height < 2) return;
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = r.width; H = r.height;
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Keep metres square: widen whichever axis has slack.
-    const aspect = W / H, worldAspect = (view.x1 - view.x0) / (view.y1 - view.y0);
+    // Keep metres square: start from BASE and widen whichever axis has slack.
+    Object.assign(view, BASE);
+    const aspect = W / H, worldAspect = (BASE.x1 - BASE.x0) / (BASE.y1 - BASE.y0);
     if (aspect > worldAspect) {
-      const span = (view.y1 - view.y0) * aspect, mid = 0.2;
+      const span = (BASE.y1 - BASE.y0) * aspect, mid = (BASE.x0 + BASE.x1) / 2;
       view.x0 = mid - span / 2; view.x1 = mid + span / 2;
     } else {
-      const span = (view.x1 - view.x0) / aspect, mid = 1.55;
+      const span = (BASE.x1 - BASE.x0) / aspect, mid = (BASE.y0 + BASE.y1) / 2;
       view.y0 = mid - span / 2; view.y1 = mid + span / 2;
     }
   };

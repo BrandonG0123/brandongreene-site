@@ -90,6 +90,9 @@ const label =
       [0.64, 0.7, 1.0, 1.0],
     ];
     const opacity = windows.map((w, i) => transform(w, i === 2 ? [0, 1, 1, 1] : [0, 1, 1, 0]));
+    // Only now — with the renderer built and the windows ready — switch on the
+    // pinned layout.
+    section.classList.add('serve--live');
     const lift = windows.map((w) => transform([w[0], w[1]], [24, 0]));
 
     let latest = 0, pending = false;
@@ -122,30 +125,32 @@ const label =
 </script>
 
 <style>
-  .serve {
-    position: relative;
-    height: 420vh;
-  }
+  /* Three states, built up rather than torn down:
+       default  (no JS, or the script failed): the sentences stacked and
+                readable; no canvas, no empty scrolling
+       .serve--still  (reduced motion): one still frame beside the sentences
+       .serve--live   (the full thing): pinned stage, scrubbed by scroll
+     The pinned layout only exists once the script has actually started, so a
+     blocked or failed script can never leave three sentences crushed into one
+     spot over screens of empty scroll. */
+
+  .serve { position: relative; }
 
   .serve__stage {
-    position: sticky;
-    top: 0;
-    height: 100svh;
     display: grid;
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
     align-items: center;
     max-width: var(--wrap);
     margin-inline: auto;
-    padding: var(--header-h) clamp(var(--space-5), 4vw, var(--space-7)) var(--space-5);
+    padding: var(--space-8) clamp(var(--space-5), 4vw, var(--space-7));
     gap: clamp(var(--space-5), 4vw, var(--space-8));
-    overflow: hidden;
   }
 
   .serve__viz {
+    display: none;
     grid-column: 2;
     grid-row: 1;
     position: relative;
-    height: 86%;
     align-self: center;
   }
   /* The measurement grid and glow live BEHIND the canvas, so masking them
@@ -170,25 +175,21 @@ const label =
   }
 
   .serve__beats {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 1;
     position: relative;
-    min-height: 12rem;
   }
 
   .serve__beat {
-    position: absolute;
-    inset: 50% 0 auto 0;
-    transform: translateY(-50%);
-    margin: 0;
+    margin: 0 0 var(--space-4);
     font-family: var(--font-display);
     font-weight: 800;
     font-size: clamp(1.9rem, 0.8rem + 3.6vw, 4.4rem);
     line-height: 1.05;
     letter-spacing: -0.03em;
     text-wrap: balance;
-    will-change: opacity, transform;
   }
+  .serve__beat:last-child { margin-bottom: 0; }
 
   .serve__link {
     display: block;
@@ -206,7 +207,7 @@ const label =
 
   .serve__source {
     position: absolute;
-    left: var(--space-5);
+    left: clamp(var(--space-5), 4vw, var(--space-7));
     bottom: var(--space-5);
     margin: 0;
     font-family: var(--font-mono);
@@ -218,26 +219,46 @@ const label =
     padding: var(--space-1) var(--space-2);
   }
   .serve[data-mode='real'] .serve__source { color: var(--fg-muted); border-color: var(--rule); }
+  .serve:not(.serve--live):not(.serve--still) .serve__source { display: none; }
+
+  /* ---- still: reduced motion ------------------------------------------- */
+  .serve.serve--still .serve__beats { grid-column: 1; }
+  .serve.serve--still .serve__viz { display: block; height: 62svh; }
+
+  /* ---- live: pinned and scrubbed --------------------------------------- */
+  /* ~2 screens of scrubbing: long enough to feel the serve, short enough that
+     a reader with 60 seconds still reaches the work. */
+  .serve.serve--live { height: 300vh; }
+  .serve.serve--live .serve__stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    padding: var(--header-h) clamp(var(--space-5), 4vw, var(--space-7)) var(--space-5);
+    overflow: hidden;
+  }
+  .serve.serve--live .serve__viz { display: block; height: 86%; }
+  .serve.serve--live .serve__beats { grid-column: 1; min-height: 12rem; }
+  .serve.serve--live .serve__beat {
+    position: absolute;
+    inset: 50% 0 auto 0;
+    transform: translateY(-50%);
+    margin: 0;
+    opacity: 0;
+    visibility: hidden;
+    will-change: opacity, transform;
+  }
 
   @media (max-width: 46rem) {
-    .serve__stage {
+    .serve.serve--live .serve__stage,
+    .serve.serve--still .serve__stage {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(0, 1fr) auto;
     }
-    .serve__viz { grid-column: 1; grid-row: 1; height: 100%; }
-    .serve__beats { grid-column: 1; grid-row: 2; min-height: 9rem; }
+    .serve.serve--live .serve__viz,
+    .serve.serve--still .serve__viz { grid-column: 1; grid-row: 1; height: 100%; }
+    .serve.serve--still .serve__viz { height: 55svh; }
+    .serve.serve--live .serve__beats,
+    .serve.serve--still .serve__beats { grid-column: 1; grid-row: 2; min-height: 9rem; }
     .serve__source { top: calc(var(--header-h) + var(--space-3)); bottom: auto; }
-  }
-
-  /* Reduced motion, or no scrubbing: a normal-height section, still frame,
-     every sentence readable. */
-  /* .serve:global(...) so this outranks the scoped .serve { height: 420vh }. */
-  .serve:global(.serve--still) { height: auto; }
-  :global(.serve--still) .serve__stage { position: relative; height: auto; min-height: 80svh; }
-  :global(.serve--still) .serve__viz { height: 60svh; }
-  :global(.serve--still) .serve__beat {
-    position: static;
-    transform: none;
-    margin-bottom: var(--space-4);
   }
 </style>
