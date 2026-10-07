@@ -16,19 +16,24 @@ const fmt = (d: Date) =>
 
 <ul class="project-index" data-project-list>
   {
-    projects.map((p) => {
+    projects.map((p, i) => {
       const count = entryCounts[p.id] ?? 0;
       return (
         <li data-areas={p.data.areas.join(' ')}>
-          <article class="project-row">
-            <div class="project-row__main">
-              <h3 class="project-row__title">
-                <a href={`/projects/${p.id}`}>{p.data.title}</a>
+          {/* The whole card is clickable via a stretched link on the title, so
+              there is exactly one link per card for keyboard and screen-reader
+              users, not an outer <a> wrapping block content. */}
+          <article class="card" data-card>
+            <span class="card__index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+
+            <div class="card__main">
+              <h3 class="card__title">
+                <a class="card__link" href={`/projects/${p.id}`}>{p.data.title}</a>
               </h3>
-              <p class="project-row__summary">{p.data.summary}</p>
+              <p class="card__summary">{p.data.summary}</p>
             </div>
 
-            <div class="project-row__meta">
+            <div class="card__meta">
               <StatusBadge
                 status={p.data.status}
                 detail={
@@ -37,15 +42,15 @@ const fmt = (d: Date) =>
                     : undefined
                 }
               />
-              <span class="project-row__date">
+              <span>
                 <span class="visually-hidden">Started </span>
                 {fmt(p.data.started)}
               </span>
-              <span class="project-row__areas">{p.data.areas.join(' · ')}</span>
-              {p.data.collaboration === 'group' && (
-                <span class="project-row__group">Group project</span>
-              )}
+              <span>{p.data.areas.join(' · ')}</span>
+              {p.data.collaboration === 'group' && <span>Group project</span>}
             </div>
+
+            <span class="card__arrow" aria-hidden="true">↗</span>
 
             {p.data.placeholder && (
               <p class="placeholder-flag">
@@ -58,3 +63,120 @@ const fmt = (d: Date) =>
     })
   }
 </ul>
+
+<script>
+  import { initCards } from '../scripts/cards';
+  initCards();
+</script>
+
+<style>
+  .project-index {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-4);
+    perspective: 1200px;
+  }
+
+  .card {
+    --mx: 50%;
+    --my: 50%;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-3) var(--space-5);
+    padding: var(--space-5) var(--space-6) var(--space-5) var(--space-5);
+    border: 1px solid color-mix(in srgb, var(--rule) 55%, transparent);
+    background:
+      radial-gradient(420px circle at var(--mx) var(--my), color-mix(in srgb, var(--ice) 11%, transparent), transparent 60%),
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--bg) 92%, transparent));
+    transform-style: preserve-3d;
+    transition: border-color 0.3s, box-shadow 0.4s var(--ease-out);
+    will-change: transform;
+  }
+  .card:hover,
+  .card:focus-within {
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent),
+      0 1.5rem 3rem -1.5rem color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
+  .card__index {
+    grid-row: span 2;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    padding-top: 0.45rem;
+    min-width: 2ch;
+  }
+
+  .card__title {
+    font-size: var(--step-2);
+    line-height: 1.12;
+    margin: 0 0 var(--space-2);
+  }
+  .card__link {
+    color: var(--fg);
+    text-decoration: none;
+  }
+  /* Stretch the one link over the whole card. */
+  .card__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+  .card__link:focus-visible { outline: none; }
+  .card:has(.card__link:focus-visible) {
+    outline: 3px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  .card__summary {
+    margin: 0;
+    color: var(--fg-muted);
+    max-width: var(--measure);
+  }
+
+  .card__meta {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--fg-muted);
+  }
+
+  .card__arrow {
+    position: absolute;
+    top: var(--space-5);
+    right: var(--space-5);
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--fg-muted);
+    transition: transform 0.4s var(--ease-out), color 0.3s;
+  }
+  .card:hover .card__arrow,
+  .card:focus-within .card__arrow {
+    color: var(--accent);
+    transform: translate(3px, -3px);
+  }
+
+  .placeholder-flag { grid-column: 2; position: relative; z-index: 2; }
+
+  @media (max-width: 40rem) {
+    .card { grid-template-columns: minmax(0, 1fr); padding: var(--space-5) var(--space-6) var(--space-5) var(--space-4); }
+    .card__index { grid-row: auto; padding-top: 0; }
+    .card__meta, .placeholder-flag { grid-column: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card__arrow { transition: none; }
+    .card:hover .card__arrow { transform: none; }
+  }
+</style>

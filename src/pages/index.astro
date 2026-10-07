@@ -1,6 +1,8 @@
 ---
 import Base from '../layouts/Base.astro';
 import ProjectList from '../components/ProjectList.astro';
+import Hero from '../components/Hero.astro';
+import ServeChapter from '../components/ServeChapter.astro';
 import { visibleProjects, visibleLog } from '../lib/visibility';
 
 const all = await visibleProjects();
@@ -14,6 +16,17 @@ const featured = all
 const entryCounts = Object.fromEntries(
   all.map((p) => [p.id, logEntries.filter((e) => e.data.project === p.id).length])
 );
+
+// The hero's live readout: the most recently updated in-progress project. Only
+// ever something that genuinely exists and is genuinely in progress.
+const lastTouched = (slug: string, fallback: Date) => {
+  const dates = logEntries.filter((e) => e.data.project === slug).map((e) => e.data.date.valueOf());
+  return new Date(Math.max(fallback.valueOf(), ...dates));
+};
+const current = all
+  .filter((p) => p.data.status === 'in-progress' && !p.data.placeholder)
+  .map((p) => ({ p, when: lastTouched(p.id, p.data.updated ?? p.data.started) }))
+  .sort((a, b) => b.when.valueOf() - a.when.valueOf())[0];
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -33,17 +46,22 @@ const jsonLd = {
   description="Projects in software, hardware and machine learning, each labelled by status and backed by a dated build log."
   jsonLd={jsonLd}
 >
-  <div class="wrap">
-    <section class="hero">
-      <h1>I build hardware and software that has to work on something real.</h1>
-      <p class="lede">
-        Everything here is labelled by status and dated. If something isn't finished, the page says
-        so and shows the work in progress instead of a promise.
-      </p>
-      <p class="hero-onward"><a href="/about">More about me →</a></p>
-    </section>
+  <Hero
+    title="I build hardware and software that has to work on something real."
+    lede="Everything here is labelled by status and dated. If something isn't finished, the page says so and shows the work in progress instead of a promise."
+    building={current && {
+      title: current.p.data.title,
+      href: `/projects/${current.p.id}`,
+      updated: fmt(current.when),
+    }}
+  />
 
-    <section aria-labelledby="featured-heading">
+  <ServeChapter />
+
+  <div class="wrap">
+
+
+    <section id="work" aria-labelledby="featured-heading">
       <div class="section-head">
         <h2 id="featured-heading">Selected work</h2>
         <a href="/projects">All projects →</a>
@@ -82,10 +100,3 @@ const jsonLd = {
   </div>
 </Base>
 
-<style>
-  .hero-onward {
-    font-family: var(--font-mono);
-    font-size: var(--step--1);
-    margin-top: var(--space-5);
-  }
-</style>

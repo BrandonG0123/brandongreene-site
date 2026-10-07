@@ -1,0 +1,240 @@
+---
+/**
+ * The serve chapter. A tall section with a pinned stage: scroll scrubs the
+ * serve frame by frame while three true sentences hand off from tennis to the
+ * work.
+ *
+ * Honesty gate: the skeleton only appears in production if real pose data from
+ * Brandon's own footage exists at public/serve/pose.json. Without it, production
+ * shows the ball's arc and the text; development shows a synthetic serve,
+ * labelled as such on screen.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+
+const hasRealPose = fs.existsSync(path.join(process.cwd(), 'public/serve/pose.json'));
+const isDev = import.meta.env.DEV;
+const mode = hasRealPose ? 'real' : isDev ? 'synthetic' : 'ball';
+
+const label =
+  mode === 'real'
+    ? 'My serve, drawn from joint positions tracked frame by frame in my own footage, from the toss to contact.'
+    : mode === 'synthetic'
+      ? 'A synthetic tennis serve drawn as a skeleton of joints — a development placeholder, not real footage.'
+      : 'The arc of a tennis ball through a serve, from the toss to contact.';
+---
+
+<section class="serve" data-serve data-mode={mode} aria-labelledby="serve-heading">
+  <h2 id="serve-heading" class="visually-hidden">Where the work comes from</h2>
+
+  <div class="serve__stage">
+    <div class="serve__viz">
+      <canvas class="serve__canvas" data-serve-canvas role="img" aria-label={label}></canvas>
+    </div>
+
+    <div class="serve__beats">
+      <p class="serve__beat" data-beat="0">I play tennis.</p>
+      <p class="serve__beat" data-beat="1">I have flat feet.</p>
+      <p class="serve__beat" data-beat="2">
+        That's where the scanner started.
+        <a class="serve__link" href="/projects/foot-scanner">See the foot scanner <span aria-hidden="true">→</span></a>
+      </p>
+    </div>
+
+    {
+      mode === 'synthetic' && (
+        <p class="serve__source" aria-hidden="true">
+          Synthetic pose · dev only · replaced by real footage
+        </p>
+      )
+    }
+    {mode === 'real' && <p class="serve__source">Pose tracked from my own footage</p>}
+  </div>
+</section>
+
+<script>
+  import { scroll, transform } from 'motion';
+  import { createRenderer, synthesise, type PoseData } from '../scripts/serve';
+
+  const section = document.querySelector<HTMLElement>('[data-serve]');
+  const canvas = section?.querySelector<HTMLCanvasElement>('[data-serve-canvas]');
+
+  async function boot() {
+    if (!section || !canvas) return;
+    const mode = section.dataset.mode;
+
+    let data: PoseData | null = null;
+    if (mode === 'real') {
+      data = await fetch('/serve/pose.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    } else {
+      data = synthesise();
+    }
+
+    const renderer = createRenderer(canvas, data, { figure: mode !== 'ball' });
+    const beats = [...section.querySelectorAll<HTMLElement>('[data-beat]')];
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced) {
+      // One still frame at the trophy position; all three sentences visible.
+      section.classList.add('serve--still');
+      renderer.resize();
+      renderer.render(0.42);
+      return;
+    }
+
+    // Each sentence owns a window of the scroll, fading in and out of the
+    // same spot. The last one stays.
+    const windows = [
+      [0.02, 0.08, 0.26, 0.32],
+      [0.34, 0.4, 0.56, 0.62],
+      [0.64, 0.7, 1.0, 1.0],
+    ];
+    const opacity = windows.map((w, i) => transform(w, i === 2 ? [0, 1, 1, 1] : [0, 1, 1, 0]));
+    const lift = windows.map((w) => transform([w[0], w[1]], [24, 0]));
+
+    let latest = 0, pending = false;
+    const paint = () => {
+      pending = false;
+      renderer.render(latest);
+      beats.forEach((el, i) => {
+        const o = opacity[i](latest);
+        el.style.opacity = String(o);
+        el.style.transform = `translateY(${lift[i](latest)}px)`;
+        el.style.visibility = o < 0.01 ? 'hidden' : 'visible';
+      });
+    };
+
+    scroll(
+      (progress: number) => {
+        latest = progress;
+        if (!pending) { pending = true; requestAnimationFrame(paint); }
+      },
+      { target: section, offset: ['start start', 'end end'] },
+    );
+
+    window.addEventListener('resize', () => { renderer.resize(); paint(); });
+    window.addEventListener('themechange', () => paint());
+    renderer.resize();
+    paint();
+  }
+
+  boot();
+</script>
+
+<style>
+  .serve {
+    position: relative;
+    height: 420vh;
+  }
+
+  .serve__stage {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    align-items: center;
+    max-width: 76rem;
+    margin-inline: auto;
+    padding: var(--header-h) var(--space-5) var(--space-5);
+    overflow: hidden;
+  }
+
+  .serve__viz {
+    grid-column: 2;
+    grid-row: 1;
+    position: relative;
+    height: 86%;
+    align-self: center;
+  }
+  /* The measurement grid and glow live BEHIND the canvas, so masking them
+     never fades anything the canvas draws. */
+  .serve__viz::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(45% 55% at 45% 58%, color-mix(in srgb, var(--ice) 10%, transparent), transparent 70%),
+      repeating-linear-gradient(0deg, color-mix(in srgb, var(--rule) 20%, transparent) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, color-mix(in srgb, var(--rule) 20%, transparent) 0 1px, transparent 1px 48px);
+    mask-image: radial-gradient(65% 65% at 45% 55%, #000 35%, transparent 85%);
+    -webkit-mask-image: radial-gradient(65% 65% at 45% 55%, #000 35%, transparent 85%);
+    pointer-events: none;
+  }
+  .serve__canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .serve__beats {
+    grid-column: 1;
+    grid-row: 1;
+    position: relative;
+    min-height: 12rem;
+  }
+
+  .serve__beat {
+    position: absolute;
+    inset: 50% 0 auto 0;
+    transform: translateY(-50%);
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.9rem, 1rem + 3.2vw, 3.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    will-change: opacity, transform;
+  }
+
+  .serve__link {
+    display: block;
+    width: fit-content;
+    margin-top: var(--space-5);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ball);
+    text-decoration-color: color-mix(in srgb, var(--ball) 45%, transparent);
+  }
+  .serve__link:hover { text-decoration-color: var(--ball); }
+
+  .serve__source {
+    position: absolute;
+    left: var(--space-5);
+    bottom: var(--space-5);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--markup);
+    border: 1px dashed var(--markup);
+    padding: var(--space-1) var(--space-2);
+  }
+  .serve[data-mode='real'] .serve__source { color: var(--fg-muted); border-color: var(--rule); }
+
+  @media (max-width: 46rem) {
+    .serve__stage {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+    }
+    .serve__viz { grid-column: 1; grid-row: 1; height: 100%; }
+    .serve__beats { grid-column: 1; grid-row: 2; min-height: 9rem; }
+  }
+
+  /* Reduced motion, or no scrubbing: a normal-height section, still frame,
+     every sentence readable. */
+  :global(.serve--still) { height: auto; }
+  :global(.serve--still) .serve__stage { position: relative; height: auto; min-height: 80svh; }
+  :global(.serve--still) .serve__viz { height: 60svh; }
+  :global(.serve--still) .serve__beat {
+    position: static;
+    transform: none;
+    margin-bottom: var(--space-4);
+  }
+</style>

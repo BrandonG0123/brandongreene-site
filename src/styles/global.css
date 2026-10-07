@@ -1,42 +1,50 @@
 @import './fonts.css';
 
 /* ==========================================================================
-   Tokens. Light theme is defined on bare :root so no color has its only
-   definition inside a media query. Dark is a separate design, not an inversion.
-   All pairs verified against WCAG 2.2 AA — see content/notes/design-brief.md.
+   Tokens — "Ice + optic yellow". Dark is the design; it is defined on bare
+   :root so no colour has its only definition inside a selector or query.
+   Light is the old vellum design, kept as a reading mode for people who find
+   light-on-dark hard to read (halation with astigmatism is common).
+   Every pair verified against WCAG 2.2 AA — see content/notes/design-brief-v2.md.
    ========================================================================== */
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --vellum:   #FAF7F2;  /* page ground        */
-  --surface:  #F3EEE6;  /* raised panels      */
-  --graphite: #1A1C1E;  /* body text  15.99:1 */
-  --slate:    #4A4F55;  /* secondary   7.73:1 */
-  --section:  #005F73;  /* links/focus 6.81:1 */
-  --markup:   #A4321E;  /* failures    6.44:1 */
-  --rule:     #8C857A;  /* boundaries  3.42:1 */
-  --hairline: #D5CEC3;
-  --hairline: color-mix(in srgb, var(--rule) 38%, transparent);
+  --void:     #05060A;  /* page ground                         */
+  --surface:  #0B0F17;  /* raised panels                       */
+  --frost:    #EEF2F7;  /* body text            18.01:1         */
+  --mist:     #8A94A6;  /* secondary text        6.62:1         */
+  --ice:      #4DF3FF;  /* links, focus, the 3D 15.03:1         */
+  --violet:   #8B5CFF;  /* 3D atmosphere only — never text      */
+  --ball:     #D4FF3A;  /* optic yellow: the tennis ball, and   */
+                        /* only the moments that matter 17.52:1 */
+  --signal:   #FF5A4E;  /* failures only         6.58:1         */
+  --rule:     #5B677B;  /* boundaries            3.54:1         */
+  --hairline: #1A2130;
 
-  --bg: var(--vellum);
-  --fg: var(--graphite);
-  --fg-muted: var(--slate);
-  --accent: var(--section);
+  --bg: var(--void);
+  --fg: var(--frost);
+  --fg-muted: var(--mist);
+  --accent: var(--ice);
+  --markup: var(--signal);
+  --glow: 0 0 0.5em color-mix(in srgb, var(--ice) 55%, transparent);
 
-  /* Type */
-  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  /* Type: a wide futuristic display face, a body face drawn by the Braille
+     Institute for legibility, and a mono that reads as instrumentation. */
+  --font-display: 'Unbounded', 'Arial Black', system-ui, sans-serif;
   --font-body: 'Atkinson Hyperlegible Next', -apple-system, BlinkMacSystemFont,
     'Segoe UI', Helvetica, Arial, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* 1.25 major third off an 18px body */
+  /* 1.25 major third off an 18px body; display steps go big for the hero */
   --step--1: 0.9rem;
   --step-0: 1.125rem;
   --step-1: 1.406rem;
   --step-2: 1.758rem;
   --step-3: 2.197rem;
   --step-4: clamp(2rem, 1.25rem + 3.2vw, 3.43rem);
+  --step-hero: clamp(2.2rem, 1rem + 4vw, 4.5rem);
 
   /* NOT ch: `ch` is the width of "0", which in a proportional face overshoots
      badly — 65ch measured 95 actual characters. Verified ~66 at 18px. */
@@ -51,30 +59,23 @@
   --space-6: 2.5rem;
   --space-7: 4rem;
   --space-8: 6rem;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: #15171A;
-    --surface: #1D2025;
-    --fg: #E9E5DD;
-    --fg-muted: #A5AAB2;
-    --accent: #6FD2E2;
-    --markup: #F08A72;
-    --rule: #67707B;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #15171A;
-  --surface: #1D2025;
-  --fg: #E9E5DD;
-  --fg-muted: #A5AAB2;
-  --accent: #6FD2E2;
-  --markup: #F08A72;
-  --rule: #67707B;
+/* Reading mode: the original vellum design, intact. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #FAF7F2;
+  --surface: #F3EEE6;
+  --fg: #1A1C1E;
+  --fg-muted: #4A4F55;
+  --accent: #005F73;
+  --markup: #A4321E;
+  --rule: #8C857A;
+  --hairline: #D5CEC3;
+  --ball: #4E6B00;   /* optic yellow is unreadable on paper; a deep court green 5.73:1 */
+  --glow: none;
 }
 
 /* ==========================================================================
@@ -143,6 +144,10 @@ a:hover { text-decoration-thickness: 2px; }
 }
 
 img, video, svg { max-width: 100%; height: auto; }
+
+/* Anchored jumps (#work, #contact, log entries) land below the sticky header
+   instead of underneath it. */
+[id] { scroll-margin-top: calc(var(--header-h) + var(--space-4)); }
 
 code, kbd, samp, pre {
   font-family: var(--font-mono);
@@ -354,22 +359,30 @@ figcaption {
    Header / footer
    ========================================================================== */
 
+/* Glass header: fixed, translucent, blurs whatever scrolls beneath it. The
+   ground colour behind the text is >=70% opaque, so contrast holds even over
+   the brightest part of the 3D. */
+:root { --header-h: 4.25rem; }
+
 .site-header {
-  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 40%, transparent);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header { background: var(--bg); }
 }
 .site-header > .wrap {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3) var(--space-5);
   padding-block: var(--space-3);
-}
-
-@media (min-width: 40rem) {
-  .site-header > .wrap {
-    gap: var(--space-4) var(--space-5);
-    padding-block: var(--space-4);
-  }
+  min-height: var(--header-h);
 }
 
 .site-header .brand {
@@ -427,6 +440,45 @@ figcaption {
   font-size: var(--step--1);
   color: var(--fg-muted);
 }
+
+
+/* ==========================================================================
+   Buttons (links styled as buttons — they navigate, so they stay <a>)
+   ========================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.9rem;
+  padding: 0 var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--fg);
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  transition: border-color 0.25s, color 0.25s, box-shadow 0.35s var(--ease-out), transform 0.35s var(--ease-out);
+}
+.btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--glow);
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+.btn--primary:hover {
+  color: var(--bg);
+  box-shadow: 0 0 1.6rem color-mix(in srgb, var(--accent) 55%, transparent);
+  transform: translateY(-1px);
+}
+:root[data-theme='light'] .btn--primary { color: #FFFFFF; }
 
 /* ==========================================================================
    Status badge — shape + label + color. Never color alone.
@@ -663,6 +715,8 @@ figcaption {
   color: var(--fg-muted);
 }
 .log-entry h3 { margin: var(--space-2) 0 var(--space-3); font-size: var(--step-1); }
+.log-entry h3 a { color: var(--fg); text-decoration: none; }
+.log-entry h3 a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 0.2em; }
 .log-entry .body > :last-child { margin-bottom: 0; }
 
 /* ==========================================================================

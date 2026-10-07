@@ -26,33 +26,30 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
       </ul>
     </nav>
     <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
-      <span data-theme-label>Dark theme</span>
+      Reading mode
     </button>
   </div>
 </header>
 
 <script>
+  // Dark is the design. "Reading mode" switches to the light vellum theme for
+  // anyone who finds light-on-dark harder to read; the choice is remembered.
   const btn = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
-  const label = document.querySelector<HTMLElement>('[data-theme-label]');
   const root = document.documentElement;
+  const isReading = () => root.dataset.theme === 'light';
 
-  const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : systemDark());
-
-  const sync = () => {
-    const dark = isDark();
-    btn?.setAttribute('aria-pressed', String(dark));
-    if (label) label.textContent = dark ? 'Light theme' : 'Dark theme';
-  };
+  const sync = () => btn?.setAttribute('aria-pressed', String(isReading()));
 
   btn?.addEventListener('click', () => {
-    const next = isDark() ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
+    const next = isReading() ? 'dark' : 'light';
+    if (next === 'light') root.setAttribute('data-theme', 'light');
+    else root.removeAttribute('data-theme');
     try {
       localStorage.setItem('theme', next);
     } catch (e) {
       /* storage blocked — the toggle still works for this page view */
     }
+    window.dispatchEvent(new CustomEvent('themechange', { detail: next }));
     sync();
   });
 

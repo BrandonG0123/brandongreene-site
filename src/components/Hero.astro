@@ -1,0 +1,258 @@
+---
+/**
+ * Home hero: the gyroid behind a headline that is readable before any of the
+ * 3D exists. The canvas is decorative (aria-hidden); the headline carries the
+ * meaning. The entrance is pure CSS, so it never depends on JavaScript running.
+ */
+interface Props {
+  title: string;
+  lede: string;
+  /** Live readout of what is actually in progress, from the content collection. */
+  building?: { title: string; href: string; updated: string };
+}
+const { title, lede, building } = Astro.props;
+const words = title.split(' ');
+---
+
+<section class="hero" data-hero aria-labelledby="hero-title">
+  <canvas class="hero__canvas" data-gyroid aria-hidden="true"></canvas>
+  <div class="hero__veil" aria-hidden="true"></div>
+
+  <div class="wrap hero__inner">
+    {
+      building && (
+        <p class="hero__kicker">
+          <span class="hero__pulse" aria-hidden="true" />
+          <span class="visually-hidden">Currently building: </span>
+          <span aria-hidden="true">Now building</span>
+          <a href={building.href}>{building.title}</a>
+          <span class="hero__kicker-date">updated {building.updated}</span>
+        </p>
+      )
+    }
+
+    <h1 id="hero-title" class="hero__title">
+      {
+        words.map((w, i) => (
+          <>
+            {i > 0 && ' '}
+            <span class="hero__word">
+              <span style={`--i:${i}`}>{w}</span>
+            </span>
+          </>
+        ))
+      }
+    </h1>
+
+    <p class="hero__lede">{lede}</p>
+
+    <div class="hero__actions">
+      <a class="btn btn--primary" href="#work">See the work</a>
+      <a class="btn" href="/about">About me</a>
+    </div>
+  </div>
+
+  <button class="hero__motion" type="button" data-motion-toggle aria-pressed="false" hidden>
+    Pause motion
+  </button>
+  <p class="hero__cue" aria-hidden="true"><span>Scroll</span></p>
+</section>
+
+<script>
+  import { initGyroid } from '../scripts/gyroid';
+
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) {
+    // After first paint: the headline must never wait on shader compilation.
+    const go = () => initGyroid(hero);
+    'requestIdleCallback' in window
+      ? (window as any).requestIdleCallback(go, { timeout: 600 })
+      : setTimeout(go, 200);
+  }
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    overflow: hidden;
+    isolation: isolate;
+    margin-top: calc(-1 * var(--header-h, 4.25rem));
+    padding-top: var(--header-h, 4.25rem);
+  }
+
+  .hero__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    opacity: 0;
+    transition: opacity 1.4s var(--ease-out);
+    background: var(--bg);
+  }
+  :global(.hero--ready) .hero__canvas { opacity: 1; }
+
+  /* No WebGL: a still glow so the hero is never a flat black void. */
+  :global(.hero--no-webgl) .hero__canvas {
+    opacity: 1;
+    background:
+      radial-gradient(40% 50% at 72% 50%, color-mix(in srgb, var(--ice) 22%, transparent), transparent 70%),
+      radial-gradient(30% 40% at 78% 55%, color-mix(in srgb, var(--violet) 25%, transparent), transparent 70%),
+      var(--bg);
+  }
+
+  /* Insurance for text contrast: the headline column always sits on ground. */
+  .hero__veil {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 86%, transparent) 42%, color-mix(in srgb, var(--bg) 30%, transparent) 64%, transparent 76%);
+    pointer-events: none;
+  }
+  @media (max-width: 46rem) {
+    .hero__veil {
+      background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--bg) 70%, transparent) 45%, var(--bg) 100%);
+    }
+  }
+
+  .hero__inner {
+    padding-block: var(--space-8);
+    max-width: 54rem;
+  }
+
+  .hero__kicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    margin-bottom: var(--space-5);
+  }
+  .hero__kicker a { color: var(--fg); text-decoration-color: var(--rule); }
+  .hero__kicker a:hover { color: var(--accent); }
+  .hero__kicker-date { color: var(--fg-muted); }
+
+  .hero__pulse {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--ball);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ball) 60%, transparent);
+    animation: pulse 2.4s var(--ease-out) infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ball) 55%, transparent); }
+    70%, 100% { box-shadow: 0 0 0 0.7rem transparent; }
+  }
+
+  .hero__title {
+    font-size: var(--step-hero);
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    max-width: 11.5em;
+    margin: 0 0 var(--space-5);
+    text-wrap: balance;
+    /* Local contrast over the 3D: a dark halo hugging each letterform keeps
+       the background behind the strokes below the 0.157 luminance that 4.5:1
+       requires, even where a bright rim of the lattice passes behind. */
+    text-shadow:
+      0 0 0.35em var(--bg),
+      0 0 0.8em var(--bg),
+      0 0 1.6em color-mix(in srgb, var(--bg) 70%, transparent);
+  }
+  .hero__word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.08em;
+    margin-bottom: -0.08em;
+  }
+  .hero__word > span {
+    display: inline-block;
+    animation: rise 1s var(--ease-out) both;
+    animation-delay: calc(80ms + var(--i) * 45ms);
+  }
+  @keyframes rise {
+    from { transform: translateY(105%); }
+    to { transform: translateY(0); }
+  }
+
+  .hero__lede {
+    font-size: var(--step-1);
+    line-height: 1.5;
+    max-width: 30em;
+    color: var(--fg-muted);
+    margin-bottom: var(--space-6);
+    animation: fade 1s var(--ease-out) 0.55s both;
+    text-shadow: 0 0 0.6em var(--bg), 0 0 1.2em var(--bg);
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    animation: fade 1s var(--ease-out) 0.7s both;
+  }
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(0.6rem); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .hero__motion {
+    position: absolute;
+    left: max(var(--space-5), calc((100vw - 54rem) / 2 + var(--space-5)));
+    bottom: var(--space-5);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    border: 1px solid var(--rule);
+    padding: var(--space-2) var(--space-3);
+    min-height: 2.75rem;
+    cursor: pointer;
+  }
+  .hero__motion:hover { color: var(--fg); border-color: var(--accent); }
+
+  .hero__cue {
+    position: absolute;
+    right: max(var(--space-5), calc((100vw - 54rem) / 2 + var(--space-5)));
+    bottom: var(--space-5);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    display: grid;
+    justify-items: center;
+    gap: var(--space-2);
+  }
+  .hero__cue::after {
+    content: '';
+    width: 1px;
+    height: 2.5rem;
+    background: linear-gradient(var(--accent), transparent);
+    transform-origin: top;
+    animation: drip 2.2s var(--ease-out) infinite;
+  }
+  @keyframes drip {
+    0% { transform: scaleY(0); opacity: 1; }
+    60% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__word > span, .hero__lede, .hero__actions { animation: none; }
+    .hero__pulse, .hero__cue::after { animation: none; }
+    .hero__canvas { transition: none; }
+  }
+</style>
