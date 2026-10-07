@@ -369,7 +369,18 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
     wake();
   };
   skipBtn?.addEventListener('click', skip);
-  replayBtn?.addEventListener('click', () => { audio?.pause(); replay(); });
+  replayBtn?.addEventListener('click', async () => {
+    audio?.pause();
+    // A replay is the intro as designed, quiet sound included, unless this
+    // reader muted it. The click lets the browser start the audio.
+    let muted = false;
+    try { muted = localStorage.getItem('intro-sound') === 'off'; } catch { /* fine */ }
+    if (!muted && !soundOn) {
+      await sound.start().catch(() => {});
+      setSound(true);
+    }
+    replay();
+  });
 
   // Sound plays by itself, quietly, whenever the browser allows it, unless
   // this reader muted it before (remembered). "Mute" stops it; "Play with
