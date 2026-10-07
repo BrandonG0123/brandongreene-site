@@ -4,24 +4,23 @@
  * serve frame by frame while three true sentences hand off from tennis to the
  * work.
  *
- * Honesty gate: the skeleton only appears in production if real pose data from
- * Brandon's own footage exists at public/serve/pose.json. Without it, production
- * shows the ball's arc and the text; development shows a synthetic serve,
- * labelled as such on screen.
+ * Two honest modes, chosen at build time:
+ *   real          public/serve/pose.json exists — joint positions tracked from
+ *                 Brandon's own footage. Telemetry (angles, ball height) shown.
+ *   illustrative  no footage yet — a hand-keyframed serve, labelled ON THE
+ *                 STAGE as an illustration, with no measured numbers at all.
+ * Development and production behave the same, so the preview is what ships.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 
 const hasRealPose = fs.existsSync(path.join(process.cwd(), 'public/serve/pose.json'));
-const isDev = import.meta.env.DEV;
-const mode = hasRealPose ? 'real' : isDev ? 'synthetic' : 'ball';
+const mode = hasRealPose ? 'real' : 'illustrative';
 
 const label =
   mode === 'real'
     ? 'My serve, drawn from joint positions tracked frame by frame in my own footage, from the toss to contact.'
-    : mode === 'synthetic'
-      ? 'A synthetic tennis serve drawn as a skeleton of joints — a development placeholder, not real footage.'
-      : 'The arc of a tennis ball through a serve, from the toss to contact.';
+    : 'An illustrated tennis serve drawn as a skeleton of joints, from the toss to contact. It is an illustration, not footage of me.';
 ---
 
 <section class="serve" data-serve data-mode={mode} aria-labelledby="serve-heading">
@@ -41,14 +40,11 @@ const label =
       </p>
     </div>
 
-    {
-      mode === 'synthetic' && (
-        <p class="serve__source" aria-hidden="true">
-          Synthetic pose · dev only · replaced by real footage
-        </p>
-      )
-    }
-    {mode === 'real' && <p class="serve__source">Pose tracked from my own footage</p>}
+    {/* Always visible on the stage — not tucked into a caption. The canvas's
+        aria-label carries the same fact for screen readers. */}
+    <p class="serve__source" aria-hidden="true">
+      {mode === 'real' ? 'Pose tracked from my own footage' : 'Illustration · not footage'}
+    </p>
   </div>
 </section>
 
@@ -70,7 +66,12 @@ const label =
       data = synthesise();
     }
 
-    const renderer = createRenderer(canvas, data, { figure: mode !== 'ball' });
+    // If real data failed to load, show only the ball rather than substitute an
+    // illustration under a "my own footage" label.
+    const renderer = createRenderer(canvas, data, {
+      figure: data !== null,
+      telemetry: mode === 'real' && data !== null,
+    });
     const beats = [...section.querySelectorAll<HTMLElement>('[data-beat]')];
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -214,11 +215,12 @@ const label =
     font-size: 0.7rem;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--markup);
-    border: 1px dashed var(--markup);
+    color: var(--fg);
+    background: color-mix(in srgb, var(--bg) 75%, transparent);
+    border: 1px dashed var(--rule);
     padding: var(--space-1) var(--space-2);
   }
-  .serve[data-mode='real'] .serve__source { color: var(--fg-muted); border-color: var(--rule); }
+  .serve[data-mode='real'] .serve__source { border-style: solid; color: var(--fg-muted); }
   .serve:not(.serve--live):not(.serve--still) .serve__source { display: none; }
 
   /* ---- still: reduced motion ------------------------------------------- */

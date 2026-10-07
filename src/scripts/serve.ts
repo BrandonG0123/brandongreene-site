@@ -2,10 +2,10 @@
  * The serve: a pose-tracked skeleton, scrubbed by scroll.
  *
  * Data comes from public/serve/pose.json — joint positions per frame, produced
- * offline by pose estimation on Brandon's own footage (see scripts/pose/). Until
- * that exists, development builds use a hand-keyframed SYNTHETIC serve so the
- * design can be judged; production builds never show it. The page says which
- * one you are looking at.
+ * offline by pose estimation on Brandon's own footage. Until that exists, the
+ * site shows a hand-keyframed ILLUSTRATIVE serve, labelled on the stage as an
+ * illustration, with no measured numbers (Brandon's decision, 7 Oct 2026). The
+ * page always says which one you are looking at.
  *
  * Coordinates are metres, x toward the net, y up, ground at y = 0.
  */
@@ -131,7 +131,12 @@ export interface ServeRenderer {
 export function createRenderer(
   canvas: HTMLCanvasElement,
   data: PoseData | null,
-  opts: { figure: boolean } = { figure: true },
+  /**
+   * figure:    draw the skeleton and racket (false = ball only).
+   * telemetry: draw measured numbers — joint angles, ball height. ONLY for real
+   *            pose data: on an illustration they'd be measurements of nobody.
+   */
+  opts: { figure: boolean; telemetry: boolean } = { figure: true, telemetry: false },
 ): ServeRenderer {
   const ctx = canvas.getContext('2d')!;
   let W = 0, H = 0, dpr = 1;
@@ -312,13 +317,13 @@ export function createRenderer(
 
     // Telemetry: joint angles computed from the frame — real numbers when the
     // data is real, and labelled synthetic when it isn't.
-    if (opts.figure) {
+    if (opts.figure && opts.telemetry) {
       const shoulder = angle(j.elR, j.shR, hipMid);
       const knee = angle(j.hipL, j.knL, j.anL);
       label(`R shoulder ${shoulder.toFixed(0)}°`, P(j.shR), -70, -14);
       label(`L knee ${knee.toFixed(0)}°`, P(j.knL), 64, 6);
     }
-    if (frame.ball) label(`ball ${frame.ball[1].toFixed(2)} m`, P(frame.ball), 52, -12, colours.ball);
+    if (frame.ball && opts.telemetry) label(`ball ${frame.ball[1].toFixed(2)} m`, P(frame.ball), 52, -12, colours.ball);
 
     // Phase readout and progress bar, top-left of the stage.
     let phase = PHASES[0][1];
