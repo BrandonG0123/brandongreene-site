@@ -4,8 +4,8 @@
  * A plain jump to #work flies through the pinned serve chapter in half a second:
  * the stage holds still while the figure whips through the whole serve, so it
  * looks frozen, then lurches on. Instead, the button walks the reader down at
- * reading pace: into the serve, through each step of it with its sentence, a
- * beat on each, then on to the work.
+ * reading pace: into the serve, through each step of it with its sentence in
+ * slow motion, then on to the work.
  *
  * The reader stays in charge. Any wheel, touch, click or drag stops the tour
  * where it is. A key press skips straight to the work (and moves focus there,
@@ -13,26 +13,52 @@
  * isn't live: the ordinary jump. Without JavaScript it is an ordinary link.
  */
 
-// Where each sentence is fully on screen, as serve progress (0–1). These sit
-// inside the windows ServeChapter fades each sentence through, and line up with
-// the serve's phases: ready, trophy, follow-through.
-const HOLDS = [0.17, 0.48, 0.86];
+// The path, as [seconds, where]: "start" is wherever the reader is, numbers are
+// serve progress (0–1), "work" is the destination. It never stops. Between
+// sentences it moves at an ordinary scroll pace; while a sentence is fully up
+// (ServeChapter fades each one in over a window of progress: 0.08–0.26,
+// 0.40–0.56, 0.70–1) it slows to a slow-motion drift, so the text holds still
+// to be read while the figure keeps moving through the serve. Stopping dead
+// read as the whole page freezing.
+//
+// Tune the pace here: each sentence gets about two seconds fully on screen.
+const PATH: [number, number | 'start' | 'work'][] = [
+  [0, 'start'],
+  [1.4, 0.1],
+  [3.2, 0.22],
+  [4.2, 0.42],
+  [6.0, 0.54],
+  [7.0, 0.72],
+  [9.0, 0.92],
+  [10.4, 'work'],
+];
 
-// Pace, in ms. Each move eases in and out; each hold is long enough to read the
-// sentence at a glance, short enough not to feel stuck. The last hold is longer:
-// that sentence carries the link.
-const ENTER = 1500;
-const MOVE = 1600;
-const READ = [1000, 1100, 1500];
-const LEAVE = 1400;
-
-// The first move answers the click at once and glides to a stop (a slow
-// ease-in there reads as lag). Moves between sentences start and stop gently
-// with an even middle, so the swing never whips past.
-const glide = (t: number) => 1 - (1 - t) ** 2;
-const even = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
-
-type Step = { to: () => number; ms: number; ease: (t: number) => number } | { hold: number };
+/**
+ * A smooth, monotone curve through the keyframes (Fritsch–Carlson). Speed
+ * changes continuously, so there is no jolt where a drift meets a move, and it
+ * never overshoots a keyframe or runs backwards. It leaves the start already
+ * moving (the click is answered at once) and settles to rest at the end.
+ */
+function monotone(xs: number[], ys: number[]) {
+  const n = xs.length - 1;
+  const h = xs.slice(0, n).map((x, i) => xs[i + 1] - x);
+  const m = h.map((hi, i) => (ys[i + 1] - ys[i]) / hi);
+  const d = xs.map((_, i) => {
+    if (i === 0) return 1.6 * m[0];
+    if (i === n) return 0;
+    if (m[i - 1] * m[i] <= 0) return 0;
+    const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1];
+    return (w1 + w2) / (w1 / m[i - 1] + w2 / m[i]);
+  });
+  return (x: number) => {
+    let i = 0;
+    while (i < n - 1 && x > xs[i + 1]) i++;
+    const t = Math.min(1, Math.max(0, (x - xs[i]) / h[i]));
+    const t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * h[i] * d[i]
+      + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * h[i] * d[i + 1];
+  };
+}
 
 export function initTour() {
   const link = document.querySelector<HTMLAnchorElement>('a[data-tour]');
@@ -66,31 +92,16 @@ export function initTour() {
   let running = false;
 
   const run = () => {
-    const steps: Step[] = [
-      { to: () => serveAt(HOLDS[0]), ms: ENTER, ease: glide },
-      { hold: READ[0] },
-      { to: () => serveAt(HOLDS[1]), ms: MOVE, ease: even },
-      { hold: READ[1] },
-      { to: () => serveAt(HOLDS[2]), ms: MOVE, ease: even },
-      { hold: READ[2] },
-      { to: workY, ms: LEAVE, ease: even },
-    ];
+    // Positions are measured once, now: nothing on the way changes the layout.
+    const ys = PATH.map(([, at]) => (at === 'start' ? scrollY : at === 'work' ? workY() : serveAt(at)))
+      .map((y) => Math.max(0, Math.min(maxY(), y)));
+    const path = monotone(PATH.map(([sec]) => sec * 1000), ys);
+    const total = PATH[PATH.length - 1][0] * 1000;
 
     running = true;
     root.dataset.touring = '';
 
-    let i = -1, from = 0, to = 0, ms = 0, t = 0, last = 0, set = scrollY, raf = 0;
-    let curve = even;
-
-    const next = (): boolean => {
-      if (++i >= steps.length) return false;
-      const s = steps[i];
-      from = scrollY;
-      if ('hold' in s) { to = from; ms = s.hold; }
-      else { to = Math.max(0, Math.min(maxY(), s.to())); ms = s.ms; curve = s.ease; }
-      t = 0;
-      return true;
-    };
+    let t = 0, last = 0, set = scrollY, raf = 0;
 
     const end = (how: 'done' | 'skip' | 'stop') => {
       if (!running) return;
@@ -108,16 +119,14 @@ export function initTour() {
       // reader has taken over.
       if (Math.abs(scrollY - set) > 4) return end('stop');
 
-      // Capped step, so a backgrounded tab resumes where it was, not at the end.
-      t += Math.min(50, now - last);
+      // Real elapsed time, so a slow device keeps the same pace rather than
+      // playing in slow motion. One long hitch is allowed to catch up; a hidden
+      // tab pauses outright (see onHide) and resumes where it left off.
+      t = Math.min(total, t + Math.min(250, now - last));
       last = now;
-      const k = Math.min(1, t / ms);
-      if (to !== from) {
-        set = Math.round(from + (to - from) * curve(k));
-        jump(set);
-        set = scrollY; // what the browser actually did (clamping, rounding)
-      }
-      if (k >= 1 && !next()) return end('done');
+      jump(path(t));
+      set = scrollY; // what the browser actually did (clamping, rounding)
+      if (t >= total) return end('done');
       raf = requestAnimationFrame(frame);
     };
 
@@ -128,8 +137,14 @@ export function initTour() {
       e.preventDefault();
       end('skip');
     };
+    const onHide = () => {
+      if (document.hidden) { cancelAnimationFrame(raf); return; }
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    };
     const opts = { passive: true, capture: true } as const;
     const off = () => {
+      document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('wheel', stop, opts);
       window.removeEventListener('touchstart', stop, opts);
       window.removeEventListener('pointerdown', stop, opts);
@@ -139,8 +154,8 @@ export function initTour() {
     window.addEventListener('touchstart', stop, opts);
     window.addEventListener('pointerdown', stop, opts);
     window.addEventListener('keydown', key, true);
+    document.addEventListener('visibilitychange', onHide);
 
-    next();
     last = performance.now();
     raf = requestAnimationFrame(frame);
   };
