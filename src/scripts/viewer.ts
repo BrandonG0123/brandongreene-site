@@ -57,7 +57,19 @@ const css = (name: string, fallback: string) =>
 
 export interface ViewerHandle { dispose(): void }
 
-export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | null> {
+export interface ViewerOptions {
+  /**
+   * 'full': the case-study viewer — drag, arrow keys, pause and reset buttons.
+   * 'card': a compact live preview inside a project card. The card is a link,
+   *         so there's no drag; the model follows the pointer instead.
+   */
+  mode?: 'full' | 'card';
+  /** The element whose pointer movement drives the scan line. Defaults to the canvas. */
+  pointerSurface?: HTMLElement | null;
+}
+
+export async function mountViewer(host: HTMLElement, opts: ViewerOptions = {}): Promise<ViewerHandle | null> {
+  const mode = opts.mode ?? 'full';
   const src = host.dataset.src!;
   const canvas = host.querySelector<HTMLCanvasElement>('canvas')!;
   const pauseBtn = host.querySelector<HTMLButtonElement>('[data-viewer-pause]');
@@ -156,6 +168,12 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = Math.PI / 2.05;
   controls.autoRotateSpeed = 0.9;
+  if (mode === 'card') {
+    // Pull the camera in to match the card still's crop, and no drag: the card
+    // is a link, and a drag would fight the click.
+    camera.position.copy(target.clone().add(camera.position.clone().sub(target).multiplyScalar(0.74)));
+    controls.enableRotate = false;
+  }
   controls.update();
   const home = { pos: camera.position.clone() };
 
@@ -178,8 +196,8 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
     camera.position.copy(home.pos); controls.target.copy(target); controls.update(); wake();
   });
 
-  // Keyboard orbit for people who can't drag.
-  canvas.addEventListener('keydown', (e) => {
+  // Keyboard orbit for people who can't drag (full viewer only).
+  if (mode === 'full') canvas.addEventListener('keydown', (e) => {
     const step = 0.18;
     const sph = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
     if (e.key === 'ArrowLeft') sph.theta -= step;
@@ -236,9 +254,10 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
     hovering = true;
     wake();
   };
+  const surface = opts.pointerSurface ?? canvas;
   window.addEventListener('pointermove', onPagePointer, { passive: true });
-  canvas.addEventListener('pointermove', onStagePointer, { passive: true });
-  canvas.addEventListener('pointerleave', () => { hovering = false; wake(); });
+  surface.addEventListener('pointermove', onStagePointer, { passive: true });
+  surface.addEventListener('pointerleave', () => { hovering = false; wake(); });
 
   let raf = 0, visible = true, idleFrames = 0;
   const timer = new THREE.Timer();

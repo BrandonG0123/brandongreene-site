@@ -35,11 +35,20 @@ const still = (slug: string) =>
             {/* Decorative: the card's text says what the project is; the model is
                 described in full, with its own caption, on the project page. */}
             {media && (
-              <div class="card__media" aria-hidden="true">
+              <div
+                class="card__media"
+                aria-hidden="true"
+                data-card-media
+                data-src={p.data.model?.src}
+              >
                 <picture>
                   <source srcset={`${media}.avif`} type="image/avif" />
                   <img src={`${media}.webp`} alt="" width="1200" height="750" loading="lazy" decoding="async" />
                 </picture>
+                {/* The live model crossfades in over the still on first mouse
+                    movement; until then — and for touch, reduced motion, or no
+                    JavaScript — the still is the whole story. */}
+                {p.data.model && <canvas class="card__live" />}
                 <span class="card__scan" />
               </div>
             )}
@@ -189,6 +198,21 @@ const still = (slug: string) =>
     transform: scale(1.4);
     filter: saturate(1.1) brightness(1.05);
   }
+  /* Live model: sits over the still and fades in once it has rendered. */
+  .card__live {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 1s var(--ease-out);
+  }
+  .card__media:global(.viewer--ready) .card__live { opacity: 1; }
+  .card__media:global(.viewer--ready) picture { opacity: 0; transition: opacity 1s var(--ease-out); }
+  /* The live shader draws its own scan line; drop the CSS one. */
+  .card__media:global(.viewer--ready) .card__scan { display: none; }
+
   /* A scan line sweeps the still on hover — the same gesture as the viewer. */
   .card__scan {
     position: absolute;

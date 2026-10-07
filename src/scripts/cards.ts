@@ -28,6 +28,30 @@ export function initCards(root: ParentNode = document) {
 
   if (reduced) return;
 
+  // Live 3D in cards: on the first mouse movement anywhere on the page, swap
+  // each card's still for its real model, once the card is near the viewport.
+  // Never at load (that's what keeps the page fast), never for touch, and never
+  // with reduced motion — those all keep the still.
+  const liveMedia = [...root.querySelectorAll<HTMLElement>('[data-card-media][data-src]')];
+  if (finePointer && liveMedia.length) {
+    const goLive = () => {
+      for (const media of liveMedia) {
+        const io = new IntersectionObserver(
+          ([entry]) => {
+            if (!entry.isIntersecting) return;
+            io.disconnect();
+            import('./viewer')
+              .then((v) => v.mountViewer(media, { mode: 'card', pointerSurface: media.closest<HTMLElement>('[data-card]') }))
+              .catch(() => { /* the still simply stays */ });
+          },
+          { rootMargin: '300px' },
+        );
+        io.observe(media);
+      }
+    };
+    window.addEventListener('pointermove', goLive, { once: true, passive: true });
+  }
+
   // Reveal: only cards that start below the fold get hidden, so nothing already
   // on screen ever blinks out.
   const below = cards.filter((c) => c.getBoundingClientRect().top > innerHeight * 0.92);
