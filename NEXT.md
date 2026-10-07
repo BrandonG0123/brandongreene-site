@@ -81,6 +81,13 @@ then merged to main.
   quietly by themselves when the browser allows it. Mute is always on screen
   and remembered. Reduced motion, no capable GPU,
   or no JS: the same five links as tiles with stills (`npm run render:about`).
+- **Phones (7 Oct)**: top-level pages are pictures and short labels; the
+  paragraphs live one tap down (folding sections on About and the Build log,
+  `src/scripts/phone-collapse.ts`), and the articles use a smaller phone type
+  scale. Checked in mobile Safari on the iPhone simulator.
+- **The About film** is its own project: `~/code/about-film` (brief in
+  `PROMPT.md`), meant to run as a cloud session on Fable. It produces a
+  `handoff/` package; putting it on the About page is a separate step here.
 - **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
   Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a
   reading time and a pinned 3D viewer beside the text; a tape measure runs
