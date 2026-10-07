@@ -39,7 +39,7 @@ npx lhci autorun     # Lighthouse
 - **Favicon** and theme-color.
 - **Self-hosted deploy**: `scripts/deploy.sh` (build → verify → rsync, with a
   placeholder guard), `deploy/Caddyfile` and `deploy/nginx.conf`, and a
-  Cloudflare Tunnel setup in `DEPLOY.md`. Build-time `PUBLIC_ALLOW_INDEXING`
+  Cloudflare Tunnel setup in `DEPLOY.md`. Build-time `PUBLIC_ALLOW_INDEXING` (fails closed: hidden unless `=true`)
   switch verified in both directions.
 - **Responsive images**: hero images use Astro's asset pipeline — AVIF and WebP
   with a JPEG fallback at 1x and 2x, dimensions read from the file so they
@@ -76,7 +76,8 @@ npx lhci autorun     # Lighthouse
    of public DNS. `DEPLOY.md` is the full walkthrough; `npm run deploy` builds,
    verifies and rsyncs. Still needs from Brandon: the domain (one line in
    `astro.config.mjs`), and the server prepared per DEPLOY.md steps 2-3.
-   Deploy with `PUBLIC_ALLOW_INDEXING=false` until the fill-in markers are gone.
+   The site is hidden from search by default. Launch = build with
+   `PUBLIC_ALLOW_INDEXING=true`, only after the fill-in markers are gone.
    Known and accepted: the machine goes down roughly weekly. Brandon plans to
    fix that; until then the URL should not go anywhere that gets one shot.
 4. **Manual accessibility pass** — `docs/manual-a11y-test.md`. Automated tooling

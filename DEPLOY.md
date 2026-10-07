@@ -173,26 +173,28 @@ ssh-copy-id -p 22 user@your-server
 
 ---
 
-## Step 5 — Keep it out of search until the content is ready
+## Step 5 — Search engines: hidden until you launch
 
-**This differs from a hosted platform, and it's easy to get wrong.** You build
-on your Mac, so this is a *build-time* variable — setting it on the server does
-nothing.
+**The site is hidden from search by default.** Every build — on your Mac, on
+tank, anywhere — sends `<meta name="robots" content="noindex, nofollow">` on
+every page and serves `Disallow: /` from `/robots.txt`, unless the build is
+explicitly told otherwise. Both matter: robots.txt alone won't remove a page
+discovered another way.
 
-```bash
-PUBLIC_ALLOW_INDEXING=false npm run deploy
-```
+This *fails closed* on purpose. It used to be opt-out, and tank's automated
+build never set the variable, so the site went live indexable with
+`[To fill in: ...]` showing on `/about` and `/resume`. A safety switch that
+depends on every build environment remembering it isn't one.
 
-Every page then carries `<meta name="robots" content="noindex, nofollow">` and
-`/robots.txt` serves `Disallow: /`. Both matter — robots.txt alone won't remove
-a page discovered another way.
-
-Use this until the `[To fill in: ...]` markers are gone from `/about` and
-`/resume`. To launch properly, just deploy without the variable:
+**Launching** is the one deliberate act: build with
 
 ```bash
-npm run deploy
+PUBLIC_ALLOW_INDEXING=true npm run build
 ```
+
+It's a *build-time* variable, so it has to be set wherever the build actually
+runs — which on tank is the scheduled pull-and-build task, not your Mac. Only
+do this after every line of the pre-launch checklist below is ticked.
 
 Check which mode is live:
 
@@ -222,7 +224,7 @@ Then on real hardware, which emulators can't replace:
 
 ## Pre-launch checklist
 
-Don't drop `PUBLIC_ALLOW_INDEXING=false` until every line is ticked.
+Don't build with `PUBLIC_ALLOW_INDEXING=true` until every line is ticked.
 
 - [ ] Every `[To fill in: ...]` marker gone from `/about` and `/resume`
 - [ ] Contact is a real alias, never a personal email in plain text
@@ -239,7 +241,7 @@ Don't drop `PUBLIC_ALLOW_INDEXING=false` until every line is ticked.
       labelled with your specific contribution
 - [ ] **Parents have seen it**
 - [ ] Uptime problem fixed, or the URL isn't anywhere that gets one shot
-- [ ] Deployed once without `PUBLIC_ALLOW_INDEXING=false`
+- [ ] Built and deployed with `PUBLIC_ALLOW_INDEXING=true` — **this is the launch**
 
 ---
 

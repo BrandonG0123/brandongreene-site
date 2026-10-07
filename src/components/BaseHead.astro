@@ -13,10 +13,13 @@ interface Props {
 
 const { title, description, noindex = false, jsonLd, ogSlug } = Astro.props;
 
-// Site-wide switch for a deployed-but-not-launched site. Set
-// PUBLIC_ALLOW_INDEXING=false in the host's environment to keep the whole site
-// out of search results until the content is ready.
-const siteBlocked = import.meta.env.PUBLIC_ALLOW_INDEXING === 'false';
+// FAILS CLOSED. The site is hidden from search unless a build explicitly sets
+// PUBLIC_ALLOW_INDEXING=true. It used to be the other way round — opt out with
+// =false — and tank's automated build simply never set it, so the site went
+// live indexable with fill-in markers on /about and /resume. A switch that only
+// works if every build environment remembers it is not a switch.
+// Launch = build with PUBLIC_ALLOW_INDEXING=true. See DEPLOY.md.
+const siteBlocked = import.meta.env.PUBLIC_ALLOW_INDEXING !== 'true';
 const canonical = new URL(Astro.url.pathname.replace(/\/$/, '') || '/', Astro.site);
 const ogImage = new URL(`/og/${ogSlug ?? 'default'}.png`, Astro.site);
 const fullTitle = title === 'Brandon Greene' ? title : `${title} — Brandon Greene`;

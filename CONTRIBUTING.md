@@ -207,6 +207,7 @@ pre-launch checklist.
 The site URL lives in one place: `SITE` in `astro.config.mjs`. Canonical URLs,
 the sitemap, RSS, robots.txt and the résumé header all derive from it.
 
-To keep a deployed site out of search before launch, set
-`PUBLIC_ALLOW_INDEXING=false` in the host's environment variables. Every page
-then sends `noindex` and robots.txt serves `Disallow: /`.
+**The site is hidden from search by default** — every page sends `noindex` and
+robots.txt serves `Disallow: /`. Launching means building with
+`PUBLIC_ALLOW_INDEXING=true`, set wherever the build runs (on tank, that's the
+scheduled build task). It fails closed deliberately; see DEPLOY.md step 5.

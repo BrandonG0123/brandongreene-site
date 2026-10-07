@@ -223,7 +223,7 @@ to undo.
 The suppression switch is applied **at build time**:
 
 ```powershell
-$env:PUBLIC_ALLOW_INDEXING="false"; npm run build
+npm run build      # hidden from search by default — nothing to set
 ```
 
 Every page then sends `noindex, nofollow` and `/robots.txt` serves `Disallow: /`.
