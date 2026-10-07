@@ -285,6 +285,12 @@ const words = title.split(' ');
     100% { transform: scaleY(1); opacity: 0; }
   }
 
+  /* Phones: the headline and the two buttons. The explanation is what the rest
+     of the site shows rather than tells. */
+  @media (max-width: 40rem) {
+    .hero__lede, .hero__kicker-date { display: none; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .hero__word > span, .hero__lede, .hero__actions { animation: none; }
     .hero__word { animation: none; clip-path: none; }

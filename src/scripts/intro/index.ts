@@ -67,7 +67,7 @@ function turnAt(t: number) {
 
 // Where the five pieces sit, in screen space (-1…1), for wide and tall stages.
 const SLOTS_WIDE: [number, number][] = [[-0.64, 0.36], [-0.32, 0.1], [0, 0.42], [0.32, 0.1], [0.64, 0.36]];
-const SLOTS_TALL: [number, number][] = [[-0.42, 0.66], [0.42, 0.47], [-0.42, 0.28], [0.42, 0.09], [-0.42, -0.1]];
+const SLOTS_TALL: [number, number][] = [[-0.42, 0.7], [0.42, 0.45], [-0.42, 0.2], [0.42, -0.05], [-0.42, -0.3]];
 
 export interface IntroHandle {
   skip(): void;

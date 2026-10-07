@@ -207,6 +207,10 @@ const excerpt = (body = '') => {
   .timeline__entry-title a { color: var(--fg); text-decoration: none; }
   .timeline__entry-title a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 0.2em; }
   .timeline__excerpt { color: var(--fg-muted); margin: 0 0 var(--space-3); max-width: 34rem; }
+  /* Phones: dates and titles only; each title opens its entry in the full log. */
+  @media (max-width: 40rem) {
+    .timeline__excerpt, .timeline__intro, .timeline__tag { display: none; }
+  }
   .timeline__tag {
     display: inline-block;
     margin: 0;

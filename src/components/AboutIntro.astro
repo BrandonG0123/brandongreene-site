@@ -393,6 +393,23 @@ const transcript = voice
     .intro--live .intro__eq { bottom: 5.5rem; font-size: 0.72rem; }
   }
 
+  /* Phones: each piece is just its name, and the title stands alone. The notes
+     stay in each link's accessible name (visually hidden, not removed), and the
+     detail is one tap away in the section below. */
+  @media (max-width: 40rem) {
+    .intro--live .intro__note {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .intro--live .intro__label { font-size: 0.95rem; }
+    .intro--live .intro__lede { display: none; }
+    .intro--live .intro__head { bottom: 5rem; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .intro__nav a, .intro--live .intro__head, .intro--live .intro__poster { transition: none; }
   }

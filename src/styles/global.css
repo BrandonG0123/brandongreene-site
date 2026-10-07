@@ -143,6 +143,20 @@ h1, h2, h3, h4 {
   letter-spacing: -0.015em;
 }
 
+/* Phones: a smaller reading scale. The top-level pages carry little text on a
+   phone (see phone-collapse.ts and the components' phone rules); the articles
+   underneath carry the paragraphs, at a size that fits more on each screen. */
+@media (max-width: 40rem) {
+  :root {
+    --step--1: 0.84rem;
+    --step-0: 1rem;
+    --step-1: 1.2rem;
+    --step-2: 1.45rem;
+    --step-3: 1.8rem;
+  }
+  body { line-height: 1.6; }
+}
+
 h1 { font-size: var(--step-4); }
 h2 { font-size: var(--step-2); margin-top: var(--space-7); }
 h3 { font-size: var(--step-1); margin-top: var(--space-6); }
@@ -885,3 +899,34 @@ body::after {
   .resume a[href^='http']::after { content: ''; }
   @page { margin: 12mm; }
 }
+
+/* Phone sections that open on tap (src/scripts/phone-collapse.ts). The heading
+   keeps its level; the button inside it fills the row and carries the state. */
+.collapse__toggle {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+.collapse__toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.collapse__toggle::after {
+  content: '+';
+  flex: none;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--accent);
+  transition: transform 0.25s var(--ease-out);
+}
+.collapse__toggle[aria-expanded='true']::after { transform: rotate(45deg); }
+.collapse__heading {
+  margin: var(--space-2) 0 0;
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+}
+.collapse__panel { padding-top: var(--space-2); }
+@media (prefers-reduced-motion: reduce) { .collapse__toggle::after { transition: none; } }

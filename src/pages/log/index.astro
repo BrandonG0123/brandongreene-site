@@ -26,7 +26,7 @@ const fmt = (d: Date) =>
     <div class="column">
       <p class="chapter-label"><span>Log</span> Dated as it happens</p>
       <h1>Build log</h1>
-      <p>
+      <p class="log-intro">
         What I actually did, dated as it happened. This includes the approaches that didn't work,
         because those are the parts that took the time.
       </p>
@@ -80,6 +80,13 @@ const fmt = (d: Date) =>
     </div>
   </div>
 </Base>
+
+<script>
+  // Phones: each entry folds to its date and title; a tap opens it, and a link
+  // from elsewhere (/log#entry) opens that one.
+  import { collapseOnPhone, sectionsFrom } from '../../scripts/phone-collapse';
+  collapseOnPhone([...document.querySelectorAll('[data-logline-entry]')].flatMap((li) => sectionsFrom(li, '.logline__title')));
+</script>
 
 <script>
   import { scroll, inView } from 'motion';
@@ -158,4 +165,13 @@ const fmt = (d: Date) =>
   .logline__body > :last-child { margin-bottom: 0; }
 
   @media (prefers-reduced-motion: reduce) { .logline__node { transition: none; } }
+</style>
+
+<style>
+  /* Phones: an index of dated titles, tight enough to see several at once. */
+  @media (max-width: 40rem) {
+    .log-intro, .rail { display: none; }
+    .logline__title { font-size: var(--step-1); line-height: 1.2; }
+    .logline__entry { padding-bottom: var(--space-5); }
+  }
 </style>

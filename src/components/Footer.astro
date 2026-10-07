@@ -186,6 +186,10 @@ const links = [
     color: var(--fg-muted);
   }
   .footer__colophon p { margin: 0; max-width: 46rem; }
+  /* Phones: the copyright and the AI disclosure (that one always stays). */
+  @media (max-width: 40rem) {
+    .footer__colophon p:not(:first-child):not(.footer__ai) { display: none; }
+  }
   .footer__ai { color: var(--fg); }
 
   :root[data-theme='light'] .footer__mark-lit { filter: none; }

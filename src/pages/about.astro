@@ -30,7 +30,7 @@ const jsonLd = {
       </dl>
     </div>
 
-    <div class="column">
+    <div class="column" data-about-text>
       <!-- DRAFT: Brandon, this is a skeleton built from the interview. Rewrite in
            your own words and add the specifics marked below. -->
 
@@ -83,3 +83,18 @@ const jsonLd = {
     </div>
   </div>
 </Base>
+
+<script>
+  // Phones: the sections fold behind their headings. The intro's pieces link
+  // to #tennis and #chess, which open the matching section.
+  import { collapseOnPhone, sectionsFrom } from '../scripts/phone-collapse';
+  const text = document.querySelector('[data-about-text]');
+  if (text) collapseOnPhone(sectionsFrom(text, 'h2'));
+</script>
+
+<style>
+  /* Phones: the facts rail repeats what the intro's pieces already say. */
+  @media (max-width: 40rem) {
+    .rail { display: none; }
+  }
+</style>

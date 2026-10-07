@@ -70,11 +70,11 @@ const still = (slug: string) =>
                     : undefined
                 }
               />
-              <span>
+              <span class="card__started">
                 <span class="visually-hidden">Started </span>
                 {fmt(p.data.started)}
               </span>
-              <span>{p.data.areas.join(' · ')}</span>
+              <span class="card__areas">{p.data.areas.join(' · ')}</span>
               {p.data.collaboration === 'group' && <span>Group project</span>}
             </div>
 
@@ -320,6 +320,26 @@ const still = (slug: string) =>
     .card__meta,
     .card__media,
     .placeholder-flag { grid-column: 1; }
+  }
+
+  /* Phones: the card is its picture, its title and its status. The summary and
+     tags are one tap away on the project's own page. "Group project" stays:
+     group work is always labelled. */
+  @media (max-width: 40rem) {
+    .card__summary, .card__started, .card__areas { display: none; }
+  }
+
+  /* Touch screens have no hover, so the scan line sweeps the still as the card
+     scrolls into view instead: driven by the scroll, never on its own. */
+  @supports (animation-timeline: view()) {
+    @media (hover: none) and (prefers-reduced-motion: no-preference) {
+      .card__scan {
+        opacity: 1;
+        animation: card-scan linear both;
+        animation-timeline: view();
+        animation-range: entry 30% cover 55%;
+      }
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
