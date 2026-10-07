@@ -256,6 +256,10 @@ export function createSound(c: Cues): Sound {
 
   return {
     async start() {
+      // On iPhone and iPad, Web Audio obeys the ring/silent switch unless the
+      // page declares it is playback (like a video). Safari 17+.
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = 'playback';
       if (!ctx) build();
       if (ctx!.state !== 'running') await ctx!.resume();
       startBeds();
