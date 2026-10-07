@@ -69,7 +69,7 @@ const jsonLd = {
         )
       }
 
-      <h1>{d.title}</h1>
+      <h1 style={`view-transition-name: title-${project.id}`}>{d.title}</h1>
       <p class="project-inline-meta">
         <StatusBadge status={d.status} />
         <span>Started {fmt(d.started)}</span>

@@ -1,4 +1,4 @@
-# Where we stopped — 23 Sept 2026 (updated)
+# Where we stopped — 7 Oct 2026
 
 Picking this back up: read this file first, then `CONTRIBUTING.md` and
 `DEPLOY.md`.
@@ -46,6 +46,29 @@ npx lhci autorun     # Lighthouse
   cannot be wrong. Verified end to end with a test image, which was then
   removed. Drop a photo next to the markdown and it works.
 
+## The futuristic redesign (7 Oct 2026)
+
+Brandon asked for a full-futuristic, animated, 3D site. Built on a branch, reviewed,
+then merged to main.
+
+- **Look**: near-black ground, electric ice (#4DF3FF) with violet in the 3D, and
+  optic yellow (#D4FF3A, the tennis-ball colour) reserved for the ball. Unbounded
+  for display; Atkinson Hyperlegible Next stays for body text. The old vellum
+  design survives intact as an opt-in "Reading mode".
+- **Home, in acts**: gyroid hero → scroll-scrubbed serve → kinetic type band →
+  project cards with hologram stills → build-log timeline → closing section.
+- **Gyroid hero** (`src/scripts/gyroid.ts`): raymarched in one shader. Shows a
+  pre-rendered still at load; the live shader starts on first interaction, and
+  refuses software WebGL. `npm run render:still` regenerates the still.
+- **Serve** (`ServeChapter.astro`, `scripts/serve.ts`): production shows only the
+  ball's arc until `public/serve/pose.json` (real pose data from Brandon's own
+  footage) exists. Dev shows a synthetic serve, labelled. Three explicit states:
+  no-JS, reduced motion, live.
+- **3D model viewer** (`ModelViewer.astro`, `scripts/viewer.ts`): three.js, lazy
+  loaded, follows the mouse, keyboard-operable. Card stills via
+  `npm run render:models`.
+- **Motion** (motion.dev) drives scroll-linked and spring animation.
+
 ## Verified, last run
 
 | Check | Result |
@@ -87,6 +110,15 @@ npx lhci autorun     # Lighthouse
    photograph. The pipeline is built and verified — see CONTRIBUTING.md.
 
 ## Open questions for Brandon
+
+- **The AI disclosure line in the footer** — drafted, not approved. It reads:
+  "Designed and coded with substantial help from Claude, an AI model. The
+  projects are mine, and every claim on this site is checked against them."
+  His rule requires disclosure; the exact words are his call.
+- **Serve footage** — film it (tripod, side-on, slo-mo, nobody else in frame, no
+  recognisable court), then run pose estimation to produce `pose.json`.
+- **footscan portfolio export** — the prompt is at `~/code/footscan-portfolio-prompt.md`;
+  the case study's phase table is now out of date (Phases 2–3 are built).
 
 - GitHub username
 - **The domain.** Brandon has registered one but hasn't said which. It is a

@@ -1,16 +1,197 @@
 ---
+/**
+ * The closing section: big navigation, a full-width wordmark whose outline
+ * lights up under a cursor spotlight, and a colophon.
+ *
+ * The colophon discloses that the site was built with an AI model. Brandon's
+ * own rule: anything a reader would reasonably want disclosed, gets disclosed —
+ * and someone judging his web skills from this site would want to know.
+ */
 const year = new Date().getFullYear();
+const links = [
+  { href: '/projects', label: 'Projects' },
+  { href: '/log', label: 'Build log' },
+  { href: '/about', label: 'About' },
+  { href: '/resume', label: 'Résumé' },
+];
 ---
 
-<footer class="site-footer">
+<footer class="site-footer" data-footer>
   <div class="wrap">
-    <p style="margin:0">
-      © {year} Brandon Greene. Built with Astro. <a href="/rss.xml">RSS</a>
-    </p>
-    <p style="margin:0">
-      {/* Contact is an alias, never a personal address. Swap the href when the
-          domain is decided — see CONTRIBUTING.md. */}
-      <a href="/about#contact">Get in touch</a>
-    </p>
+    <div class="footer__top">
+      <p class="chapter-label"><span>04</span> Elsewhere</p>
+      <nav class="footer__nav" aria-label="Footer">
+        <ul>
+          {links.map((l) => <li><a href={l.href}>{l.label}<span aria-hidden="true">↗</span></a></li>)}
+        </ul>
+      </nav>
+      <div class="footer__side">
+        <a href="/about#contact">Get in touch</a>
+        <a href="/rss.xml">RSS feed</a>
+        <a href="#main">Back to top <span aria-hidden="true">↑</span></a>
+      </div>
+    </div>
+  </div>
+
+  {/* Decorative: the name is already in the header, the title and the colophon. */}
+  <div class="footer__mark" aria-hidden="true" data-footer-mark>
+    <span class="footer__mark-outline">Brandon Greene</span>
+    <span class="footer__mark-lit">Brandon Greene</span>
+  </div>
+
+  <div class="wrap">
+    <div class="footer__colophon">
+      <p>© {year} Brandon Greene.</p>
+      <p>
+        Built with Astro, three.js and Motion. Set in Unbounded, Atkinson Hyperlegible Next and IBM
+        Plex Mono.
+      </p>
+      <p class="footer__ai">
+        Designed and coded with substantial help from Claude, an AI model. The projects are mine, and
+        every claim on this site is checked against them.
+      </p>
+    </div>
   </div>
 </footer>
+
+<script>
+  // Spotlight: the lit copy of the wordmark is masked to a circle at the cursor.
+  const mark = document.querySelector<HTMLElement>('[data-footer-mark]');
+  if (mark && matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    mark.addEventListener('pointermove', (e) => {
+      const r = mark.getBoundingClientRect();
+      mark.style.setProperty('--sx', `${e.clientX - r.left}px`);
+      mark.style.setProperty('--sy', `${e.clientY - r.top}px`);
+      mark.classList.add('is-lit');
+    });
+    mark.addEventListener('pointerleave', () => mark.classList.remove('is-lit'));
+  }
+</script>
+
+<style>
+  .site-footer {
+    position: relative;
+    margin-top: var(--space-8);
+    padding-top: var(--space-8);
+    border-top: 1px solid color-mix(in srgb, var(--rule) 40%, transparent);
+    background:
+      radial-gradient(60% 50% at 50% 100%, color-mix(in srgb, var(--violet) 12%, transparent), transparent 70%),
+      var(--bg);
+    overflow: hidden;
+  }
+
+  .footer__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  @media (min-width: 60rem) {
+    .footer__top {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: start;
+      gap: var(--space-8);
+    }
+  }
+
+  .footer__nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--space-1);
+  }
+  .footer__nav a {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.25em;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.8rem, 1rem + 2.6vw, 3.4rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+    text-decoration: none;
+    transition: color 0.3s, transform 0.4s var(--ease-out);
+  }
+  .footer__nav a span {
+    font-size: 0.45em;
+    color: var(--fg-muted);
+    transition: color 0.3s, transform 0.4s var(--ease-out);
+  }
+  .footer__nav a:hover { color: var(--accent); transform: translateX(0.3rem); }
+  .footer__nav a:hover span { color: var(--accent); transform: translate(2px, -2px); }
+
+  .footer__side {
+    display: grid;
+    gap: var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .footer__side a { min-height: 24px; }
+
+  /* ---- wordmark ---------------------------------------------------------- */
+  .footer__mark {
+    --sx: 50%;
+    --sy: 50%;
+    position: relative;
+    margin-top: var(--space-8);
+    padding-inline: clamp(var(--space-3), 2vw, var(--space-5));
+    font-family: var(--font-display);
+    font-weight: 800;
+    /* Measured: the name is 9.69em wide in Unbounded, so 9.7vw fills ~94%. */
+    font-size: clamp(2.2rem, 9.7vw, 13rem);
+    line-height: 0.82;
+    letter-spacing: -0.045em;
+    white-space: nowrap;
+    user-select: none;
+    text-align: center;
+  }
+  /* Unbounded's glyphs are built from overlapping contours, and a text stroke
+     draws every one of them — spikes inside B, d, G. Filling with the ground
+     colour OVER the stroke (paint-order) hides the inner half, leaving a clean
+     outline. */
+  .footer__mark-outline {
+    display: block;
+    color: var(--bg);
+    -webkit-text-stroke: 2px color-mix(in srgb, var(--rule) 85%, transparent);
+    paint-order: stroke fill;
+  }
+  .footer__mark-lit {
+    position: absolute;
+    inset: 0;
+    padding-inline: inherit;
+    color: transparent;
+    background: linear-gradient(180deg, var(--accent), color-mix(in srgb, var(--violet) 75%, var(--accent)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 45%, transparent));
+    mask-image: radial-gradient(circle 0px at var(--sx) var(--sy), #000 0%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle 0px at var(--sx) var(--sy), #000 0%, transparent 100%);
+    transition: mask-size 0.4s;
+  }
+  .footer__mark.is-lit .footer__mark-lit {
+    mask-image: radial-gradient(circle 13rem at var(--sx) var(--sy), #000 0%, #000 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle 13rem at var(--sx) var(--sy), #000 0%, #000 30%, transparent 100%);
+  }
+
+  .footer__colophon {
+    display: grid;
+    gap: var(--space-2);
+    padding-block: var(--space-6) var(--space-7);
+    margin-top: var(--space-5);
+    border-top: 1px solid color-mix(in srgb, var(--rule) 30%, transparent);
+    font-size: var(--step--1);
+    color: var(--fg-muted);
+  }
+  .footer__colophon p { margin: 0; max-width: 46rem; }
+  .footer__ai { color: var(--fg); }
+
+  :root[data-theme='light'] .footer__mark-lit { filter: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .footer__nav a, .footer__nav a span { transition: none; }
+    .footer__nav a:hover, .footer__nav a:hover span { transform: none; }
+  }
+</style>

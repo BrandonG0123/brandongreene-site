@@ -46,7 +46,7 @@ const still = (slug: string) =>
             <span class="card__index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
 
             <div class="card__main">
-              <h3 class="card__title">
+              <h3 class="card__title" style={`view-transition-name: title-${p.id}`}>
                 <a class="card__link" href={`/projects/${p.id}`}>{p.data.title}</a>
               </h3>
               <p class="card__summary">{p.data.summary}</p>
@@ -99,13 +99,18 @@ const still = (slug: string) =>
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
     gap: var(--space-5);
     perspective: 1400px;
+    /* Cards lay themselves out by the width of THIS list, not the viewport:
+       the same list sits full-width on the home page and in a narrower column
+       on /projects. */
+    container-type: inline-size;
+    container-name: projects;
   }
   .project-index > li:first-child:not(:only-child) { grid-column: 1 / -1; }
   .project-index > li { display: grid; }
   .project-index > li:first-child:not(:only-child) .card { padding-block: var(--space-6); }
   .project-index > li:first-child:not(:only-child) .card__title { font-size: var(--step-3); }
 
-  @media (min-width: 60rem) {
+  @container projects (min-width: 52rem) {
     /* Text centred vertically against the object: rows 2-3 between two
        flexible spacer rows. */
     .project-index > li:first-child .card--media,
@@ -275,60 +280,22 @@ const still = (slug: string) =>
 
   .placeholder-flag { grid-column: 2; position: relative; z-index: 2; }
 
-  @media (max-width: 40rem) {
-    .card { grid-template-columns: minmax(0, 1fr); padding: var(--space-5) var(--space-6) var(--space-5) var(--space-4); }
-    /* ---- media: the project's 3D object, as a hologram still ---- */
-  .card__media {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
-    background: var(--bg);
-    aspect-ratio: 16 / 10;
-    max-width: 100%;
-  }
-  /* The still is framed for the wide viewer; crop in on the object. */
-  .card__media img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: 50% 58%;
-    transform: scale(1.32);
-    transition: transform 1.2s var(--ease-out), filter 0.6s;
-    filter: saturate(0.9) brightness(0.92);
-  }
-  .card:hover .card__media img,
-  .card:focus-within .card__media img {
-    transform: scale(1.4);
-    filter: saturate(1.1) brightness(1.05);
-  }
-  /* A scan line sweeps the still on hover — the same gesture as the viewer. */
-  .card__scan {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--ice) 32%, transparent) 50%, transparent 52%);
-    background-size: 100% 220%;
-    background-position: 0 -120%;
-    mix-blend-mode: screen;
-    opacity: 0;
-    pointer-events: none;
-  }
-  .card:hover .card__scan,
-  .card:focus-within .card__scan {
-    opacity: 1;
-    animation: card-scan 1.6s var(--ease-out) infinite;
-  }
-  @keyframes card-scan {
-    from { background-position: 0 -120%; }
-    to { background-position: 0 120%; }
-  }
-
-  /* Cards with media: image across the top on small cards. */
-  .card--media { grid-template-columns: auto minmax(0, 1fr); }
-  .card--media .card__media { grid-column: 1 / -1; margin-bottom: var(--space-3); }
-
-  .card__index { grid-row: auto; padding-top: 0; }
-    .card__meta, .placeholder-flag { grid-column: 1; }
+  /* Narrow lists — phones, or a narrow column: one column, everything stacked.
+     A container query for the same reason as the split layout above. */
+  @container projects (max-width: 34rem) {
+    .card,
+    .card--media {
+      grid-template-columns: minmax(0, 1fr);
+      padding: var(--space-5) var(--space-6) var(--space-5) var(--space-4);
+    }
+    .card__index { grid-row: auto; padding-top: 0; }
+    /* the corner arrow would sit on the image's frame */
+    .card--media .card__arrow { display: none; }
+    .card__index,
+    .card__main,
+    .card__meta,
+    .card__media,
+    .placeholder-flag { grid-column: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {

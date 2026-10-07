@@ -1,0 +1,225 @@
+---
+/**
+ * The build log as a timeline: a spine that draws itself as you scroll, with a
+ * node lighting up for each dated entry as the line reaches it.
+ *
+ * This is the site's thesis drawn as a picture — work that is dated and
+ * continuous. With JavaScript off or reduced motion, the spine is simply drawn
+ * and every node is lit.
+ */
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  entries: CollectionEntry<'log'>[];
+  projectTitles: Record<string, string>;
+  limit?: number;
+}
+const { entries, projectTitles, limit } = Astro.props;
+
+const list = [...entries]
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, limit ?? entries.length);
+
+const fmt = (d: Date) =>
+  d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+/** First ~170 characters of an entry, as plain text. HTML comments are notes to
+ * Brandon and must never reach the page. */
+const excerpt = (body = '') => {
+  const text = body
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/[#>*_`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (text.length <= 170) return text;
+  const cut = text.slice(0, 170);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:.]$/, '') + '…';
+};
+---
+
+<section class="timeline" data-timeline aria-labelledby="timeline-heading">
+  <div class="timeline__head">
+    <p class="chapter-label"><span>03</span> Build log</p>
+    <h2 id="timeline-heading" class="timeline__title">Dated as it happens.</h2>
+    <p class="timeline__intro">
+      What I actually did, written the week it happened — including the approaches that didn't work.
+    </p>
+    <p class="timeline__links">
+      <a href="/log">Full log <span aria-hidden="true">→</span></a>
+      <a href="/rss.xml">RSS</a>
+    </p>
+  </div>
+
+  {/* The spine sits beside the list, not inside it: an <ol> may only contain
+      <li>, or screen readers mis-count the entries. */}
+  <div class="timeline__track" data-timeline-list>
+    <span class="timeline__spine" aria-hidden="true"><span class="timeline__ink" data-timeline-ink></span></span>
+    <ol class="timeline__list">
+    {
+      list.map((e) => (
+        <li class="timeline__entry" data-timeline-entry>
+          <span class="timeline__node" aria-hidden="true" />
+          <time class="timeline__date" datetime={e.data.date.toISOString().slice(0, 10)}>
+            {fmt(e.data.date)}
+          </time>
+          <h3 class="timeline__entry-title">
+            <a href={`/log#${e.id}`}>{e.data.title}</a>
+          </h3>
+          {excerpt(e.body) && <p class="timeline__excerpt">{excerpt(e.body)}</p>}
+          {e.data.project && projectTitles[e.data.project] && (
+            <p class="timeline__tag">
+              <span class="visually-hidden">Project: </span>
+              {projectTitles[e.data.project]}
+            </p>
+          )}
+        </li>
+      ))
+    }
+    </ol>
+  </div>
+</section>
+
+<script>
+  import { scroll, inView } from 'motion';
+
+  const root = document.querySelector<HTMLElement>('[data-timeline]');
+  const list = root?.querySelector<HTMLElement>('[data-timeline-list]');
+  const ink = root?.querySelector<HTMLElement>('[data-timeline-ink]');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (root && list && ink && !reduced) {
+    root.classList.add('timeline--live');
+    // The spine draws from the first entry to the last as the list scrolls
+    // through the middle of the screen.
+    scroll(
+      (p: number) => { ink.style.transform = `scaleY(${p})`; },
+      { target: list, offset: ['start 65%', 'end 55%'] },
+    );
+    // Each node lights once the reading line reaches it, and stays lit.
+    for (const entry of list.querySelectorAll<HTMLElement>('[data-timeline-entry]')) {
+      inView(entry, () => { entry.classList.add('is-lit'); }, { margin: '0px 0px -40% 0px' });
+    }
+  }
+</script>
+
+<style>
+  .timeline {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+    margin-top: var(--space-8);
+  }
+  @media (min-width: 60rem) {
+    .timeline {
+      grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+      gap: var(--space-8);
+      align-items: start;
+    }
+    .timeline__head { position: sticky; top: calc(var(--header-h) + var(--space-6)); }
+  }
+
+  .timeline__title {
+    font-size: var(--step-4);
+    line-height: 1.02;
+    margin: var(--space-3) 0 var(--space-4);
+  }
+  .timeline__intro { color: var(--fg-muted); max-width: 26rem; }
+  .timeline__links {
+    display: flex;
+    gap: var(--space-5);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .timeline__track { position: relative; }
+  .timeline__list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 var(--space-7);
+  }
+
+  .timeline__spine {
+    position: absolute;
+    left: 0.6rem;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 2px;
+    background: color-mix(in srgb, var(--rule) 45%, transparent);
+  }
+  .timeline__ink {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(var(--accent), color-mix(in srgb, var(--violet) 80%, var(--accent)));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+    transform-origin: top;
+    transform: scaleY(1);
+  }
+  :global(.timeline--live) .timeline__ink { transform: scaleY(0); }
+
+  .timeline__entry {
+    position: relative;
+    padding-bottom: var(--space-7);
+  }
+  .timeline__entry:last-child { padding-bottom: 0; }
+
+  .timeline__node {
+    position: absolute;
+    left: calc(-1 * var(--space-7) + 0.6rem - 0.45rem + 1px);
+    top: 0.35rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--accent) 18%, transparent);
+    transition: background 0.5s var(--ease-out), box-shadow 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+  }
+  :global(.timeline--live) .timeline__node {
+    background: var(--bg);
+    border-color: var(--rule);
+    box-shadow: none;
+    transform: scale(0.8);
+  }
+  :global(.timeline--live) .timeline__entry.is-lit .timeline__node {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--accent) 18%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent);
+    transform: scale(1);
+  }
+
+  .timeline__date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .timeline__entry-title {
+    font-size: var(--step-2);
+    line-height: 1.15;
+    margin: var(--space-2) 0 var(--space-3);
+  }
+  .timeline__entry-title a { color: var(--fg); text-decoration: none; }
+  .timeline__entry-title a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 0.2em; }
+  .timeline__excerpt { color: var(--fg-muted); margin: 0 0 var(--space-3); max-width: 34rem; }
+  .timeline__tag {
+    display: inline-block;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+    border: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+    padding: var(--space-1) var(--space-2);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .timeline__node { transition: none; }
+  }
+</style>

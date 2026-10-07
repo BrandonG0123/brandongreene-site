@@ -24,6 +24,7 @@ const fmt = (d: Date) =>
   <div class="wrap sheet">
 
     <div class="column">
+      <p class="chapter-label"><span>Log</span> Dated as it happens</p>
       <h1>Build log</h1>
       <p>
         What I actually did, dated as it happened. This includes the approaches that didn't work,
@@ -32,28 +33,29 @@ const fmt = (d: Date) =>
 
       {
         rendered.length > 0 ? (
-          <ul class="log-list">
-            {rendered.map(({ entry, Content }) => (
-              <li class="log-entry" id={entry.id}>
-                <time datetime={entry.data.date.toISOString().slice(0, 10)}>
-                  {fmt(entry.data.date)}
-                </time>
-                <h2 style="font-size:var(--step-1);margin-top:var(--space-2)">
-                  {entry.data.title}
-                </h2>
-                {entry.data.project && projectTitle(entry.data.project) && (
-                  <p class="mono-label">
-                    <a href={`/projects/${entry.data.project}`}>
-                      {projectTitle(entry.data.project)}
-                    </a>
-                  </p>
-                )}
-                <div class="body">
-                  <Content />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div class="logline" data-logline>
+            <span class="logline__spine" aria-hidden="true"><span class="logline__ink" data-logline-ink /></span>
+            <ol class="logline__list">
+              {rendered.map(({ entry, Content }) => (
+                <li class="logline__entry" id={entry.id} data-logline-entry>
+                  <span class="logline__node" aria-hidden="true" />
+                  <time class="logline__date" datetime={entry.data.date.toISOString().slice(0, 10)}>
+                    {fmt(entry.data.date)}
+                  </time>
+                  <h2 class="logline__title">{entry.data.title}</h2>
+                  {entry.data.project && projectTitle(entry.data.project) && (
+                    <p class="logline__tag">
+                      <span class="visually-hidden">Project: </span>
+                      <a href={`/projects/${entry.data.project}`}>{projectTitle(entry.data.project)}</a>
+                    </p>
+                  )}
+                  <div class="logline__body">
+                    <Content />
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         ) : (
           <p>No entries yet.</p>
         )
@@ -78,3 +80,82 @@ const fmt = (d: Date) =>
     </div>
   </div>
 </Base>
+
+<script>
+  import { scroll, inView } from 'motion';
+  const root = document.querySelector<HTMLElement>('[data-logline]');
+  const ink = root?.querySelector<HTMLElement>('[data-logline-ink]');
+  if (root && ink && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    root.classList.add('logline--live');
+    scroll((p: number) => { ink.style.transform = `scaleY(${p})`; }, { target: root, offset: ['start 60%', 'end 60%'] });
+    for (const e of root.querySelectorAll<HTMLElement>('[data-logline-entry]')) {
+      inView(e, () => { e.classList.add('is-lit'); }, { margin: '0px 0px -40% 0px' });
+    }
+  }
+</script>
+
+<style>
+  /* The full log as a timeline: same spine and nodes as the home page, with
+     each entry's complete text. */
+  .logline { position: relative; margin-top: var(--space-7); }
+  .logline__spine {
+    position: absolute;
+    left: 0.6rem;
+    top: 0.5rem;
+    bottom: 0;
+    width: 2px;
+    background: color-mix(in srgb, var(--rule) 45%, transparent);
+  }
+  .logline__ink {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(var(--accent), color-mix(in srgb, var(--violet) 80%, var(--accent)));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+    transform-origin: top;
+  }
+  :global(.logline--live) .logline__ink { transform: scaleY(0); }
+
+  .logline__list { list-style: none; margin: 0; padding: 0 0 0 var(--space-7); }
+  .logline__entry { position: relative; padding-bottom: var(--space-8); }
+  .logline__entry:last-child { padding-bottom: var(--space-4); }
+
+  .logline__node {
+    position: absolute;
+    left: calc(-1 * var(--space-7) + 0.6rem - 0.45rem + 1px);
+    top: 0.3rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--accent) 18%, transparent);
+    transition: background 0.5s var(--ease-out), box-shadow 0.6s var(--ease-out), transform 0.6s var(--ease-out);
+  }
+  :global(.logline--live) .logline__node { background: var(--bg); border-color: var(--rule); box-shadow: none; transform: scale(0.8); }
+  :global(.logline--live) .logline__entry.is-lit .logline__node {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.35rem color-mix(in srgb, var(--accent) 18%, transparent), 0 0 18px color-mix(in srgb, var(--accent) 70%, transparent);
+    transform: scale(1);
+  }
+
+  .logline__date {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .logline__title { font-size: var(--step-3); line-height: 1.1; margin: var(--space-2) 0 var(--space-3); }
+  .logline__tag {
+    margin: 0 0 var(--space-4);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .logline__body { max-width: var(--measure); }
+  .logline__body > :last-child { margin-bottom: 0; }
+
+  @media (prefers-reduced-motion: reduce) { .logline__node { transition: none; } }
+</style>

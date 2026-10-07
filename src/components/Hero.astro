@@ -15,6 +15,9 @@ const words = title.split(' ');
 ---
 
 <section class="hero" data-hero aria-labelledby="hero-title">
+  {/* The still is the same render as the live shader's first frame, so it is
+      on screen instantly and the live version crossfades in over it. */}
+  <div class="hero__still" aria-hidden="true"></div>
   <canvas class="hero__canvas" data-gyroid aria-hidden="true"></canvas>
   <div class="hero__veil" aria-hidden="true"></div>
 
@@ -62,13 +65,20 @@ const words = title.split(' ');
   import { initGyroid } from '../scripts/gyroid';
 
   const hero = document.querySelector<HTMLElement>('[data-hero]');
-  if (hero) {
-    // After the page has fully loaded and gone idle: the headline must never
-    // wait on the GPU, and shader work must never compete with first paint.
-    const go = () => initGyroid(hero);
-    const idle = () =>
-      'requestIdleCallback' in window ? (window as any).requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 300);
-    document.readyState === 'complete' ? idle() : window.addEventListener('load', idle, { once: true });
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The live shader starts on the visitor's first interaction — a mouse move,
+  // scroll, touch or key — never at load. Even asking for a WebGL context spins
+  // up the GPU process, which costs ~200 ms on a cold machine; until then the
+  // still (the same image) is already showing. Reduced-motion visitors keep the
+  // still and never pay for WebGL at all.
+  if (hero && !reduced) {
+    const events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown', 'scroll'] as const;
+    const go = () => {
+      events.forEach((e) => window.removeEventListener(e, go));
+      requestAnimationFrame(() => initGyroid(hero));
+    };
+    events.forEach((e) => window.addEventListener(e, go, { passive: true, once: true }));
   }
 </script>
 
@@ -84,34 +94,32 @@ const words = title.split(' ');
     padding-top: var(--header-h, 4.25rem);
   }
 
+  .hero__still,
   .hero__canvas {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     z-index: -2;
-    opacity: 0;
-    transition: opacity 1.4s var(--ease-out);
-    background: var(--bg);
   }
-  :global(.hero--ready) .hero__canvas { opacity: 1; }
-
-  /* No GPU (or software WebGL, which we refuse): a pre-rendered still of the
-     same gyroid, so these visitors get the real image rather than a stutter. */
-  :global(.hero--no-webgl) .hero__canvas {
-    opacity: 1;
+  .hero__still {
     background:
       image-set(url('/hero/gyroid-still.avif') type('image/avif'), url('/hero/gyroid-still.webp') type('image/webp'))
         right center / auto 100% no-repeat,
       var(--bg);
   }
-  @media (max-width: 46rem) {
-    :global(.hero--no-webgl) .hero__canvas {
-      background-position: 70% center;
-      opacity: 0.45;
-    }
+  .hero__canvas {
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
   }
-  :root[data-theme='light'] :global(.hero--no-webgl) .hero__canvas { opacity: 0.18; filter: grayscale(1) invert(1); }
+  :global(.hero--ready) .hero__canvas { opacity: 1; }
+  @media (max-width: 46rem) {
+    .hero__still { background-position: 70% center, 0 0; opacity: 0.45; }
+  }
+  :root[data-theme='light'] .hero__still { opacity: 0.18; filter: grayscale(1) invert(1); }
+
+  /* No GPU (or software WebGL, which we refuse): the canvas never fades in and
+     the still underneath simply stays. */
 
   /* Insurance for text contrast: the headline column always sits on ground. */
   .hero__veil {

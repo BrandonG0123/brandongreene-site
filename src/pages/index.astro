@@ -3,6 +3,8 @@ import Base from '../layouts/Base.astro';
 import ProjectList from '../components/ProjectList.astro';
 import Hero from '../components/Hero.astro';
 import ServeChapter from '../components/ServeChapter.astro';
+import KineticBand from '../components/KineticBand.astro';
+import BuildTimeline from '../components/BuildTimeline.astro';
 import { visibleProjects, visibleLog } from '../lib/visibility';
 
 const all = await visibleProjects();
@@ -27,6 +29,8 @@ const current = all
   .filter((p) => p.data.status === 'in-progress' && !p.data.placeholder)
   .map((p) => ({ p, when: lastTouched(p.id, p.data.updated ?? p.data.started) }))
   .sort((a, b) => b.when.valueOf() - a.when.valueOf())[0];
+
+const projectTitles = Object.fromEntries(all.map((p) => [p.id, p.data.title]));
 
 const fmt = (d: Date) =>
   d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
@@ -58,13 +62,16 @@ const jsonLd = {
 
   <ServeChapter />
 
+  <KineticBand />
+
   <div class="wrap">
-
-
-    <section id="work" aria-labelledby="featured-heading">
+    <section id="work" class="work" aria-labelledby="featured-heading">
       <div class="section-head">
-        <h2 id="featured-heading">Selected work</h2>
-        <a href="/projects">All projects →</a>
+        <div>
+          <p class="chapter-label"><span>02</span> Work</p>
+          <h2 id="featured-heading">Selected work</h2>
+        </div>
+        <a href="/projects">All projects <span aria-hidden="true">→</span></a>
       </div>
 
       {
@@ -76,27 +83,7 @@ const jsonLd = {
       }
     </section>
 
-    <section aria-labelledby="log-heading">
-      <div class="section-head">
-        <h2 id="log-heading">Latest from the build log</h2>
-        <a href="/log">Full log →</a>
-      </div>
-      <ul class="log-list log-list--cards">
-        {
-          logEntries
-            .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
-            .slice(0, 3)
-            .map((e) => (
-              <li class="log-entry">
-                <time datetime={e.data.date.toISOString().slice(0, 10)}>{fmt(e.data.date)}</time>
-                <h3>
-                  <a href={`/log#${e.id}`}>{e.data.title}</a>
-                </h3>
-              </li>
-            ))
-        }
-      </ul>
-    </section>
+    <BuildTimeline entries={logEntries} projectTitles={projectTitles} limit={4} />
   </div>
 </Base>
 

@@ -140,6 +140,33 @@ are never served to a browser and cost the page nothing.
 
 Placeholder slots get no card, for the same reason they get no page.
 
+## Generated images
+
+Two kinds of image are rendered offline and committed, so nobody's browser has
+to do the work:
+
+```bash
+npm run render:still     # hero gyroid still — rerun after changing gyroid.ts
+npm run build && npm run render:models   # card stills of each project's 3D model
+```
+
+The hero still is the same shader with the same uniforms as the live hero's first
+frame, so the swap from still to live is seamless. Model stills are captured from
+each project's real viewer.
+
+## Motion and 3D, and the rules they follow
+
+- Everything decorative is **progressive enhancement**: the page is complete with
+  JavaScript off, and the animated versions only switch on once their script has
+  actually started. Test with JavaScript disabled after any change.
+- **prefers-reduced-motion** gets still frames, never animation.
+- Anything that moves on its own for more than 5 seconds has a visible pause
+  control (WCAG 2.2.2).
+- Nothing heavy runs at load: the hero shader waits for first interaction; the
+  three.js viewer loads by dynamic import near the viewport.
+- New decorative text (the kinetic band, the wordmark) is still a claim. Every
+  word must be something Brandon actually does.
+
 ## Checks
 
 ```bash

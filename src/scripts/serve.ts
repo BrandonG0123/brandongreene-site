@@ -153,7 +153,7 @@ export function createRenderer(
   // toss. The live view is re-derived from it on every resize — never from the
   // previous view, which would let one bad measurement poison every later one.
   const BASE = { x0: -1.0, x1: 1.9, y0: -0.12, y1: 3.15 } as const;
-  const view = { ...BASE };
+  const view: { x0: number; x1: number; y0: number; y1: number } = { ...BASE };
   const sx = (x: number) => ((x - view.x0) / (view.x1 - view.x0)) * W;
   const sy = (y: number) => H - ((y - view.y0) / (view.y1 - view.y0)) * H;
   const P = (v: Vec) => [sx(v[0]), sy(v[1])] as const;

@@ -1,0 +1,114 @@
+---
+/**
+ * Two rows of type drifting in opposite directions; scrolling speeds them up
+ * and flips their direction. Pure texture between the serve and the work.
+ *
+ * Every word is one of Brandon's own self-described strengths or pursuits —
+ * nothing here is a claim the rest of the site doesn't already make.
+ *
+ * Decorative and duplicated for the loop, so the whole band is hidden from
+ * assistive tech. Reduced motion: static.
+ */
+const rowA = ['Hardware', 'Software', 'Machine learning', 'Mathematics', '3D printing'];
+const rowB = ['Tennis', 'Chess', 'Measurement', 'Engineering', 'Independent study'];
+const loop = (row: string[]) => [...row, ...row, ...row, ...row];
+---
+
+<div class="band" data-band aria-hidden="true">
+  <div class="band__row" data-band-row data-dir="1">
+    {loop(rowA).map((w, i) => <span class:list={['band__word', { 'band__word--outline': i % 2 }]}>{w}<i>✦</i></span>)}
+  </div>
+  <div class="band__row band__row--b" data-band-row data-dir="-1">
+    {loop(rowB).map((w, i) => <span class:list={['band__word', { 'band__word--outline': !(i % 2) }]}>{w}<i>✦</i></span>)}
+  </div>
+</div>
+
+<script>
+  import { scroll } from 'motion';
+
+  const band = document.querySelector<HTMLElement>('[data-band]');
+  const rows = [...(band?.querySelectorAll<HTMLElement>('[data-band-row]') ?? [])];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (band && rows.length && !reduced) {
+    // Each row is four copies of the same words, so translating by a quarter of
+    // its width loops seamlessly.
+    const state = rows.map((row) => ({ row, dir: Number(row.dataset.dir), x: 0, width: 0 }));
+    const measure = () => state.forEach((s) => (s.width = s.row.scrollWidth / 4));
+    measure();
+    window.addEventListener('resize', measure);
+
+    let boost = 0, flip = 1, visible = false, raf = 0, last = performance.now();
+    scroll((_p: number, info: any) => {
+      const v = info?.y?.velocity ?? 0;           // px per second
+      boost = Math.min(6, Math.abs(v) / 400);
+      if (Math.abs(v) > 30) flip = v > 0 ? 1 : -1;
+    });
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      boost *= 0.92;                              // ease back to cruising speed
+      for (const s of state) {
+        s.x -= s.dir * flip * (38 + boost * 160) * dt;
+        if (s.x < -s.width) s.x += s.width;
+        if (s.x > 0) s.x -= s.width;
+        s.row.style.transform = `translate3d(${s.x}px, 0, 0)`;
+      }
+      raf = visible ? requestAnimationFrame(tick) : 0;
+    };
+
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible && !raf) { last = performance.now(); raf = requestAnimationFrame(tick); }
+    }).observe(band);
+  }
+</script>
+
+<style>
+  .band {
+    position: relative;
+    overflow: hidden;
+    padding-block: var(--space-6);
+    border-block: 1px solid color-mix(in srgb, var(--rule) 45%, transparent);
+    background:
+      linear-gradient(90deg, var(--bg), transparent 12%, transparent 88%, var(--bg)),
+      color-mix(in srgb, var(--surface) 55%, transparent);
+    user-select: none;
+  }
+  .band__row {
+    display: flex;
+    width: max-content;
+    gap: 0;
+    will-change: transform;
+  }
+  .band__row--b { margin-top: var(--space-2); }
+
+  .band__word {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    padding-right: 0.5em;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(2.2rem, 1rem + 5vw, 5.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    white-space: nowrap;
+    color: var(--fg);
+  }
+  .band__word i {
+    font-style: normal;
+    font-size: 0.45em;
+    color: var(--accent);
+  }
+  .band__word--outline {
+    color: transparent;
+    -webkit-text-stroke: 1.5px color-mix(in srgb, var(--accent) 70%, transparent);
+  }
+  .band__row--b .band__word { font-size: clamp(1.6rem, 0.8rem + 3.2vw, 3.6rem); color: var(--fg-muted); }
+  .band__row--b .band__word--outline { color: transparent; -webkit-text-stroke-color: var(--rule); }
+
+  /* Light reading mode: outlines in ink rather than glow. */
+  :root[data-theme='light'] .band__word--outline { -webkit-text-stroke-color: var(--fg); }
+</style>

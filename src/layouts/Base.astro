@@ -31,5 +31,26 @@ const { title, description, noindex, jsonLd, ogSlug } = Astro.props;
       <slot />
     </main>
     <Footer />
+    <div class="cursor-glow" aria-hidden="true" data-cursor-glow></div>
+    <script>
+      // A soft light that follows the pointer at a lag. Fine pointers only, and
+      // never with reduced motion.
+      const glow = document.querySelector<HTMLElement>('[data-cursor-glow]');
+      if (glow && matchMedia('(hover: hover) and (pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        let tx = innerWidth / 2, ty = innerHeight / 2, x = tx, y = ty, raf = 0;
+        const step = () => {
+          x += (tx - x) * 0.09;
+          y += (ty - y) * 0.09;
+          glow.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+          raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.5 ? requestAnimationFrame(step) : 0;
+        };
+        window.addEventListener('pointermove', (e) => {
+          tx = e.clientX; ty = e.clientY;
+          glow.classList.add('is-on');
+          if (!raf) raf = requestAnimationFrame(step);
+        }, { passive: true });
+        document.addEventListener('pointerleave', () => glow.classList.remove('is-on'));
+      }
+    </script>
   </body>
 </html>
