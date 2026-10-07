@@ -19,12 +19,16 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createBall } from './ball';
 import { createFire } from './fire';
-import { createCloud, PIECES, type Timing } from './cloud';
+import { createCloud, PIECES, PRINT_LAYERS, type Timing } from './cloud';
+import { createSound } from './sound';
 import * as shapes from './shapes';
 
 // ---- the score ---------------------------------------------------------------
-// Seconds. Each shape gets a moment fully formed (and still turning, so nothing
-// ever freezes) before the next transition starts.
+// Score seconds. Each shape gets a moment fully formed (and still turning, so
+// nothing ever freezes) before the next transition starts. The whole score
+// plays at PACE: change that one number to make the intro faster or slower
+// without retiming anything (sound included). At 1.25 it runs about 10 s.
+const PACE = 1.25;
 const TIMING: Timing = {
   ignite: 1.3, burnDur: 1.5, spin: 0.45,
   ember: 0.4, fly1: 1.0,
@@ -166,6 +170,29 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   const fire = createFire(small ? 1400 : 3200, { ignite: TIMING.ignite, burnDur: TIMING.burnDur, spin: TIMING.spin });
   const cloud = createCloud(N, cloudShapes, TIMING);
   scene.add(ball.group, fire.points, cloud.points, cloud.lines);
+
+  // Where the network's signal crosses each layer, as a fraction of the wave.
+  const layerX: number[] = [];
+  for (let l = 0, i = 0; l < shapes.LAYERS.length; i += shapes.LAYERS[l], l++) layerX.push((net.nodes[i].x + 1.15) / 2.3);
+  const sound = createSound({
+    pace: PACE,
+    ignite: TIMING.ignite,
+    burnDur: TIMING.burnDur,
+    shimmer: TIMING.ignite + TIMING.burnDur * 0.55,
+    knight: TIMING.ignite + TIMING.burnDur + TIMING.ember * 0.55 + 0.25 + TIMING.fly1,
+    print: { start: TIMING.start[0], spread: TIMING.spread[0], dur: TIMING.dur[0], layers: PRINT_LAYERS },
+    scan: [SCAN[0], SCAN[1]],
+    network: TIMING.start[1],
+    wave: [WAVE[0], WAVE[1]],
+    layerX,
+    gyroid: TIMING.start[2],
+    eq: [EQ[0], EQ[1]],
+    eqChars: EQUATION.length,
+    explode: TIMING.start[3] + 0.04,
+    land: TIMING.start[3] + TIMING.dur[3] * 0.8,
+    end: END,
+    activity: fire.activity,
+  });
   await step('cloud');
 
   // ---- framing -----------------------------------------------------------------
@@ -232,9 +259,8 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   let raf = 0, visible = true, done = t >= END, held = false;
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   let hover = -1, hoverSpin = 0;
-  // With the voiceover playing, the audio is the clock, so picture and voice
-  // can't drift apart.
-  let listening = false;
+  let soundOn = false;
+  const voicePlaying = () => !!audio && !audio.paused;
 
   const setCaption = (tt: number) => {
     if (!caption) return;
@@ -301,15 +327,20 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
     if (hadFocus) requestAnimationFrame(() => links[0]?.focus({ preventScroll: true }));
   };
 
-  const moving = () => (!done && !held) || listening || Math.abs(pointer.tx - pointer.x) + Math.abs(pointer.ty - pointer.y) > 0.002 || hover >= 0;
+  const moving = () => (!done && !held) || Math.abs(pointer.tx - pointer.x) + Math.abs(pointer.ty - pointer.y) > 0.002 || hover >= 0;
 
+  let prevT = t;
   const frame = (now: number) => {
     const dt = Math.min(0.25, (now - last) / 1000);
     last = now;
     if (!done && !held) {
-      t = listening && audio ? Math.min(END, audio.currentTime) : Math.min(END, t + dt);
+      // With the voiceover playing, the audio is the clock, so picture and
+      // voice can't drift apart.
+      t = voicePlaying() ? Math.min(END, audio!.currentTime * PACE) : Math.min(END, t + dt * PACE);
       if (t >= END) settle();
     }
+    sound.update(prevT, t);
+    prevT = t;
     if (hover >= 0) hoverSpin += dt * 1.6;
     apply(t);
     draw();
@@ -323,7 +354,7 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
 
   // ---- the reader is in charge -----------------------------------------------
   const skip = () => {
-    audio?.pause();
+    if (voicePlaying()) audio!.pause(); // the voice would be out of step with the picture
     if (done) return;
     // Land mid-settle, so the pieces still arrive (half a second) rather than pop.
     t = Math.max(t, TIMING.start[3] + TIMING.dur[3] * 0.55);
@@ -331,7 +362,7 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
     wake();
   };
   const replay = () => {
-    t = 0; done = false; hover = -1;
+    t = 0; prevT = 0; done = false; hover = -1;
     root.classList.remove('intro--done', 'intro--revealed', 'intro--skipped');
     if (skipBtn) { skipBtn.hidden = false; skipBtn.focus({ preventScroll: true }); }
     if (replayBtn) replayBtn.hidden = true;
@@ -340,9 +371,30 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   skipBtn?.addEventListener('click', skip);
   replayBtn?.addEventListener('click', () => { audio?.pause(); replay(); });
 
-  // Voiceover (only present once Brandon has recorded it). Never plays unless
-  // asked; captions come from the same VTT as the transcript.
-  if (audio && soundBtn) {
+  // Sound: nothing plays until the reader asks. "Play with sound" replays the
+  // intro with the synthesised effects (and the voiceover, once one exists);
+  // "Mute" silences it. Captions for the voice come from the same VTT as the
+  // on-page transcript.
+  const setSound = (on: boolean) => {
+    soundOn = on;
+    sound.setEnabled(on);
+    if (soundBtn) soundBtn.textContent = on ? 'Mute' : 'Play with sound';
+    if (!on && voicePlaying()) audio!.pause();
+  };
+  soundBtn?.addEventListener('click', async () => {
+    if (soundOn) return setSound(false);
+    // Audio first, then the picture: starting the audio engine can take a
+    // moment, and the ignition must not play before anyone can hear it.
+    await sound.start().catch(() => {});
+    setSound(true);
+    replay();
+    soundBtn.focus({ preventScroll: true });
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+  });
+  if (audio) {
     const track = audio.textTracks[0];
     if (track) {
       track.mode = 'hidden';
@@ -351,21 +403,10 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
         if (subs) subs.textContent = cue?.text ?? '';
       });
     }
-    const idle = () => {
-      listening = false;
-      soundBtn.textContent = 'Play with sound';
-      if (subs) subs.textContent = '';
-    };
-    soundBtn.addEventListener('click', () => {
-      if (listening) return audio.pause();
-      replay();
-      soundBtn.focus({ preventScroll: true });
-      audio.currentTime = 0;
-      audio.play().catch(idle);
-    });
-    audio.addEventListener('play', () => { listening = true; soundBtn.textContent = 'Pause sound'; wake(); });
-    audio.addEventListener('pause', idle);
-    audio.addEventListener('ended', idle);
+    const clear = () => { if (subs) subs.textContent = ''; };
+    audio.addEventListener('pause', clear);
+    audio.addEventListener('ended', clear);
+    audio.addEventListener('play', wake);
   }
 
   const onKey = (e: KeyboardEvent) => {
@@ -374,7 +415,7 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
     // any other key (Escape included) skips, and stops the voiceover.
     const onControl = !!(e.target as HTMLElement).closest?.('.intro__controls');
     if (onControl && ['Enter', ' ', 'Tab'].includes(e.key)) return;
-    if (!done || listening) skip();
+    if (!done || voicePlaying()) skip();
   };
   const onWheel = () => skip();
   const onStagePointer = (e: PointerEvent) => {
@@ -386,7 +427,7 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   const startY = scrollY;
   const onScroll = () => { if (Math.abs(scrollY - startY) > 40) skip(); };
   window.addEventListener('scroll', onScroll, { passive: true });
-  reduced.addEventListener('change', () => { if (reduced.matches) { t = END; settle(); apply(t); draw(); } });
+  reduced.addEventListener('change', () => { if (reduced.matches) { setSound(false); t = END; settle(); apply(t); draw(); } });
 
   // Pointer: lean, hover, click-through to the piece's link.
   const pieceAt = (x: number, y: number) => {
@@ -400,6 +441,7 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   const setHover = (k: number) => {
     if (k === hover) return;
     hover = k;
+    if (k >= 0 && done) sound.hover();
     links.forEach((a, i) => a.classList.toggle('is-hot', i === k));
     stage.style.cursor = k >= 0 ? 'pointer' : '';
     wake();
@@ -426,9 +468,10 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   });
 
   // ---- lifecycle ---------------------------------------------------------------
-  const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; wake(); });
+  const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (!visible) sound.hush(); wake(); });
   io.observe(stage);
-  document.addEventListener('visibilitychange', wake);
+  const onVisibility = () => { if (document.hidden) sound.suspend(); else sound.resume(); wake(); };
+  document.addEventListener('visibilitychange', onVisibility);
   const ro = new ResizeObserver(() => { layout(); apply(t); draw(); });
   ro.observe(stage);
 
@@ -471,7 +514,8 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('wheel', onWheel);
       window.removeEventListener('scroll', onScroll);
-      ball.dispose(); fire.dispose(); cloud.dispose();
+      document.removeEventListener('visibilitychange', onVisibility);
+      ball.dispose(); fire.dispose(); cloud.dispose(); sound.dispose();
       env.dispose(); pmrem.dispose(); renderer.dispose();
     },
   };

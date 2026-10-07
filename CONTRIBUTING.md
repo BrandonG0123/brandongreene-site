@@ -177,11 +177,16 @@ each project's real viewer.
 - Nothing heavy runs at load: the hero shader waits for first interaction; the
   three.js viewer loads by dynamic import near the viewport.
 - The About intro (`src/scripts/intro/`) is the other exception to "nothing
-  moves on its own": about 13 seconds, once per visit. **Skip intro** comes first
+  moves on its own": about 10 seconds, once per visit (`PACE` at the top of
+  `index.ts` sets the speed of the whole score, sound included). **Skip intro** comes first
   in the tab order, and any key, wheel, touch or click on the stage skips it.
   Once the pieces settle, nothing moves unless the reader is pointing at it.
   Its setup runs in short steps that yield to the browser (each leaves an
   `intro:<step>` performance mark), so it never blocks the page.
+- **Sound is opt-in, always.** The intro's effects (`sound.ts`) are synthesised
+  in the browser from the same clock as the picture: no files, nothing to
+  license. Nothing plays until the reader presses "Play with sound", which
+  replays the intro with audio; "Mute" stops it.
 - **A real GPU, or the still.** `failIfMajorPerformanceCaveat` is not enough on
   its own: current Chromium hands SwiftShader (CPU rendering) a context even
   with it set. `src/scripts/gpu.ts` (and the About page's inline check) also

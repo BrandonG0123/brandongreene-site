@@ -75,8 +75,10 @@ then merged to main.
   `src/scripts/intro/`. A real-looking tennis ball catches fire; its embers cool
   into scan points that become a chess knight, the scanner's calibration object
   (printed in layers, then scanned), a neural network and the gyroid (its
-  equation typed out), then explode into five pieces that are links. About 13 s,
-  once per visit, skippable, Replay afterwards. Reduced motion, no capable GPU,
+  equation typed out), then explode into five pieces that are links. About 10 s,
+  once per visit, skippable, Replay afterwards. "Play with sound" adds
+  synthesised effects (ignition, fire, transitions, explosion, landing chimes;
+  no words), opt-in only. Reduced motion, no capable GPU,
   or no JS: the same five links as tiles with stills (`npm run render:about`).
 - **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
   Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a
@@ -143,9 +145,10 @@ then merged to main.
   - `public/about/voiceover.vtt`: captions, which also become the on-page
     transcript
 
-  The picture runs about 13 s: tennis 0–1.3, fire 1.3–3, chess 3.3, the scanner
-  5.2, machine learning 7.3, maths 9, everything 11–13. The voice can run longer
-  over the settled pieces. Sound never plays unless someone presses "Play with
+  The picture runs about 10 s: tennis 0–1.0, fire 1.0–2.4, chess 2.6, the
+  scanner 4.2, machine learning 5.8, maths 7.2, everything 8.9–10.2. The voice
+  can run longer over the settled pieces, and it plays together with the
+  effects. Sound never plays unless someone presses "Play with
   sound". Keep it free of school, location or schedule details; parents review it
   before launch. After adding the files, rebuild.
 - **About intro links** — Mathematics currently goes to /projects ("Under every

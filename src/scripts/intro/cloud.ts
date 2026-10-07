@@ -156,6 +156,8 @@ export interface CloudHandle {
 }
 
 export const PIECES = 5;
+/** The calibration object is "printed" in this many layers (the sound ticks once per layer). */
+export const PRINT_LAYERS = 14;
 const CAL_TILT = 0.6;
 
 export function createCloud(n: number, s: Shapes, timing: Timing): CloudHandle {
@@ -168,7 +170,6 @@ export function createCloud(n: number, s: Shapes, timing: Timing): CloudHandle {
   // Height range of the calibration object, for printing it in layers.
   let minY = Infinity, maxY = -Infinity;
   for (let i = 1; i < s.calibration.length; i += 3) { minY = Math.min(minY, s.calibration[i]); maxY = Math.max(maxY, s.calibration[i]); }
-  const LAYERS = 14;
 
   // Each piece of the constellation is a miniature of one of the shapes (the
   // calibration object tipped the same way as on stage).
@@ -184,7 +185,7 @@ export function createCloud(n: number, s: Shapes, timing: Timing): CloudHandle {
     const x = s.ball[3 * i], y = s.ball[3 * i + 1], z = s.ball[3 * i + 2];
     pos.set([x * BALL_RADIUS, y * BALL_RADIUS, z * BALL_RADIUS], 3 * i);
     const cy = s.calibration[3 * i + 1];
-    const layer = Math.floor(((cy - minY) / (maxY - minY || 1)) * LAYERS) / LAYERS;
+    const layer = Math.floor(((cy - minY) / (maxY - minY || 1)) * PRINT_LAYERS) / PRINT_LAYERS;
     const r4 = Math.hypot(s.gyroid[3 * i], s.gyroid[3 * i + 1], s.gyroid[3 * i + 2]);
     delay.set([layer, rand(), r4, rand()], 4 * i);
     misc.set([burnThreshold(x, y, z), rand(), i % PIECES, rand()], 4 * i);
