@@ -70,14 +70,21 @@ const fmt = (d: Date) =>
 </script>
 
 <style>
+  /* Two-up on wide screens; the first card spans the full width so the most
+     recent work leads. One column on narrow screens. */
   .project-index {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: var(--space-4);
-    perspective: 1200px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr));
+    gap: var(--space-5);
+    perspective: 1400px;
   }
+  .project-index > li:first-child:not(:only-child) { grid-column: 1 / -1; }
+  .project-index > li { display: grid; }
+  .project-index > li:first-child:not(:only-child) .card { padding-block: var(--space-6); }
+  .project-index > li:first-child:not(:only-child) .card__title { font-size: var(--step-3); }
 
   .card {
     --mx: 50%;
@@ -137,7 +144,7 @@ const fmt = (d: Date) =>
   .card__summary {
     margin: 0;
     color: var(--fg-muted);
-    max-width: var(--measure);
+    max-width: 40rem;
   }
 
   .card__meta {

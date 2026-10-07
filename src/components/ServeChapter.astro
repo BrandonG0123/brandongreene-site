@@ -132,11 +132,12 @@ const label =
     top: 0;
     height: 100svh;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
     align-items: center;
-    max-width: 76rem;
+    max-width: var(--wrap);
     margin-inline: auto;
-    padding: var(--header-h) var(--space-5) var(--space-5);
+    padding: var(--header-h) clamp(var(--space-5), 4vw, var(--space-7)) var(--space-5);
+    gap: clamp(var(--space-5), 4vw, var(--space-8));
     overflow: hidden;
   }
 
@@ -182,7 +183,7 @@ const label =
     margin: 0;
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: clamp(1.9rem, 1rem + 3.2vw, 3.6rem);
+    font-size: clamp(1.9rem, 0.8rem + 3.6vw, 4.4rem);
     line-height: 1.05;
     letter-spacing: -0.03em;
     text-wrap: balance;

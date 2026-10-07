@@ -8,6 +8,10 @@ updated: 2026-09-25
 featured: true
 collaboration: solo
 links: []
+model:
+  src: /models/footscan-calibration-object.stl
+  description: The footscan calibration object, a 150 by 70 by 35 millimetre block with a dome, a ramp and two terraces, shown as a glowing wireframe.
+  caption: The calibration object, 150 × 70 × 35 mm. It gets 3D printed, measured with calipers, and then scanned, so the scanner's error can be checked against a shape whose true dimensions are known.
 ---
 
 <!--

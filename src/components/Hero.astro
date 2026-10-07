@@ -120,7 +120,6 @@ const words = title.split(' ');
 
   .hero__inner {
     padding-block: var(--space-8);
-    max-width: 54rem;
   }
 
   .hero__kicker {
@@ -207,7 +206,7 @@ const words = title.split(' ');
 
   .hero__motion {
     position: absolute;
-    left: max(var(--space-5), calc((100vw - 54rem) / 2 + var(--space-5)));
+    left: max(clamp(var(--space-5), 4vw, var(--space-7)), calc((100vw - var(--wrap)) / 2 + clamp(var(--space-5), 4vw, var(--space-7))));
     bottom: var(--space-5);
     font-family: var(--font-mono);
     font-size: 0.75rem;
@@ -224,7 +223,7 @@ const words = title.split(' ');
 
   .hero__cue {
     position: absolute;
-    right: max(var(--space-5), calc((100vw - 54rem) / 2 + var(--space-5)));
+    right: max(clamp(var(--space-5), 4vw, var(--space-7)), calc((100vw - var(--wrap)) / 2 + clamp(var(--space-5), 4vw, var(--space-7))));
     bottom: var(--space-5);
     margin: 0;
     font-family: var(--font-mono);

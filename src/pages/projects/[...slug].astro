@@ -4,6 +4,7 @@ import { Picture } from 'astro:assets';
 import { visibleProjects } from '../../lib/visibility';
 import Base from '../../layouts/Base.astro';
 import StatusBadge from '../../components/StatusBadge.astro';
+import ModelViewer from '../../components/ModelViewer.astro';
 
 export async function getStaticPaths() {
   // Planned projects never get a page. That is the whole point of the status.
@@ -75,6 +76,8 @@ const jsonLd = {
       </p>
 
       <p class="lede" style="font-size:var(--step-1);line-height:1.5">{d.summary}</p>
+
+      {d.model && <ModelViewer src={d.model.src} description={d.model.description} caption={d.model.caption} />}
 
       {
         d.hero && (

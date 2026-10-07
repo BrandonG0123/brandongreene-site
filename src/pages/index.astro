@@ -81,7 +81,7 @@ const jsonLd = {
         <h2 id="log-heading">Latest from the build log</h2>
         <a href="/log">Full log →</a>
       </div>
-      <ul class="log-list">
+      <ul class="log-list log-list--cards">
         {
           logEntries
             .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())

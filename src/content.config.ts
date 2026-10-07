@@ -60,6 +60,19 @@ const projects = defineCollection({
       })
       .optional(),
     links: z.array(link).default([]),
+    /**
+     * Optional orbitable 3D model shown near the top of the case study.
+     * `description` is what a screen reader hears in place of the canvas;
+     * `caption` is the visible explanation. Both must say what the object
+     * actually is — never imply a scan or result that hasn't happened.
+     */
+    model: z
+      .object({
+        src: z.string().regex(/\.(stl|glb|gltf)$/i, 'Model must be .stl, .glb or .gltf'),
+        description: z.string().min(20),
+        caption: z.string().min(20),
+      })
+      .optional(),
   }),
 });
 

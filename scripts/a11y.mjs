@@ -30,13 +30,26 @@ let checks = 0;
 console.log(`axe-core — ${pages.length} pages x ${THEMES.length} themes x ${VIEWPORTS.length} viewports\n`);
 
 for (const theme of THEMES) {
+  // The site does not follow the OS theme: dark is the design, and "reading
+  // mode" (light) is a stored choice. So select the theme the way a visitor
+  // does — via the remembered preference — rather than emulating the OS, which
+  // would test the dark theme twice and never touch reading mode.
   const context = await browser.newContext({ colorScheme: theme });
+  await context.addInitScript((t) => {
+    try { localStorage.setItem('theme', t); } catch {}
+  }, theme);
   for (const vp of VIEWPORTS) {
     const page = await context.newPage();
     await page.setViewportSize({ width: vp.width, height: vp.height });
 
     for (const route of pages) {
       await page.goto(`http://localhost:${port}${route}`, { waitUntil: 'load' });
+      const applied = await page.evaluate(() => document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+      if (applied !== theme) {
+        console.error(`FAIL ${route}  expected ${theme} theme, page rendered ${applied}`);
+        violations++;
+        continue;
+      }
       const { violations: v } = await new AxeBuilder({ page }).withTags(TAGS).analyze();
       checks++;
 
