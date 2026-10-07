@@ -16,7 +16,8 @@
     "deploy": "./scripts/deploy.sh",
     "render:still": "node scripts/render-still.mjs",
     "render:models": "node scripts/render-model-stills.mjs",
-    "render:icons": "node scripts/render-icons.mjs"
+    "render:icons": "node scripts/render-icons.mjs",
+    "render:about": "node scripts/sample-intro-points.mjs && astro build && node scripts/render-about-stills.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.1",

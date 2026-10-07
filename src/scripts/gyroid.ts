@@ -15,9 +15,9 @@
  * never bands on the dark ground.
  *
  * Rules this file obeys:
- *  - Software-rendered WebGL is refused (failIfMajorPerformanceCaveat). Those
- *    visitors get a pre-rendered still instead of a stuttering animation —
- *    and so does headless Chrome, which is why Lighthouse stays fast.
+ *  - Software-rendered WebGL is refused (failIfMajorPerformanceCaveat, and the
+ *    renderer's name, since Chromium's SwiftShader passes the flag; gpu.ts).
+ *    Those visitors get a pre-rendered still instead of a stuttering animation.
  *  - prefers-reduced-motion: one still frame, never animated, pointer ignored.
  *  - A visible pause control (WCAG 2.2.2), remembered across visits.
  *  - Stops rendering when off-screen or the tab is hidden.
@@ -25,6 +25,7 @@
  *  - Shaders compile in parallel where supported, and the whole thing starts
  *    after the page has loaded, so the headline never waits on the GPU.
  */
+import { onRealGpu } from './gpu';
 
 const VERT = `
 attribute vec2 a;
@@ -218,7 +219,7 @@ export function initGyroid(section: HTMLElement) {
     powerPreference: 'high-performance',
     failIfMajorPerformanceCaveat: true,
   });
-  if (!gl) return fallback();
+  if (!gl || !onRealGpu(gl)) return fallback();
 
   const compile = (type: number, src: string) => {
     const sh = gl.createShader(type)!;

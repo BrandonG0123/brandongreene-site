@@ -5,8 +5,9 @@ Picking this back up: read this file first, then `CONTRIBUTING.md` and
 
 ## State
 
-Site is built, verified, and committed. Nothing is deployed, and there is no
-git remote yet — see `DEPLOY.md`. For the latest state run `git log --oneline`.
+Site is built, verified, and pushed to github.com/BrandonG0123/brandongreene-site
+(main). It deploys from tank: `git pull; npm ci; npm run build` (see `DEPLOY.md`).
+For the latest state run `git log --oneline`.
 
 ```bash
 cd /Users/bgreene/code/brandongreene-site
@@ -70,6 +71,13 @@ then merged to main.
   loaded, follows the mouse, keyboard-operable. Card stills via
   `npm run render:models`.
 - **Motion** (motion.dev) drives scroll-linked and spring animation.
+- **About intro, "Ignition" (7 Oct)**: `src/components/AboutIntro.astro` and
+  `src/scripts/intro/`. A real-looking tennis ball catches fire; its embers cool
+  into scan points that become a chess knight, the scanner's calibration object
+  (printed in layers, then scanned), a neural network and the gyroid (its
+  equation typed out), then explode into five pieces that are links. About 13 s,
+  once per visit, skippable, Replay afterwards. Reduced motion, no capable GPU,
+  or no JS: the same five links as tiles with stills (`npm run render:about`).
 - **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
   Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a
   reading time and a pinned 3D viewer beside the text; a tape measure runs
@@ -87,7 +95,7 @@ then merged to main.
 | LCP | 539 ms worst case (budget 2000) |
 | CLS | 0.019 home, 0.001 or less elsewhere (budget 0.1) |
 | JS | critical 84 KB on home (budget 100); 3D viewer is a 157 KB-gzip lazy chunk (budget 200) |
-| CSS | 57.8 KB of the 60 KB budget — close; trim before adding more |
+| CSS | budgeted per page now (render-blocking, 60 KB): heaviest is home at 48.9 KB. It used to be one site-wide total, which charged every page for the About intro's styles |
 | Links | 32 internal, all resolve (incl. social cards) |
 | Reduced motion / no JS | nothing moves on its own; everything readable without JS |
 
@@ -129,11 +137,20 @@ then merged to main.
   illustration is live until then.
 - **footscan portfolio export** — the prompt is at `~/code/footscan-portfolio-prompt.md`;
   the case study's phase table is now out of date (Phases 2–3 are built).
+- **About intro voiceover (optional)** — the slot is built and invisible until
+  two files exist:
+  - `public/about/voiceover.m4a` (straight from Voice Memos) or `.mp3`
+  - `public/about/voiceover.vtt`: captions, which also become the on-page
+    transcript
 
-- GitHub username
-- **The domain.** Brandon has registered one but hasn't said which. It is a
-  one-line change: `SITE` in `astro.config.mjs`. Everything else derives from it,
-  including the Caddyfile/nginx server_name which must match.
+  The picture runs about 13 s: tennis 0–1.3, fire 1.3–3, chess 3.3, the scanner
+  5.2, machine learning 7.3, maths 9, everything 11–13. The voice can run longer
+  over the settled pieces. Sound never plays unless someone presses "Play with
+  sound". Keep it free of school, location or schedule details; parents review it
+  before launch. After adding the files, rebuild.
+- **About intro links** — Mathematics currently goes to /projects ("Under every
+  project"). Change the target or wording in `AboutIntro.astro` if he'd rather.
+
 - Contact method — leaning an alias on the domain. Personal email must never
   appear in plain text.
 - Exact start date of the independent study. The log currently says

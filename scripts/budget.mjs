@@ -25,7 +25,7 @@ const BUDGET = {
   lazyChunkRaw: 700 * 1024,
   lazyChunkGzip: 200 * 1024,
   fonts: 200 * 1024,
-  css: 60 * 1024,
+  css: 60 * 1024, // per page, render-blocking
 };
 
 const DIST = 'dist';
@@ -123,13 +123,38 @@ for (const root of lazy) {
 }
 
 // --- fonts & css ----------------------------------------------------------
+// CSS is render-blocking, so like critical JS it is budgeted per page: the
+// stylesheets a page links to, which a reader waits on before anything paints.
+// (It used to be one total across the whole site, which charged every page
+// for styles only one page loads, such as the About intro's.) The site-wide
+// total is still printed, for reference.
 console.log('\nAssets\n');
-for (const [name, ext, budget] of [['fonts', ['.woff2', '.woff', '.ttf'], BUDGET.fonts], ['css', ['.css'], BUDGET.css]]) {
-  const files = walk(DIST, ext);
+{
+  const files = walk(DIST, ['.woff2', '.woff', '.ttf']);
   const raw = files.reduce((n, f) => n + fs.statSync(f).size, 0);
-  const ok = raw <= budget;
+  const ok = raw <= BUDGET.fonts;
   if (!ok) failed = true;
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(6)} ${kb(raw).padStart(9)}  budget ${kb(budget)}  (${files.length} file${files.length === 1 ? '' : 's'})`);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  fonts  ${kb(raw).padStart(9)}  budget ${kb(BUDGET.fonts)}  (${files.length} files)`);
+}
+
+console.log('\nRender-blocking CSS per page\n');
+for (const page of walk(DIST, ['.html'])) {
+  const html = read(page);
+  let raw = 0;
+  for (const m of html.matchAll(/<link[^>]+rel=["']?stylesheet["']?[^>]*>/g)) {
+    const href = m[0].match(/href=["']?([^"' >]+)/)?.[1];
+    if (href?.startsWith('/')) raw += fs.statSync(path.join(DIST, href)).size;
+  }
+  for (const m of html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) raw += Buffer.byteLength(m[1]);
+  const ok = raw <= BUDGET.css;
+  if (!ok) failed = true;
+  const rel = '/' + path.relative(DIST, page).replace(/index\.html$/, '').replace(/\.html$/, '');
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${kb(raw).padStart(9)}  budget ${kb(BUDGET.css)}  ${rel}`);
+}
+{
+  const files = walk(DIST, ['.css']);
+  const raw = files.reduce((n, f) => n + fs.statSync(f).size, 0);
+  console.log(`\n(site-wide CSS, all pages together: ${kb(raw)} in ${files.length} files)`);
 }
 
 if (failed) {

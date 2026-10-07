@@ -30,6 +30,8 @@ export default defineConfig({
         'three/addons/controls/OrbitControls.js',
         'three/addons/loaders/STLLoader.js',
         'three/addons/loaders/GLTFLoader.js',
+        'three/addons/environments/RoomEnvironment.js',
+        'three/addons/math/MeshSurfaceSampler.js',
       ],
     },
   },

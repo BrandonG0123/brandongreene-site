@@ -15,6 +15,11 @@ const TYPES = {
   '.webp': 'image/webp',
   '.avif': 'image/avif',
   '.txt': 'text/plain; charset=utf-8',
+  '.bin': 'application/octet-stream',
+  '.stl': 'model/stl',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.vtt': 'text/vtt; charset=utf-8',
 };
 
 /** Serve dist/ the way a static host would, so checks run against real output. */

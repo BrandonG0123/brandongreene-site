@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import AboutIntro from '../components/AboutIntro.astro';
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -15,6 +16,8 @@ const jsonLd = {
   description="Brandon Greene — high school student working on AI, mathematics and hardware, plus tennis and competitive chess."
   jsonLd={jsonLd}
 >
+  <AboutIntro />
+
   <div class="wrap sheet">
     <div class="rail">
       <dl>
@@ -28,8 +31,6 @@ const jsonLd = {
     </div>
 
     <div class="column">
-      <h1>About</h1>
-
       <!-- DRAFT: Brandon, this is a skeleton built from the interview. Rewrite in
            your own words and add the specifics marked below. -->
 
@@ -43,7 +44,7 @@ const jsonLd = {
         working through the maths behind it, and then printing something that has to actually fit.
       </p>
 
-      <h2>What I'm working on</h2>
+      <h2 id="now">What I'm working on</h2>
       <p>
         I'm a few weeks into a year-long independent study in AI and machine learning, supervised by
         my computer science teacher. The idea came out of a conversation with my college advisor and
@@ -55,7 +56,7 @@ const jsonLd = {
         lives, including the parts that don't work yet.
       </p>
 
-      <h2>Tennis</h2>
+      <h2 id="tennis">Tennis</h2>
       <!-- TODO Brandon: how long, what level, team or club, time per week, any results.
            No invented numbers — write what's true. -->
       <p>
@@ -63,7 +64,7 @@ const jsonLd = {
         takes each week, and any results worth naming.]</em>
       </p>
 
-      <h2>Chess</h2>
+      <h2 id="chess">Chess</h2>
       <!-- TODO Brandon: rated? federation? peak rating? tournaments? team?
            Say if you'd rather not publish a rating and it stays off. -->
       <p>

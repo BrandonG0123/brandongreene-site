@@ -142,13 +142,16 @@ Placeholder slots get no card, for the same reason they get no page.
 
 ## Generated images
 
-Three kinds of image are rendered offline and committed, so nobody's browser has
-to do the work:
+These are rendered offline and committed, so nobody's browser has to do the
+work:
 
 ```bash
 npm run render:still     # hero gyroid still — rerun after changing gyroid.ts
 npm run build && npm run render:models   # card stills of each project's 3D model
 npm run render:icons     # iPhone home-screen icon — rerun after changing favicon.svg
+npm run render:about     # About intro: poster, the five piece stills, and the
+                         # calibration object's points — rerun after changing
+                         # anything in src/scripts/intro/
 ```
 
 The hero still is the same shader with the same uniforms as the live hero's first
@@ -173,6 +176,19 @@ each project's real viewer.
   element can never be met on a short screen.
 - Nothing heavy runs at load: the hero shader waits for first interaction; the
   three.js viewer loads by dynamic import near the viewport.
+- The About intro (`src/scripts/intro/`) is the other exception to "nothing
+  moves on its own": about 13 seconds, once per visit. **Skip intro** comes first
+  in the tab order, and any key, wheel, touch or click on the stage skips it.
+  Once the pieces settle, nothing moves unless the reader is pointing at it.
+  Its setup runs in short steps that yield to the browser (each leaves an
+  `intro:<step>` performance mark), so it never blocks the page.
+- **A real GPU, or the still.** `failIfMajorPerformanceCaveat` is not enough on
+  its own: current Chromium hands SwiftShader (CPU rendering) a context even
+  with it set. `src/scripts/gpu.ts` (and the About page's inline check) also
+  reject software renderers by name. Headless CI browsers therefore get the
+  stills, so the 3D never shows up in CI's axe or Lighthouse runs. Test the live
+  path locally with Playwright and
+  `--use-angle=metal --enable-gpu --ignore-gpu-blocklist`, which uses the Mac's GPU.
 - New decorative text (the kinetic band, the wordmark) is still a claim. Every
   word must be something Brandon actually does.
 

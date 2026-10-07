@@ -1,0 +1,399 @@
+---
+/**
+ * The About page's opening: "Ignition" (src/scripts/intro). A tennis ball burns;
+ * its embers become scan points that pass through the other things Brandon does
+ * and settle as five pieces, each a link.
+ *
+ * Three states, built up rather than torn down (the same pattern as the serve):
+ *   default        no JavaScript: the title and the five links as tiles
+ *   .intro--still  reduced motion, or no capable GPU: the same tiles, with a
+ *                  still of each piece rendered from the real scene
+ *   .intro--live   the full intro; the same links are laid over their pieces
+ *
+ * Every piece is something Brandon does. The voiceover slot appears only once
+ * public/about/voiceover.m4a (or .mp3) and voiceover.vtt exist (see NEXT.md).
+ */
+import fs from 'node:fs';
+
+const has = (p: string) => fs.existsSync(`public${p}`);
+
+const pieces = [
+  { key: 'ball', label: 'Tennis', note: 'Where the scanner started', href: '#tennis' },
+  { key: 'knight', label: 'Chess', note: 'Played competitively', href: '#chess' },
+  { key: 'calibration', label: 'Foot scanner', note: 'The main project', href: '/projects/foot-scanner' },
+  { key: 'network', label: 'Machine learning', note: 'Independent study · build log', href: '/log' },
+  { key: 'gyroid', label: 'Mathematics', note: 'Under every project', href: '/projects' },
+].map((p) => ({ ...p, still: has(`/about/pieces/${p.key}.webp`) }));
+
+const poster = has('/about/poster.webp');
+
+// The voiceover: mp3, or m4a straight from an iPhone's Voice Memos.
+const voiceSrc = ['/about/voiceover.m4a', '/about/voiceover.mp3'].find(has);
+const voice = !!voiceSrc && has('/about/voiceover.vtt');
+// The transcript is the caption file's text, so the two can never disagree.
+const transcript = voice
+  ? fs.readFileSync('public/about/voiceover.vtt', 'utf8')
+      .split(/\r?\n\r?\n/)
+      .map((block) => block.split(/\r?\n/).filter((l) => l && !l.includes('-->') && !/^WEBVTT/.test(l) && !/^\d+$/.test(l) && !/^NOTE/.test(l)).join(' '))
+      .filter(Boolean)
+  : [];
+---
+
+<section class="intro" data-intro aria-labelledby="about-title">
+  <script is:inline>
+    // Decide live or still BEFORE any of the section is parsed or painted.
+    // This is its first child on purpose: on a slow connection the browser
+    // paints HTML as it arrives, and a check at the end let the no-JS tiles
+    // flash and then jump.
+    //
+    // A real GPU, or nothing. Software rendering (headless CI browsers among
+    // them) gets the stills and never downloads three.js. The renderer-name
+    // test matches src/scripts/gpu.ts: Chromium's SwiftShader passes
+    // failIfMajorPerformanceCaveat, so the flag alone isn't enough.
+    (() => {
+      const root = document.currentScript.closest('[data-intro]');
+      const still = () => root.classList.add('intro--still');
+      if (window.__introCapture) return root.classList.add('intro--live');
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return still();
+      try {
+        const gl = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true });
+        if (!gl) return still();
+        const info = gl.getExtension('WEBGL_debug_renderer_info');
+        const name = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+        const lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+        if (/swiftshader|llvmpipe|softpipe|software|microsoft basic render/i.test(name)) return still();
+      } catch (e) {
+        return still();
+      }
+      let seen = false;
+      try { seen = sessionStorage.getItem('about-intro-seen') === '1'; } catch (e) { /* plays again */ }
+      root.classList.add('intro--live');
+      if (seen) root.classList.add('intro--resume');
+    })();
+  </script>
+  <div class="intro__stage" data-intro-stage>
+    {
+      poster && (
+        <picture class="intro__poster" aria-hidden="true">
+          <source srcset="/about/poster.avif" type="image/avif" />
+          <img src="/about/poster.webp" alt="" width="1600" height="900" fetchpriority="high" />
+        </picture>
+      )
+    }
+    <canvas class="intro__canvas" data-intro-canvas aria-hidden="true"></canvas>
+
+    <div class="intro__head">
+      <h1 id="about-title">About me</h1>
+      <p class="intro__lede">Tennis, chess, a foot scanner, machine learning, and the maths under all of it. Pick one.</p>
+    </div>
+
+    <nav class="intro__nav" aria-label="Everything about me">
+      <ul>
+        {
+          pieces.map((p, i) => (
+            <li>
+              <a href={p.href} data-piece={i} style={`--i:${i}`}>
+                {p.still && (
+                  <picture class="intro__still" aria-hidden="true">
+                    <source srcset={`/about/pieces/${p.key}.avif`} type="image/avif" />
+                    <img src={`/about/pieces/${p.key}.webp`} alt="" width="480" height="480" loading="lazy" />
+                  </picture>
+                )}
+                <span class="intro__label">{p.label}</span>
+                <span class="intro__note">{p.note}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <p class="intro__caption" data-intro-caption aria-hidden="true"></p>
+    <p class="intro__eq" data-intro-eq aria-hidden="true"></p>
+    {voice && <p class="intro__subs" data-intro-subs aria-hidden="true"></p>}
+
+    <div class="intro__controls">
+      <button type="button" class="intro__btn" data-intro-skip>Skip intro</button>
+      <button type="button" class="intro__btn" data-intro-replay hidden>Replay</button>
+      {voice && <button type="button" class="intro__btn" data-intro-sound>Play with sound</button>}
+    </div>
+  </div>
+
+  {
+    voice && (
+      <>
+        <audio data-intro-audio preload="none" src={voiceSrc}>
+          <track kind="captions" src="/about/voiceover.vtt" srclang="en" label="English" default />
+        </audio>
+        <details class="intro__transcript wrap">
+          <summary>Transcript of the intro</summary>
+          {transcript.map((line) => <p>{line}</p>)}
+        </details>
+      </>
+    )
+  }
+</section>
+
+<script>
+  // The live intro itself: three.js and the scene, loaded only when the inline
+  // check (inside the section, above) chose it.
+  const root = document.querySelector<HTMLElement>('[data-intro].intro--live');
+  if (root) {
+    const settled = root.classList.contains('intro--resume');
+    import('../scripts/intro')
+      .then((m) => m.mountIntro(root, { settled, capture: (window as any).__introCapture }))
+      .then((h) => {
+        if (!h) throw new Error('no renderer');
+        (root as any).__intro = h; // for the stills script and tests: seek(), skip()
+      })
+      .catch(() => {
+        root.classList.remove('intro--live', 'intro--resume', 'intro--running');
+        root.classList.add('intro--still');
+      });
+  }
+</script>
+
+<style>
+  /* The stage is a screen: dark in both themes. Reading mode redefines the
+     surface, rule and ball tokens for paper, so the dark values are pinned here
+     (they match :root's defaults in global.css). */
+  .intro {
+    --fg: var(--frost);
+    --fg-muted: var(--mist);
+    --accent: var(--ice);
+    --bg: var(--void);
+    --surface: #0b0f17;
+    --hairline: #1a2130;
+    --rule: #5b677b;
+    --ball: #d4ff3a;
+    position: relative;
+    background: var(--void);
+    background:
+      radial-gradient(60% 55% at 50% 48%, color-mix(in srgb, var(--ice) 7%, transparent), transparent 70%),
+      var(--void);
+    color: var(--fg);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .intro__stage {
+    position: relative;
+    max-width: var(--wrap);
+    margin-inline: auto;
+    padding: var(--space-7) clamp(var(--space-5), 4vw, var(--space-7)) var(--space-7);
+  }
+
+  .intro__poster, .intro__canvas, .intro__caption, .intro__eq, .intro__subs, .intro__controls { display: none; }
+
+  .intro__head h1 {
+    margin: 0;
+    font-size: clamp(2.6rem, 1.4rem + 5vw, 6rem);
+    letter-spacing: -0.04em;
+    line-height: 0.95;
+  }
+  .intro__lede {
+    max-width: 30rem;
+    margin: var(--space-4) 0 0;
+    color: var(--fg-muted);
+  }
+
+  /* Tiles: the no-JS and still layout. */
+  .intro__nav ul {
+    list-style: none;
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    gap: var(--space-4);
+  }
+  .intro__nav a {
+    display: grid;
+    gap: var(--space-1);
+    height: 100%;
+    padding: var(--space-4);
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--fg);
+    text-decoration: none;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .intro__nav a:hover, .intro__nav a.is-hot {
+    border-color: var(--accent);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--ice) 6%, var(--surface));
+  }
+  .intro__still img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+  .intro__label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--step-0);
+    letter-spacing: -0.01em;
+  }
+  .intro__note {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .intro__transcript {
+    padding-block: var(--space-4) var(--space-6);
+    color: var(--fg-muted);
+  }
+  .intro__transcript summary { cursor: pointer; color: var(--fg); }
+
+  /* ---- live ------------------------------------------------------------------ */
+  .intro.intro--live .intro__stage {
+    max-width: none;
+    min-height: calc(100svh - var(--header-h));
+    padding: 0;
+    overflow: hidden;
+  }
+  .intro--live .intro__canvas {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .intro--live .intro__poster {
+    display: block;
+    position: absolute;
+    inset: 0;
+    transition: opacity 0.9s var(--ease-out);
+  }
+  .intro--live .intro__poster img { width: 100%; height: 100%; object-fit: cover; }
+  .intro--running .intro__poster, .intro--resume .intro__poster { opacity: 0; }
+
+  /* Title bottom-left, arriving with the pieces. Still read by screen readers
+     throughout: only its opacity changes. */
+  .intro--live .intro__head {
+    position: absolute;
+    left: clamp(var(--space-5), 4vw, var(--space-7));
+    bottom: clamp(var(--space-5), 5vh, var(--space-7));
+    max-width: min(34rem, 60%);
+    opacity: 0;
+    transform: translateY(0.6rem);
+    transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+  }
+  .intro--revealed .intro__head { opacity: 1; transform: none; }
+
+  /* Links laid over their pieces. Hidden (not just transparent) until they
+     arrive, so nobody can tab to something they can't see. */
+  .intro--live .intro__nav { position: absolute; inset: 0; pointer-events: none; }
+  .intro--live .intro__nav ul { display: block; margin: 0; }
+  .intro--live .intro__nav a {
+    position: absolute;
+    left: var(--x, 50%);
+    top: var(--y, 50%);
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    height: auto;
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    background: none;
+    text-align: center;
+    transform: translate(-50%, 0.4rem);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: auto;
+    transition: opacity 0.6s var(--ease-out) calc(var(--i) * 0.07s), transform 0.6s var(--ease-out) calc(var(--i) * 0.07s), visibility 0s linear 0.6s;
+  }
+  .intro--revealed .intro__nav a {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition: opacity 0.6s var(--ease-out) calc(var(--i) * 0.07s), transform 0.6s var(--ease-out) calc(var(--i) * 0.07s), visibility 0s;
+  }
+  .intro--live .intro__still { display: none; }
+  .intro--live .intro__label { text-shadow: 0 0 0.6em var(--void), 0 0 1.2em var(--void); }
+  .intro--live .intro__nav a:hover .intro__label,
+  .intro--live .intro__nav a.is-hot .intro__label { color: var(--accent); }
+  .intro--live .intro__nav a:hover, .intro--live .intro__nav a.is-hot { background: none; }
+
+  .intro--live .intro__caption,
+  .intro--live .intro__eq {
+    display: block;
+    position: absolute;
+    left: clamp(var(--space-5), 4vw, var(--space-7));
+    margin: 0;
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+  .intro--live .intro__caption {
+    bottom: calc(clamp(var(--space-5), 5vh, var(--space-7)) + 1.8rem);
+    font-size: 0.8rem;
+    color: var(--fg);
+    opacity: 0;
+    transform: translateY(0.4rem);
+    transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  }
+  .intro--live .intro__caption.is-on { opacity: 1; transform: none; }
+  .intro--live .intro__eq {
+    bottom: clamp(var(--space-5), 5vh, var(--space-7));
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    text-transform: none;
+    color: var(--ball);
+  }
+  .intro--revealed .intro__caption, .intro--revealed .intro__eq { opacity: 0; }
+
+  .intro--live .intro__subs {
+    display: block;
+    position: absolute;
+    left: 50%;
+    bottom: clamp(5rem, 14vh, 8rem);
+    transform: translateX(-50%);
+    max-width: min(40rem, 90%);
+    margin: 0;
+    padding: var(--space-1) var(--space-3);
+    background: var(--void);
+    background: color-mix(in srgb, var(--void) 75%, transparent);
+    text-align: center;
+    font-size: var(--step-0);
+  }
+  .intro--live .intro__subs:empty { display: none; }
+
+  .intro--live .intro__controls {
+    display: flex;
+    gap: var(--space-2);
+    position: absolute;
+    right: clamp(var(--space-5), 4vw, var(--space-7));
+    bottom: clamp(var(--space-5), 5vh, var(--space-7));
+  }
+  .intro__btn {
+    min-height: 2.75rem;
+    padding: 0 var(--space-4);
+    border: 1px solid var(--rule);
+    border: 1px solid color-mix(in srgb, var(--frost) 35%, transparent);
+    background: var(--void);
+    background: color-mix(in srgb, var(--void) 70%, transparent);
+    color: var(--frost);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .intro__btn:hover { border-color: var(--ice); color: var(--ice); }
+  .intro__btn[hidden] { display: none; }
+
+  /* Tall screens: title and controls stack at the bottom, under the pieces. */
+  @media (max-aspect-ratio: 23/20) {
+    .intro--live .intro__head { max-width: none; right: clamp(var(--space-5), 4vw, var(--space-7)); bottom: 5.5rem; }
+    .intro--live .intro__head h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); }
+    .intro--live .intro__lede { font-size: var(--step--1); }
+    .intro--live .intro__controls { left: clamp(var(--space-5), 4vw, var(--space-7)); right: auto; bottom: var(--space-5); }
+    .intro--live .intro__caption { bottom: 7rem; }
+    .intro--live .intro__eq { bottom: 5.5rem; font-size: 0.72rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intro__nav a, .intro--live .intro__head, .intro--live .intro__poster { transition: none; }
+  }
+</style>
