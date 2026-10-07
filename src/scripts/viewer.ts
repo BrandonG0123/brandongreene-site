@@ -130,11 +130,13 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
     }),
   );
-  scene.add(body);
+  const rig = new THREE.Group();
+  scene.add(rig);
+  rig.add(body);
 
   const edgeMat = new THREE.LineBasicMaterial({ color: css('--ice', '#4DF3FF'), transparent: true, opacity: 0.85 });
   const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 24), edgeMat);
-  scene.add(edges);
+  rig.add(edges);
 
   // Measurement floor: a grid like the scan mat, fading out radially.
   const grid = new THREE.GridHelper(4, 32, css('--rule', '#5B677B'), css('--rule', '#5B677B'));
@@ -210,14 +212,51 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
   new ResizeObserver(() => { resize(); wake(); }).observe(canvas);
   resize();
 
+  // ---- follow the pointer ------------------------------------------------
+  // Anywhere on the page: the object leans toward the cursor. Over the viewer:
+  // the scan line tracks the cursor's height, so you scan it with your mouse.
+  const tilt = { x: 0, y: 0, tx: 0, ty: 0 };
+  let hovering = false, scanTarget = height * 0.5;
+
+  const onPagePointer = (e: PointerEvent) => {
+    if (reduced.matches || e.pointerType === 'touch') return;
+    const r = host.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    tilt.ty = Math.max(-1, Math.min(1, (e.clientX - cx) / (innerWidth * 0.5))) * 0.55;
+    tilt.tx = Math.max(-1, Math.min(1, (e.clientY - cy) / (innerHeight * 0.5))) * 0.22;
+    wake();
+  };
+  const onStagePointer = (e: PointerEvent) => {
+    if (reduced.matches) return;
+    const r = canvas.getBoundingClientRect();
+    const fy = (e.clientY - r.top) / r.height;          // 0 top .. 1 bottom
+    // The object occupies roughly the middle band of the frame; map that band
+    // onto its height so the line sits where the cursor is.
+    scanTarget = Math.max(-0.02, Math.min(height * 1.05, (0.78 - fy) / 0.5 * height));
+    hovering = true;
+    wake();
+  };
+  window.addEventListener('pointermove', onPagePointer, { passive: true });
+  canvas.addEventListener('pointermove', onStagePointer, { passive: true });
+  canvas.addEventListener('pointerleave', () => { hovering = false; wake(); });
+
   let raf = 0, visible = true, idleFrames = 0;
-  const clock = new THREE.Clock();
+  const timer = new THREE.Timer();
   const tick = () => {
-    const t = clock.getElapsedTime();
-    uniforms.uSweep.value = reduced.matches ? height * 0.55 : ((t * 0.28) % 1.25) * height * 1.15 - height * 0.05;
+    timer.update();
+    const t = timer.getElapsed();
+    tilt.x += (tilt.tx - tilt.x) * 0.06;
+    tilt.y += (tilt.ty - tilt.y) * 0.06;
+    rig.rotation.x = tilt.x;
+    rig.rotation.y = tilt.y;
+    const easing = Math.abs(tilt.tx - tilt.x) + Math.abs(tilt.ty - tilt.y) > 0.0005;
+
+    if (reduced.matches) uniforms.uSweep.value = height * 0.55;
+    else if (hovering) uniforms.uSweep.value += (scanTarget - uniforms.uSweep.value) * 0.18;
+    else uniforms.uSweep.value = ((t * 0.28) % 1.25) * height * 1.15 - height * 0.05;
     const moved = controls.update();
     renderer.render(scene, camera);
-    idleFrames = moved || controls.autoRotate || !reduced.matches ? 0 : idleFrames + 1;
+    idleFrames = moved || easing || controls.autoRotate || !reduced.matches ? 0 : idleFrames + 1;
     raf = visible && !document.hidden && idleFrames < 30 ? requestAnimationFrame(tick) : 0;
   };
   const wake = () => { idleFrames = 0; if (!raf && visible) raf = requestAnimationFrame(tick); };
@@ -234,6 +273,7 @@ export async function mountViewer(host: HTMLElement): Promise<ViewerHandle | nul
   return {
     dispose() {
       cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', onPagePointer);
       io.disconnect();
       controls.dispose();
       geometry.dispose();

@@ -204,6 +204,10 @@ export function createRenderer(
   const label = (text: string, at: readonly [number, number], dx: number, dy: number, col = colours.muted) => {
     ctx.globalAlpha = 1;
     ctx.font = `500 ${Math.max(10, Math.round(H * 0.016))}px "IBM Plex Mono", ui-monospace, monospace`;
+    // Flip to the other side rather than run off the canvas on narrow screens.
+    const w = ctx.measureText(text).width;
+    if (dx < 0 && at[0] + dx - w < 4) dx = -dx;
+    else if (dx > 0 && at[0] + dx + w > W - 4) dx = -dx;
     ctx.fillStyle = col;
     ctx.textAlign = dx < 0 ? 'right' : 'left';
     ctx.fillText(text, at[0] + dx, at[1] + dy);

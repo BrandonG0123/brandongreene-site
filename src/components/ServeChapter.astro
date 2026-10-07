@@ -226,11 +226,13 @@ const label =
     }
     .serve__viz { grid-column: 1; grid-row: 1; height: 100%; }
     .serve__beats { grid-column: 1; grid-row: 2; min-height: 9rem; }
+    .serve__source { top: calc(var(--header-h) + var(--space-3)); bottom: auto; }
   }
 
   /* Reduced motion, or no scrubbing: a normal-height section, still frame,
      every sentence readable. */
-  :global(.serve--still) { height: auto; }
+  /* .serve:global(...) so this outranks the scoped .serve { height: 420vh }. */
+  .serve:global(.serve--still) { height: auto; }
   :global(.serve--still) .serve__stage { position: relative; height: auto; min-height: 80svh; }
   :global(.serve--still) .serve__viz { height: 60svh; }
   :global(.serve--still) .serve__beat {

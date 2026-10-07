@@ -63,11 +63,12 @@ const words = title.split(' ');
 
   const hero = document.querySelector<HTMLElement>('[data-hero]');
   if (hero) {
-    // After first paint: the headline must never wait on shader compilation.
+    // After the page has fully loaded and gone idle: the headline must never
+    // wait on the GPU, and shader work must never compete with first paint.
     const go = () => initGyroid(hero);
-    'requestIdleCallback' in window
-      ? (window as any).requestIdleCallback(go, { timeout: 600 })
-      : setTimeout(go, 200);
+    const idle = () =>
+      'requestIdleCallback' in window ? (window as any).requestIdleCallback(go, { timeout: 1500 }) : setTimeout(go, 300);
+    document.readyState === 'complete' ? idle() : window.addEventListener('load', idle, { once: true });
   }
 </script>
 
@@ -95,14 +96,22 @@ const words = title.split(' ');
   }
   :global(.hero--ready) .hero__canvas { opacity: 1; }
 
-  /* No WebGL: a still glow so the hero is never a flat black void. */
+  /* No GPU (or software WebGL, which we refuse): a pre-rendered still of the
+     same gyroid, so these visitors get the real image rather than a stutter. */
   :global(.hero--no-webgl) .hero__canvas {
     opacity: 1;
     background:
-      radial-gradient(40% 50% at 72% 50%, color-mix(in srgb, var(--ice) 22%, transparent), transparent 70%),
-      radial-gradient(30% 40% at 78% 55%, color-mix(in srgb, var(--violet) 25%, transparent), transparent 70%),
+      image-set(url('/hero/gyroid-still.avif') type('image/avif'), url('/hero/gyroid-still.webp') type('image/webp'))
+        right center / auto 100% no-repeat,
       var(--bg);
   }
+  @media (max-width: 46rem) {
+    :global(.hero--no-webgl) .hero__canvas {
+      background-position: 70% center;
+      opacity: 0.45;
+    }
+  }
+  :root[data-theme='light'] :global(.hero--no-webgl) .hero__canvas { opacity: 0.18; filter: grayscale(1) invert(1); }
 
   /* Insurance for text contrast: the headline column always sits on ground. */
   .hero__veil {

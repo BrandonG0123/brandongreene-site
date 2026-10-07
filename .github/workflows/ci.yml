@@ -81,7 +81,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # Build in launch mode: the default build is fail-closed noindex, which
+      # Lighthouse correctly scores as "blocked from search". Measure what will
+      # actually go live.
       - run: npm run build
+        env:
+          PUBLIC_ALLOW_INDEXING: 'true'
 
       - name: Lighthouse CI
         run: npx lhci autorun

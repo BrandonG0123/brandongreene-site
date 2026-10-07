@@ -7,7 +7,7 @@ import { Resvg } from '@resvg/resvg-js';
  * Open Graph card generation.
  *
  * The card is the design brief's title block at 1200x630: a ruled sheet, the
- * name in the top margin, the title set in Fraunces, and the facts along the
+ * name in the top margin, the title set in Unbounded, and the facts along the
  * bottom in mono. Same information hierarchy as a project page, so a link
  * preview and the page itself read as the same object.
  *
@@ -18,18 +18,19 @@ import { Resvg } from '@resvg/resvg-js';
 
 const FONT_DIR = path.join(process.cwd(), 'assets/og-fonts');
 const fonts = [
-  { name: 'Fraunces', data: fs.readFileSync(path.join(FONT_DIR, 'Fraunces-700.ttf')), weight: 700 as const, style: 'normal' as const },
+  { name: 'Unbounded', data: fs.readFileSync(path.join(FONT_DIR, 'Unbounded-800.ttf')), weight: 800 as const, style: 'normal' as const },
   { name: 'IBM Plex Mono', data: fs.readFileSync(path.join(FONT_DIR, 'IBMPlexMono-400.ttf')), weight: 400 as const, style: 'normal' as const },
 ];
 
-const VELLUM = '#FAF7F2';
-const GRAPHITE = '#1A1C1E';
-const SLATE = '#4A4F55';
-const SECTION = '#005F73';
-const RULE = '#8C857A';
+const VOID = '#05060A';
+const FROST = '#EEF2F7';
+const MIST = '#8A94A6';
+const ICE = '#4DF3FF';
+const BALL = '#D4FF3A';
+const RULE = '#5B677B';
 
 const MONO = 'IBM Plex Mono';
-const DISPLAY = 'Fraunces';
+const DISPLAY = 'Unbounded';
 
 type Status = 'shipped' | 'in-progress' | 'planned';
 
@@ -41,7 +42,7 @@ const STATUS_LABEL: Record<Status, string> = {
 
 /** The status square from the site: filled, half-filled, or hollow. */
 function statusMark(status: Status) {
-  const color = status === 'in-progress' ? SECTION : status === 'planned' ? SLATE : GRAPHITE;
+  const color = status === 'in-progress' ? ICE : status === 'planned' ? MIST : FROST;
   return {
     type: 'div',
     props: {
@@ -87,7 +88,7 @@ export interface OgOptions {
 }
 
 export async function renderOg({ title, status, facts, domain }: OgOptions): Promise<Buffer> {
-  const statusColor = status === 'in-progress' ? SECTION : status === 'planned' ? SLATE : GRAPHITE;
+  const statusColor = status === 'in-progress' ? ICE : status === 'planned' ? MIST : FROST;
 
   const svg = await satori(
     {
@@ -99,9 +100,10 @@ export async function renderOg({ title, status, facts, domain }: OgOptions): Pro
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: VELLUM,
+          background: VOID,
+          backgroundImage: 'radial-gradient(circle at 88% 22%, rgba(77,243,255,0.20), transparent 46%), radial-gradient(circle at 78% 70%, rgba(139,92,255,0.16), transparent 50%)',
           padding: '56px 64px',
-          border: `1px solid ${RULE}`,
+          border: `2px solid ${RULE}`,
         },
         children: [
           // Top margin: who this is, and where it lives.
@@ -115,7 +117,7 @@ export async function renderOg({ title, status, facts, domain }: OgOptions): Pro
                 fontFamily: MONO,
                 fontSize: '22px',
                 letterSpacing: '4px',
-                color: SLATE,
+                color: MIST,
               },
               children: [
                 { type: 'div', props: { children: 'BRANDON GREENE' } },
@@ -131,11 +133,11 @@ export async function renderOg({ title, status, facts, domain }: OgOptions): Pro
               style: {
                 display: 'flex',
                 fontFamily: DISPLAY,
-                fontWeight: 700,
+                fontWeight: 800,
                 fontSize: `${titleSize(title)}px`,
                 lineHeight: 1.12,
-                color: GRAPHITE,
-                letterSpacing: '-1px',
+                color: FROST,
+                letterSpacing: '-2px',
                 maxWidth: '1000px',
                 paddingRight: '40px',
               },
@@ -162,7 +164,7 @@ export async function renderOg({ title, status, facts, domain }: OgOptions): Pro
                       justifyContent: 'space-between',
                       fontFamily: MONO,
                       fontSize: '24px',
-                      color: SLATE,
+                      color: MIST,
                     },
                     children: [
                       {

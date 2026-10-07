@@ -9,35 +9,51 @@ const nav = [
 const isCurrent = (href: string) => path === href || path.startsWith(href + '/');
 ---
 
-<header class="site-header">
+<header class="site-header" data-header>
   <div class="wrap">
     <a class="brand" href="/">Brandon Greene</a>
-    <nav class="site-nav" aria-label="Main">
-      <ul>
-        {
-          nav.map((item) => (
-            <li>
-              <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
-                {item.label}
-              </a>
-            </li>
-          ))
-        }
-      </ul>
-    </nav>
-    <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
-      Reading mode
+
+    {/* Phones: a disclosure button. It only takes effect once JavaScript adds
+        .nav-js, so with JS off the menu is simply always open. */}
+    <button
+      class="nav-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="site-menu"
+      data-nav-toggle
+    >
+      <span class="nav-toggle__bars" aria-hidden="true"></span>
+      Menu
     </button>
+
+    <div class="site-menu" id="site-menu">
+      <nav class="site-nav" aria-label="Main">
+        <ul>
+          {
+            nav.map((item) => (
+              <li>
+                <a href={item.href} aria-current={isCurrent(item.href) ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
+        Reading mode
+      </button>
+    </div>
   </div>
 </header>
 
 <script>
+  // ---- Reading mode -------------------------------------------------------
   // Dark is the design. "Reading mode" switches to the light vellum theme for
   // anyone who finds light-on-dark harder to read; the choice is remembered.
   const btn = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
   const root = document.documentElement;
   const isReading = () => root.dataset.theme === 'light';
-
   const sync = () => btn?.setAttribute('aria-pressed', String(isReading()));
 
   btn?.addEventListener('click', () => {
@@ -52,6 +68,96 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
     window.dispatchEvent(new CustomEvent('themechange', { detail: next }));
     sync();
   });
-
   sync();
+
+  // ---- Phone menu ---------------------------------------------------------
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-nav-toggle]');
+  const menu = document.getElementById('site-menu');
+
+  if (header && toggle && menu) {
+    header.classList.add('nav-js');
+    const setOpen = (open: boolean) => {
+      toggle.setAttribute('aria-expanded', String(open));
+      header.classList.toggle('nav-open', open);
+    };
+    toggle.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+    // Escape closes and returns focus to the button, as a disclosure should.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+        setOpen(false);
+        toggle.focus();
+      }
+    });
+    // Close if the viewport grows past the phone breakpoint while open.
+    matchMedia('(min-width: 46rem)').addEventListener('change', (m) => m.matches && setOpen(false));
+  }
 </script>
+
+<style>
+  .site-menu {
+    display: contents;
+  }
+
+  .nav-toggle {
+    display: none;
+    align-items: center;
+    gap: var(--space-2);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fg);
+    background: transparent;
+    border: 1px solid var(--rule);
+    min-height: 2.75rem;
+    padding: 0 var(--space-3);
+    cursor: pointer;
+  }
+  .nav-toggle__bars,
+  .nav-toggle__bars::before {
+    display: block;
+    width: 1rem;
+    height: 1.5px;
+    background: currentColor;
+    transition: transform 0.3s var(--ease-out);
+  }
+  .nav-toggle__bars { position: relative; transform: translateY(-3px); }
+  .nav-toggle__bars::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+  }
+  :global(.nav-open) .nav-toggle__bars { transform: translateY(0) rotate(45deg); }
+  :global(.nav-open) .nav-toggle__bars::before { transform: translateY(-6px) rotate(-90deg); }
+
+  @media (max-width: 45.99rem) {
+    /* Only collapse when JS is present to re-open it. */
+    :global(.nav-js) .nav-toggle { display: inline-flex; margin-left: auto; }
+    :global(.nav-js) .site-menu {
+      display: none;
+    }
+    :global(.nav-js.nav-open) .site-menu {
+      display: grid;
+      gap: var(--space-4);
+      flex-basis: 100%;
+      padding-block: var(--space-3) var(--space-4);
+      border-top: 1px solid color-mix(in srgb, var(--rule) 40%, transparent);
+    }
+    :global(.nav-js.nav-open) .site-nav ul {
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+    :global(.nav-js.nav-open) .site-nav a {
+      font-size: var(--step-1);
+      font-family: var(--font-display);
+      text-transform: none;
+      letter-spacing: -0.01em;
+    }
+    :global(.nav-js.nav-open) .theme-toggle { justify-self: start; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-toggle__bars, .nav-toggle__bars::before { transition: none; }
+  }
+</style>
