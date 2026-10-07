@@ -49,8 +49,8 @@ uniform vec3  uInk;
 mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
 
 vec3 orient(vec3 p) {
-  p.xz *= rot(uTime * 0.11 + uMouse.x * 0.55);
-  p.yz *= rot(uTime * 0.07 - uMouse.y * 0.40 + 0.35);
+  p.xz *= rot(uTime * 0.07 + uMouse.x * 0.55);
+  p.yz *= rot(uTime * 0.045 - uMouse.y * 0.40 + 0.35);
   return p;
 }
 
@@ -61,7 +61,7 @@ float gyroid(vec3 q, float s, float thick) {
 
 float map(vec3 p) {
   vec3 q = orient(p);
-  float breathe = 0.5 + 0.5 * sin(uTime * 0.55);
+  float breathe = 0.5 + 0.5 * sin(uTime * 0.38);
   float sphere = length(q) - (1.0 - uScroll * 0.9);
   float g = gyroid(q, 7.2, 0.011 + 0.008 * breathe);
   // The gyroid's field is not a true distance, so march conservatively.
@@ -157,7 +157,7 @@ void main() {
       col = mix(uBg, ink, ao) - spec * 0.05;
     } else {
       vec3 body = mix(uViolet * 0.10, uViolet * 0.42, dif) * (0.55 + 0.45 * ao);
-      vec3 iri = 0.5 + 0.5 * cos(6.2831 * (fres * 0.85 + vec3(0.0, 0.33, 0.67)) + uTime * 0.15);
+      vec3 iri = 0.5 + 0.5 * cos(6.2831 * (fres * 0.85 + vec3(0.0, 0.33, 0.67)) + uTime * 0.09);
       // Glossy glass comes from reflecting a soft studio environment, not from
       // point highlights: the lattice is so regular that point specular lands
       // on every saddle at once and reads as polka dots.

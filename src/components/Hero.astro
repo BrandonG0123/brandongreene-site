@@ -102,7 +102,12 @@ const words = title.split(' ');
     height: 100%;
     z-index: -2;
   }
+  /* Entrance: the gyroid settles into place as the headline rises. Transform
+     only — it's painted at full opacity from the first frame, so it never
+     delays Largest Contentful Paint, and it runs on the compositor. */
   .hero__still {
+    transform-origin: 85% 50%;
+    animation: still-in 2.8s var(--ease-out) both;
     background:
       image-set(url('/hero/gyroid-still.avif') type('image/avif'), url('/hero/gyroid-still.webp') type('image/webp'))
         right center / auto 100% no-repeat,
@@ -161,7 +166,9 @@ const words = title.split(' ');
     border-radius: 50%;
     background: var(--ball);
     box-shadow: 0 0 0 0 color-mix(in srgb, var(--ball) 60%, transparent);
-    animation: pulse 2.4s var(--ease-out) infinite;
+    /* Two beats, then rest: anything moving on its own for more than five
+       seconds needs a pause control (WCAG 2.2.2), and this doesn't earn one. */
+    animation: pulse 2.3s var(--ease-out) 2;
   }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ball) 55%, transparent); }
@@ -216,6 +223,10 @@ const words = title.split(' ');
     gap: var(--space-3);
     animation: fade 1s var(--ease-out) 0.7s both;
   }
+  @keyframes still-in {
+    from { transform: scale(1.09) translateX(2%); }
+    to { transform: none; }
+  }
   @keyframes fade {
     from { opacity: 0; transform: translateY(0.6rem); }
     to { opacity: 1; transform: none; }
@@ -258,7 +269,7 @@ const words = title.split(' ');
     height: 2.5rem;
     background: linear-gradient(var(--accent), transparent);
     transform-origin: top;
-    animation: drip 2.2s var(--ease-out) infinite;
+    animation: drip 2.2s var(--ease-out) 2;
   }
   @keyframes drip {
     0% { transform: scaleY(0); opacity: 1; }
@@ -270,5 +281,6 @@ const words = title.split(' ');
     .hero__word > span, .hero__lede, .hero__actions { animation: none; }
     .hero__pulse, .hero__cue::after { animation: none; }
     .hero__canvas { transition: none; }
+    .hero__still { animation: none; }
   }
 </style>

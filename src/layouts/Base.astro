@@ -33,6 +33,10 @@ const { title, description, noindex, jsonLd, ogSlug } = Astro.props;
     <Footer />
     <div class="cursor-glow" aria-hidden="true" data-cursor-glow></div>
     <script>
+      import { initReveals } from '../scripts/reveal';
+      initReveals();
+    </script>
+    <script>
       // A soft light that follows the pointer at a lag. Fine pointers only, and
       // never with reduced motion.
       const glow = document.querySelector<HTMLElement>('[data-cursor-glow]');

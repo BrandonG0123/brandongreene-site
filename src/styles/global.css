@@ -517,6 +517,16 @@ body::after {
   background: linear-gradient(90deg, var(--accent), transparent);
 }
 
+/* Word reveals (scripts/reveal.ts): each word rises inside its own clip. */
+.rw {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.rw > span { display: inline-block; will-change: transform; }
+
 /* ==========================================================================
    Buttons (links styled as buttons — they navigate, so they stay <a>)
    ========================================================================== */

@@ -167,7 +167,7 @@ export async function mountViewer(host: HTMLElement, opts: ViewerOptions = {}): 
   controls.enableZoom = false;           // never steal the page scroll
   controls.minPolarAngle = 0.25;
   controls.maxPolarAngle = Math.PI / 2.05;
-  controls.autoRotateSpeed = 0.9;
+  controls.autoRotateSpeed = 0.6;   // slow reads as considered; fast reads as busy
   if (mode === 'card') {
     // Pull the camera in to match the card still's crop, and no drag: the card
     // is a link, and a drag would fight the click.
@@ -183,7 +183,9 @@ export async function mountViewer(host: HTMLElement, opts: ViewerOptions = {}): 
   try { if (localStorage.getItem('motion') === 'paused') paused = true; } catch { /* storage blocked */ }
 
   const syncPause = () => {
-    controls.autoRotate = !paused && !reduced.matches;
+    // Card previews never spin on their own: on a busy page they'd compete with
+    // everything else. They move only when the pointer does.
+    controls.autoRotate = mode === 'full' && !paused && !reduced.matches;
     if (pauseBtn) {
       pauseBtn.hidden = reduced.matches;
       pauseBtn.setAttribute('aria-pressed', String(paused));
@@ -270,12 +272,20 @@ export async function mountViewer(host: HTMLElement, opts: ViewerOptions = {}): 
     rig.rotation.y = tilt.y;
     const easing = Math.abs(tilt.tx - tilt.x) + Math.abs(tilt.ty - tilt.y) > 0.0005;
 
-    if (reduced.matches) uniforms.uSweep.value = height * 0.55;
-    else if (hovering) uniforms.uSweep.value += (scanTarget - uniforms.uSweep.value) * 0.18;
-    else uniforms.uSweep.value = ((t * 0.28) % 1.25) * height * 1.15 - height * 0.05;
+    const rest = height * 0.55;
+    const before = uniforms.uSweep.value;
+    if (reduced.matches) uniforms.uSweep.value = rest;
+    else if (hovering) uniforms.uSweep.value += (scanTarget - before) * 0.18;
+    // Full viewer: the scan line sweeps on its own (it has a pause control).
+    else if (mode === 'full') uniforms.uSweep.value = ((t * 0.28) % 1.25) * height * 1.15 - height * 0.05;
+    // Card: the line settles to rest and stays there.
+    else uniforms.uSweep.value += (rest - before) * 0.12;
+    const sweeping = (mode === 'full' && !reduced.matches && !hovering) || Math.abs(uniforms.uSweep.value - before) > 0.0005;
+
     const moved = controls.update();
     renderer.render(scene, camera);
-    idleFrames = moved || easing || controls.autoRotate || !reduced.matches ? 0 : idleFrames + 1;
+    // Keep rendering only while something is actually moving; otherwise sleep.
+    idleFrames = moved || easing || controls.autoRotate || sweeping ? 0 : idleFrames + 1;
     raf = visible && !document.hidden && idleFrames < 30 ? requestAnimationFrame(tick) : 0;
   };
   const wake = () => { idleFrames = 0; if (!raf && visible) raf = requestAnimationFrame(tick); };
