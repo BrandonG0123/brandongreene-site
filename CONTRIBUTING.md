@@ -163,6 +163,14 @@ each project's real viewer.
 - **prefers-reduced-motion** gets still frames, never animation.
 - Anything that moves on its own for more than 5 seconds has a visible pause
   control (WCAG 2.2.2).
+- The one exception is the reader's own request: "See the work" walks down
+  through the serve at reading pace (`src/scripts/tour.ts`). The reader started
+  it, and any scroll, tap or click stops it on the spot; a key skips to the end.
+  Tune the pace with the constants at the top of that file, not by shortening
+  the holds until the sentences can't be read.
+- Content is never hidden behind a reveal that might not fire. Reveals trigger
+  when *any* part of the element is in view; a percentage threshold on a tall
+  element can never be met on a short screen.
 - Nothing heavy runs at load: the hero shader waits for first interaction; the
   three.js viewer loads by dynamic import near the viewport.
 - New decorative text (the kinetic band, the wordmark) is still a claim. Every

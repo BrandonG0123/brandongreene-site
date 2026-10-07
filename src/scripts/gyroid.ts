@@ -383,9 +383,12 @@ export function initGyroid(section: HTMLElement) {
 
     document.addEventListener('visibilitychange', () => (document.hidden ? stop() : play()));
     reduced.addEventListener('change', () => { syncButton(); reduced.matches ? (stop(), draw()) : play(); });
-    window.addEventListener('scroll', () => { readScroll(); if (!raf) draw(); }, { passive: true });
-    window.addEventListener('resize', () => { resize(); if (!raf) draw(); });
-    window.addEventListener('themechange', () => { setColours(); if (!raf) draw(); });
+    // Redraw a paused hero only while it is on screen: below the fold, a full
+    // raymarch on every scroll event is GPU time spent on nothing, and it made
+    // scrolling through the rest of the page stutter.
+    window.addEventListener('scroll', () => { readScroll(); if (!raf && visible) draw(); }, { passive: true });
+    window.addEventListener('resize', () => { resize(); if (!raf && visible) draw(); });
+    window.addEventListener('themechange', () => { setColours(); if (!raf && visible) draw(); });
 
     resize();
     readScroll();
