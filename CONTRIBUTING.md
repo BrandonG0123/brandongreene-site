@@ -142,12 +142,13 @@ Placeholder slots get no card, for the same reason they get no page.
 
 ## Generated images
 
-Two kinds of image are rendered offline and committed, so nobody's browser has
+Three kinds of image are rendered offline and committed, so nobody's browser has
 to do the work:
 
 ```bash
 npm run render:still     # hero gyroid still — rerun after changing gyroid.ts
 npm run build && npm run render:models   # card stills of each project's 3D model
+npm run render:icons     # iPhone home-screen icon — rerun after changing favicon.svg
 ```
 
 The hero still is the same shader with the same uniforms as the live hero's first

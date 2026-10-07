@@ -23,7 +23,7 @@ const label =
     : 'An illustrated tennis serve drawn as a skeleton of joints, from the toss to contact. It is an illustration, not footage of me.';
 ---
 
-<section class="serve" data-serve data-mode={mode} aria-labelledby="serve-heading">
+<section id="origin" class="serve" data-serve data-mode={mode} aria-labelledby="serve-heading">
   <h2 id="serve-heading" class="visually-hidden">Where the work comes from</h2>
 
   <div class="serve__stage">
@@ -239,11 +239,17 @@ const label =
     overflow: hidden;
   }
   .serve.serve--live .serve__viz { display: block; height: 86%; }
-  .serve.serve--live .serve__beats { grid-column: 1; min-height: 12rem; }
+  /* The beats share one grid cell, stacked. The cell is as tall as the tallest
+     beat, so none can spill out of the stage (absolute positioning did, on
+     phones, because the scroll script's translateY replaced the centring one). */
+  .serve.serve--live .serve__beats {
+    grid-column: 1;
+    display: grid;
+    align-items: center;
+    min-height: 12rem;
+  }
   .serve.serve--live .serve__beat {
-    position: absolute;
-    inset: 50% 0 auto 0;
-    transform: translateY(-50%);
+    grid-area: 1 / 1;
     margin: 0;
     opacity: 0;
     visibility: hidden;

@@ -15,7 +15,8 @@
     "test": "npm run build && npm run test:a11y && npm run test:links && npm run test:budget",
     "deploy": "./scripts/deploy.sh",
     "render:still": "node scripts/render-still.mjs",
-    "render:models": "node scripts/render-model-stills.mjs"
+    "render:models": "node scripts/render-model-stills.mjs",
+    "render:icons": "node scripts/render-icons.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.1",

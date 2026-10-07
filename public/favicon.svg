@@ -1,8 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Brandon Greene">
   <title>Brandon Greene</title>
-  <!-- The half-filled square from the In-progress status badge: the site's one
-       idea, at 16px. Reads as a drawing's section symbol. -->
-  <rect width="32" height="32" rx="4" fill="#005F73"/>
-  <rect x="8" y="8" width="16" height="16" fill="none" stroke="#FAF7F2" stroke-width="2.5"/>
-  <rect x="8" y="8" width="8" height="16" fill="#FAF7F2"/>
+  <!-- An optic-yellow ball on the void: the palette's one warm colour and the
+       serve the home page opens with. Two seam arcs, nothing else, so it still
+       reads at 16px. -->
+  <rect width="32" height="32" rx="7" fill="#05060A"/>
+  <circle cx="16" cy="16" r="11" fill="#D4FF3A"/>
+  <path d="M7.6 8.9a11 11 0 0 1 0 14.2M24.4 8.9a11 11 0 0 0 0 14.2" fill="none" stroke="#05060A" stroke-width="2" stroke-linecap="round"/>
 </svg>

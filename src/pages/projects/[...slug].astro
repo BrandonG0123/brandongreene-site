@@ -14,7 +14,19 @@ export async function getStaticPaths() {
 }
 
 const { project } = Astro.props;
-const { Content } = await render(project);
+const { Content, headings } = await render(project);
+
+// "On this page": the case study's own sections, so a skimmer can jump straight
+// to the evidence or to what went wrong.
+const sections = headings.filter((h) => h.depth === 2);
+
+// Reading time from the prose itself (HTML comments are notes, not content).
+const words = (project.body ?? '')
+  .replace(/<!--[\s\S]*?-->/g, '')
+  .replace(/```[\s\S]*?```/g, '')
+  .split(/\s+/)
+  .filter(Boolean).length;
+const minutes = Math.max(1, Math.round(words / 230));
 const d = project.data;
 
 const logEntries = (await getCollection('log', (e) => !e.data.draft))
@@ -170,7 +182,108 @@ const jsonLd = {
             </>
           )
         }
+        <dt>Reading time</dt>
+        <dd>About {minutes} min</dd>
       </dl>
+
+      {
+        sections.length > 2 && (
+          <nav class="toc" aria-label="On this page">
+            <p class="toc__title">On this page</p>
+            <ol>
+              {sections.map((h) => (
+                <li>
+                  <a href={`#${h.slug}`} data-toc>{h.text}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        )
+      }
     </aside>
   </div>
 </Base>
+
+<script>
+  // Highlight the section being read.
+  const tocLinks = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc]')];
+  if (tocLinks.length) {
+    const byId = new Map(tocLinks.map((a) => [decodeURIComponent(a.hash.slice(1)), a]));
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          tocLinks.forEach((a) => a.removeAttribute('aria-current'));
+          byId.get((e.target as HTMLElement).id)?.setAttribute('aria-current', 'location');
+        }
+      },
+      { rootMargin: '-20% 0px -70% 0px' },
+    );
+    byId.forEach((_a, id) => {
+      const h = document.getElementById(id);
+      if (h) io.observe(h);
+    });
+  }
+</script>
+
+<style>
+  /* Wide screens: the project's 3D object stays pinned beside the text while you
+     read, instead of scrolling away and leaving half the page empty. Text keeps
+     its 65-character measure on the left. Below this width the viewer sits
+     inline above the text, as before. */
+  @media (min-width: 80rem) {
+    .column:has(> :global(.viewer)) {
+      display: grid;
+      grid-template-columns: minmax(0, var(--measure)) minmax(0, 1fr);
+      column-gap: clamp(var(--space-6), 4vw, var(--space-8));
+      align-items: start;
+    }
+    .column:has(> :global(.viewer)) > * { grid-column: 1; }
+    .column:has(> :global(.viewer)) > :global(.viewer) {
+      grid-column: 2;
+      grid-row: 1 / span 80;
+      position: sticky;
+      top: calc(var(--header-h) + var(--space-5));
+      margin: 0;
+    }
+    .column:has(> :global(.viewer)) :global(.viewer__stage) { aspect-ratio: 1 / 1; }
+    /* Narrow side column: hint on its own line, both buttons together below. */
+    .column:has(> :global(.viewer)) :global(.viewer__hint) { flex-basis: 100%; }
+  }
+
+  /* On narrow screens the rail sits below the article, where an index of the
+     page above is no use — so it only appears beside the text. */
+  .toc { display: none; }
+  @media (min-width: 56.25rem) {
+    .toc {
+      display: block;
+      margin-top: var(--space-6);
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--hairline);
+      border-top: 1px solid color-mix(in srgb, var(--rule) 50%, transparent);
+    }
+  }
+  .toc__title {
+    margin: 0 0 var(--space-3);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+  .toc a {
+    display: block;
+    padding: var(--space-1) 0 var(--space-1) var(--space-3);
+    border-left: 2px solid var(--hairline);
+    border-left: 2px solid color-mix(in srgb, var(--rule) 40%, transparent);
+    font-size: var(--step--1);
+    line-height: 1.35;
+    color: var(--fg-muted);
+    text-decoration: none;
+    transition: color 0.2s, border-color 0.3s;
+  }
+  .toc a:hover { color: var(--fg); }
+  .toc a[aria-current] { color: var(--fg); border-left-color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .toc a { transition: none; } }
+</style>

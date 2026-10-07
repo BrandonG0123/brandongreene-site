@@ -223,10 +223,19 @@ export async function mountViewer(host: HTMLElement, opts: ViewerOptions = {}): 
   });
 
   // ---- loop: runs only while visible, and only while something is moving ---
+  // Hold the HORIZONTAL field of view constant: the scene was composed for a
+  // 16:10 frame, and in a taller frame (the pinned side viewer) a fixed vertical
+  // FOV would crop the object at the sides.
+  const BASE_ASPECT = 1.6;
+  const baseHFov = 2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * BASE_ASPECT);
+  const baseVFov = camera.fov;
   const resize = () => {
     const r = canvas.getBoundingClientRect();
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
+    camera.fov = camera.aspect < BASE_ASPECT
+      ? (2 * Math.atan(Math.tan(baseHFov / 2) / camera.aspect) * 180) / Math.PI
+      : baseVFov;
     camera.updateProjectionMatrix();
   };
   new ResizeObserver(() => { resize(); wake(); }).observe(canvas);

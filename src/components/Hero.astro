@@ -191,12 +191,20 @@ const words = title.split(' ');
       0 0 0.8em var(--bg),
       0 0 1.6em color-mix(in srgb, var(--bg) 70%, transparent);
   }
+  /* Each word rises inside a clip. The clip is a clip-path rather than
+     overflow:hidden so it can be RELEASED once the entrance is over: a fixed
+     clip slices the text's soft contrast halo into a hard dark rectangle that
+     shows wherever a word sits over the bright gyroid. */
   .hero__word {
     display: inline-block;
-    overflow: hidden;
     vertical-align: top;
     padding-bottom: 0.08em;
     margin-bottom: -0.08em;
+    clip-path: inset(-0.05em -3em -0.02em -3em);
+    animation: unclip 0.01s linear 1.7s forwards;
+  }
+  @keyframes unclip {
+    to { clip-path: inset(-3em -3em -3em -3em); }
   }
   .hero__word > span {
     display: inline-block;
@@ -279,6 +287,7 @@ const words = title.split(' ');
 
   @media (prefers-reduced-motion: reduce) {
     .hero__word > span, .hero__lede, .hero__actions { animation: none; }
+    .hero__word { animation: none; clip-path: none; }
     .hero__pulse, .hero__cue::after { animation: none; }
     .hero__canvas { transition: none; }
     .hero__still { animation: none; }

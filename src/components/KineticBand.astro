@@ -7,17 +7,30 @@
  * Every word is one of Brandon's own self-described strengths or pursuits —
  * nothing here is a claim the rest of the site doesn't already make.
  *
+ * Between the rows runs a tape measure, millimetre ticks and centimetre numbers,
+ * sliding at its own rate. Measurement is the thread through the work (the foot
+ * scanner is checked against a printed object of known size), so the band
+ * literally measures the page as it passes. It reads nothing and claims nothing.
+ *
  * Decorative and duplicated for the loop, so the whole band is hidden from
  * assistive tech. Reduced motion: static.
  */
 const rowA = ['Hardware', 'Software', 'Machine learning', 'Mathematics', '3D printing'];
 const rowB = ['Tennis', 'Chess', 'Measurement', 'Engineering', 'Independent study'];
 const loop = (row: string[]) => [...row, ...row, ...row, ...row];
+// Enough centimetres to cover a wide monitor plus the tape's scroll travel.
+const cm = Array.from({ length: 64 }, (_, i) => i);
 ---
 
 <div class="band" data-band aria-hidden="true">
   <div class="band__row" data-band-row data-dir="1">
     {loop(rowA).map((w, i) => <span class:list={['band__word', { 'band__word--outline': i % 2 }]}>{w}<i>✦</i></span>)}
+  </div>
+  <div class="band__tape">
+    <div class="band__ticks" data-band-tape>
+      {cm.map((n) => <span class="band__cm">{n}</span>)}
+    </div>
+    <span class="band__hair" />
   </div>
   <div class="band__row band__row--b" data-band-row data-dir="-1">
     {loop(rowB).map((w, i) => <span class:list={['band__word', { 'band__word--outline': !(i % 2) }]}>{w}<i>✦</i></span>)}
@@ -33,6 +46,7 @@ const loop = (row: string[]) => [...row, ...row, ...row, ...row];
   // competes with whatever they're looking at (and needs no pause control).
   const band = document.querySelector<HTMLElement>('[data-band]');
   const rows = [...(band?.querySelectorAll<HTMLElement>('[data-band-row]') ?? [])];
+  const tape = band?.querySelector<HTMLElement>('[data-band-tape]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   if (band && rows.length && !reduced) {
@@ -52,6 +66,9 @@ const loop = (row: string[]) => [...row, ...row, ...row, ...row];
         const x = dir > 0 ? -progress * travel : -(1 - progress) * travel;
         row.style.transform = `translate3d(${x}px, 0, 0) skewX(${(skew * (i ? -0.7 : 1)).toFixed(2)}deg)`;
       });
+      // The tape runs with the top row but slower: three layers, three depths.
+      // It never leans; a tape measure is the one thing on the page that stays true.
+      if (tape) tape.style.transform = `translate3d(${(-progress * travel * 0.45).toFixed(1)}px, 0, 0)`;
       raf = Math.abs(skew) > 0.02 || Math.abs(skewTarget) > 0.02 ? requestAnimationFrame(paint) : 0;
     };
 
@@ -85,7 +102,51 @@ const loop = (row: string[]) => [...row, ...row, ...row, ...row];
     gap: 0;
     will-change: transform;
   }
-  .band__row--b { margin-top: var(--space-2); }
+  .band__row--b { margin-top: 0; }
+
+  /* Tape measure. 1 mm = 0.5rem, so 1 cm = 5rem. Ticks are a gradient (no DOM per
+     millimetre): short every mm, medium at 5, full at each centimetre. */
+  .band__tape {
+    position: relative;
+    margin-block: var(--space-3);
+    height: 2.1rem;
+    border-block: 1px solid var(--rule);
+    border-block: 1px solid color-mix(in srgb, var(--ball) 55%, transparent);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--ball) 7%, var(--bg));
+    overflow: hidden;
+  }
+  .band__ticks {
+    --tick: linear-gradient(90deg, var(--ball) 0 1px, transparent 1px);
+    display: flex;
+    width: max-content;
+    height: 100%;
+    background-image: var(--tick), var(--tick), var(--tick);
+    background-size: 5rem 100%, 5rem 0.6rem, 0.5rem 0.36rem;
+    background-position: 0 0, 2.5rem 0, 0 0;
+    background-repeat: repeat-x;
+    will-change: transform;
+  }
+  .band__cm {
+    flex: 0 0 5rem;
+    padding: 0.62rem 0 0 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ball);
+    font-variant-numeric: tabular-nums;
+  }
+  /* The reading line: fixed at the centre while the tape slides under it. */
+  .band__hair {
+    position: absolute;
+    left: 50%;
+    top: -1px;
+    bottom: -1px;
+    width: 2px;
+    background: var(--signal);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--signal) 70%, transparent);
+  }
 
   .band__word {
     display: inline-flex;
@@ -114,4 +175,5 @@ const loop = (row: string[]) => [...row, ...row, ...row, ...row];
 
   /* Light reading mode: outlines in ink rather than glow. */
   :root[data-theme='light'] .band__word--outline { -webkit-text-stroke-color: var(--fg); }
+  :root[data-theme='light'] .band__tape { background: color-mix(in srgb, var(--ball) 10%, var(--bg)); }
 </style>

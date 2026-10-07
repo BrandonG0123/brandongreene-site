@@ -70,19 +70,26 @@ then merged to main.
   loaded, follows the mouse, keyboard-operable. Card stills via
   `npm run render:models`.
 - **Motion** (motion.dev) drives scroll-linked and spring animation.
+- **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
+  Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a
+  reading time and a pinned 3D viewer beside the text; a tape measure runs
+  through the word band; the 404 is a line call ("Out."); the favicon is an
+  optic-yellow ball, with an iPhone icon from `npm run render:icons`; links in
+  text get a hairline underline that drops on hover.
 
 ## Verified, last run
 
 | Check | Result |
 |---|---|
-| axe-core | 42 page checks, **0 violations** |
-| Lighthouse | **100 / 100 / 100 / 100** on all six pages, 0 console errors |
-| LCP | 445 ms worst case (budget 2000) |
-| CLS | 0.000 |
-| JS | 5.9 KB total, all inline (budget 100 KB) |
-| Links | 17 internal, all resolve (incl. social cards) |
-| Reflow | no horizontal scroll at 320–1440 |
-| Line length | 65 characters at iPad mini, iPad landscape and 1440 Mac |
+| axe-core | 42 page checks (7 pages × 2 themes × 3 viewports), **0 violations** |
+| Lighthouse (launch mode) | performance 99–100, a11y / best practices / SEO 100, all six pages × 3 runs |
+| TBT | 7 ms worst case |
+| LCP | 539 ms worst case (budget 2000) |
+| CLS | 0.019 home, 0.001 or less elsewhere (budget 0.1) |
+| JS | critical 84 KB on home (budget 100); 3D viewer is a 157 KB-gzip lazy chunk (budget 200) |
+| CSS | 57.8 KB of the 60 KB budget — close; trim before adding more |
+| Links | 32 internal, all resolve (incl. social cards) |
+| Reduced motion / no JS | nothing moves on its own; everything readable without JS |
 
 ## Next, in order
 

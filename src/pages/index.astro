@@ -5,6 +5,7 @@ import Hero from '../components/Hero.astro';
 import ServeChapter from '../components/ServeChapter.astro';
 import KineticBand from '../components/KineticBand.astro';
 import BuildTimeline from '../components/BuildTimeline.astro';
+import ChapterRail from '../components/ChapterRail.astro';
 import { visibleProjects, visibleLog } from '../lib/visibility';
 
 const all = await visibleProjects();
@@ -59,6 +60,8 @@ const jsonLd = {
       updated: fmt(current.when),
     }}
   />
+
+  <ChapterRail />
 
   <ServeChapter />
 

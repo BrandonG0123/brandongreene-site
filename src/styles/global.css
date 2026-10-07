@@ -151,12 +151,24 @@ h4 { font-size: var(--step-0); margin-top: var(--space-5); }
 p, ul, ol, dl, blockquote, figure, table { margin: 0 0 var(--space-5); }
 p { text-wrap: pretty; }
 
+/* Links in running text: a quiet hairline that drops away from the word and
+   firms up on hover, like a line being drawn under it. The underline is always
+   there (colour is never the only cue). */
 a {
   color: var(--accent);
   text-decoration-thickness: 1px;
+  text-decoration-color: var(--accent);
+  text-decoration-color: color-mix(in srgb, var(--accent) 50%, transparent);
   text-underline-offset: 0.18em;
 }
-a:hover { text-decoration-thickness: 2px; }
+a:hover {
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 0.3em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  a { transition: text-underline-offset 0.3s var(--ease-out), text-decoration-color 0.3s; }
+}
 
 /* Focus is visible at every stop, in both themes, and never removed. */
 :focus-visible {

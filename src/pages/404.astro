@@ -1,17 +1,183 @@
 ---
+/**
+ * A line call. The page asked for landed past the baseline: the ball mark sits
+ * just beyond the line, the way an electronic line-calling replay shows it.
+ * Tennis is where the site begins (the serve chapter), so it ends there too.
+ *
+ * The drawing is decorative; the heading and text carry the meaning. The mark
+ * lands once on load; reduced motion shows it already landed.
+ */
 import Base from '../layouts/Base.astro';
 ---
 
 <Base title="Page not found" description="That page does not exist." noindex>
-  <div class="wrap sheet">
-    <div class="column">
-      <h1>Page not found</h1>
-      <p>That page doesn't exist. Nothing here is hidden behind a broken link on purpose.</p>
-      <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/projects">Projects</a></li>
-        <li><a href="/log">Build log</a></li>
-      </ul>
+  <div class="wrap call">
+    <div class="call__text">
+      <p class="chapter-label"><span>404</span> Page not found</p>
+      <h1 class="call__title">Out.</h1>
+      <p class="call__lede">
+        That page landed outside the lines. It may have moved, or the address has a typo. Nothing on this site is
+        hidden behind a broken link on purpose.
+      </p>
+      <nav aria-label="Back into play">
+        <ul class="call__links">
+          <li><a href="/">Home <span aria-hidden="true">↗</span></a></li>
+          <li><a href="/projects">Projects <span aria-hidden="true">↗</span></a></li>
+          <li><a href="/log">Build log <span aria-hidden="true">↗</span></a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <div class="call__court" aria-hidden="true">
+      <svg viewBox="0 0 400 300" class="call__svg">
+        <!-- Court surface, tramlines, the baseline and the centre mark. -->
+        <rect class="c-surface" x="0" y="0" width="400" height="230" />
+        <rect class="c-out" x="0" y="230" width="400" height="70" />
+        <rect class="c-line" x="58" y="0" width="5" height="230" />
+        <rect class="c-line" x="118" y="0" width="5" height="230" />
+        <rect class="c-line" x="58" y="225" width="342" height="5" />
+        <rect class="c-line" x="380" y="215" width="5" height="10" />
+        <!-- The mark: a skid, longer than it is wide, a hair past the line. -->
+        <g class="c-mark">
+          <ellipse cx="236" cy="244" rx="15" ry="6.5" />
+          <ellipse class="c-mark__core" cx="238" cy="244" rx="9" ry="3.6" />
+        </g>
+      </svg>
+      <p class="call__readout">
+        <span class="call__dot"></span>Out <span class="call__code">404</span>
+      </p>
     </div>
   </div>
 </Base>
+
+<style>
+  .call {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: center;
+    min-height: calc(100svh - var(--header-h, 4rem) - 6rem);
+    padding-block: var(--space-7) var(--space-8);
+  }
+  @media (min-width: 56.25rem) {
+    .call { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: var(--space-8); }
+  }
+
+  .call__title {
+    margin: var(--space-4) 0 var(--space-5);
+    font-size: clamp(5rem, 3rem + 11vw, 12rem);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    color: var(--fg);
+    text-shadow: var(--glow);
+  }
+  .call__lede {
+    max-width: var(--measure);
+    color: var(--fg-muted);
+    font-size: var(--step-0);
+  }
+
+  .call__links {
+    list-style: none;
+    margin: var(--space-6) 0 0;
+    padding: 0;
+    border-top: 1px solid var(--hairline);
+  }
+  .call__links a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--hairline);
+    font-family: var(--font-display);
+    font-size: var(--step-2);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    text-decoration: none;
+    transition: color 0.25s, padding 0.35s var(--ease-out);
+  }
+  .call__links a span {
+    font-size: 0.7em;
+    color: var(--fg-muted);
+    transition: color 0.25s, transform 0.35s var(--ease-out);
+  }
+  .call__links a:hover { color: var(--accent); padding-left: var(--space-3); }
+  .call__links a:hover span { color: var(--accent); transform: translate(2px, -2px); }
+
+  /* The court, seen from above and behind the baseline. */
+  .call__court {
+    position: relative;
+    perspective: 900px;
+  }
+  .call__svg {
+    display: block;
+    width: 100%;
+    transform: rotateX(48deg) rotateZ(-8deg);
+    transform-origin: 50% 70%;
+    /* Fades into the dark instead of ending in a hard slab. The mask is in the
+       court's own plane, so the fade foreshortens with it. */
+    -webkit-mask-image: radial-gradient(ellipse 52% 62% at 52% 68%, #000 38%, transparent 100%);
+    mask-image: radial-gradient(ellipse 52% 62% at 52% 68%, #000 38%, transparent 100%);
+  }
+  .c-surface { fill: #0E2235; }
+  .c-out { fill: #0B1A29; }
+  .c-line { fill: var(--frost); }
+  .c-mark ellipse { fill: color-mix(in srgb, var(--ball) 35%, transparent); }
+  .c-mark .c-mark__core { fill: var(--ball); }
+  .c-mark {
+    transform-box: fill-box;
+    transform-origin: 20% 50%;
+    animation: skid 0.7s var(--ease-out) 0.5s both;
+  }
+  @keyframes skid {
+    from { transform: scaleX(0); opacity: 0; }
+    30% { opacity: 1; }
+    to { transform: none; opacity: 1; }
+  }
+
+  .call__readout {
+    position: absolute;
+    right: 8%;
+    bottom: 6%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--markup);
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg);
+    animation: call 0.4s var(--ease-out) 1.1s both;
+  }
+  .call__dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--markup);
+    box-shadow: 0 0 10px var(--markup);
+  }
+  .call__code { color: var(--fg-muted); }
+  @keyframes call {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* Paper: a clay-court reading of the same drawing. */
+  :root[data-theme='light'] .c-surface { fill: #D9CBB7; }
+  :root[data-theme='light'] .c-out { fill: #CDBDA6; }
+  :root[data-theme='light'] .c-line { fill: #FAF7F2; }
+  :root[data-theme='light'] .c-mark ellipse { fill: rgba(78, 107, 0, 0.35); }
+  :root[data-theme='light'] .c-mark .c-mark__core { fill: var(--ball); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .c-mark, .call__readout { animation: none; }
+    .call__links a, .call__links a span { transition: none; }
+    .call__links a:hover { padding-left: 0; }
+    .call__links a:hover span { transform: none; }
+  }
+</style>
