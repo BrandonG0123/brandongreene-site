@@ -60,10 +60,12 @@ then merged to main.
 - **Gyroid hero** (`src/scripts/gyroid.ts`): raymarched in one shader. Shows a
   pre-rendered still at load; the live shader starts on first interaction, and
   refuses software WebGL. `npm run render:still` regenerates the still.
-- **Serve** (`ServeChapter.astro`, `scripts/serve.ts`): production shows only the
-  ball's arc until `public/serve/pose.json` (real pose data from Brandon's own
-  footage) exists. Dev shows a synthetic serve, labelled. Three explicit states:
-  no-JS, reduced motion, live.
+- **Serve** (`ServeChapter.astro`, `scripts/serve.ts`): shows an illustrative,
+  hand-keyframed serve labelled "Illustration · not footage" on the stage, with
+  no measured numbers, until `public/serve/pose.json` (real pose data from
+  Brandon's own footage) exists; then it switches to real mode with joint-angle
+  telemetry. Brandon's decision, 7 Oct 2026. Three explicit states: no-JS,
+  reduced motion, live.
 - **3D model viewer** (`ModelViewer.astro`, `scripts/viewer.ts`): three.js, lazy
   loaded, follows the mouse, keyboard-operable. Card stills via
   `npm run render:models`.
@@ -116,7 +118,8 @@ then merged to main.
   projects are mine, and every claim on this site is checked against them."
   His rule requires disclosure; the exact words are his call.
 - **Serve footage** — film it (tripod, side-on, slo-mo, nobody else in frame, no
-  recognisable court), then run pose estimation to produce `pose.json`.
+  recognisable court), then run pose estimation to produce `pose.json`. The
+  illustration is live until then.
 - **footscan portfolio export** — the prompt is at `~/code/footscan-portfolio-prompt.md`;
   the case study's phase table is now out of date (Phases 2–3 are built).
 
