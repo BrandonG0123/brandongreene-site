@@ -3,10 +3,13 @@
  * and every sound lands exactly on the picture because it is driven by the same
  * clock. Effects only, no words.
  *
- * Sound never starts on its own (browsers forbid it, and it would be rude):
- * the reader presses "Play with sound". Each effect is built from noise or
- * oscillators, shaped by filters and envelopes, and sent through a shared
- * generated reverb and a compressor so nothing clips.
+ * It plays by itself, quietly, when the browser allows a page to start sound
+ * (Chrome does once the visitor has clicked on the site, e.g. the nav link to
+ * About; a direct visit usually needs a click first, and Safari is stricter).
+ * When it's blocked, "Play with sound" starts it. "Mute" is always on screen
+ * (WCAG 1.4.2). Each effect is built from noise or oscillators, shaped by
+ * filters and envelopes, and sent through a shared generated reverb and a
+ * compressor so nothing clips.
  */
 
 export interface Cues {
@@ -32,6 +35,11 @@ export interface Cues {
 export interface Sound {
   /** Call from the click that turns sound on (browsers require a gesture). */
   start(): Promise<void>;
+  /**
+   * Try to start without a click. Calls `onRunning` if and when the browser
+   * lets the audio run; if it never does, nothing happens.
+   */
+  autoplay(onRunning: () => void): void;
   setEnabled(on: boolean): void;
   /** Advance from score time `from` to `to`. A big jump (skip, seek) plays no one-shots. */
   update(from: number, to: number): void;
@@ -255,6 +263,17 @@ export function createSound(c: Cues): Sound {
   oneShots.sort((a, b) => a[0] - b[0]);
 
   return {
+    autoplay(onRunning) {
+      const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+      if (session) session.type = 'playback';
+      if (!ctx) build();
+      const check = () => { if (ctx?.state === 'running') { startBeds(); onRunning(); return true; } return false; };
+      if (check()) return;
+      ctx!.addEventListener('statechange', function once() {
+        if (check()) ctx?.removeEventListener('statechange', once);
+      });
+      ctx!.resume().catch(() => { /* blocked until the reader interacts */ });
+    },
     async start() {
       // On iPhone and iPad, Web Audio obeys the ring/silent switch unless the
       // page declares it is playback (like a video). Safari 17+.
@@ -269,7 +288,8 @@ export function createSound(c: Cues): Sound {
       if (!ctx) return;
       const now = ctx.currentTime;
       master.gain.cancelScheduledValues(now);
-      master.gain.setTargetAtTime(on ? 0.9 : 0, now, 0.05);
+      // Deliberately quiet: this is a page, not a trailer.
+      master.gain.setTargetAtTime(on ? 0.35 : 0, now, 0.05);
     },
     update(from, to) {
       if (!ctx || !enabled) return;

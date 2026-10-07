@@ -76,9 +76,10 @@ then merged to main.
   into scan points that become a chess knight, the scanner's calibration object
   (printed in layers, then scanned), a neural network and the gyroid (its
   equation typed out), then explode into five pieces that are links. About 10 s,
-  once per visit, skippable, Replay afterwards. "Play with sound" adds
-  synthesised effects (ignition, fire, transitions, explosion, landing chimes;
-  no words), opt-in only. Reduced motion, no capable GPU,
+  once per visit, skippable, Replay afterwards. Synthesised sound effects
+  (ignition, fire, transitions, explosion, landing chimes; no words) play
+  quietly by themselves when the browser allows it. Mute is always on screen
+  and remembered. Reduced motion, no capable GPU,
   or no JS: the same five links as tiles with stills (`npm run render:about`).
 - **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
   Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a

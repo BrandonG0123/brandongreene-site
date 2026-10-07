@@ -183,10 +183,13 @@ each project's real viewer.
   Once the pieces settle, nothing moves unless the reader is pointing at it.
   Its setup runs in short steps that yield to the browser (each leaves an
   `intro:<step>` performance mark), so it never blocks the page.
-- **Sound is opt-in, always.** The intro's effects (`sound.ts`) are synthesised
-  in the browser from the same clock as the picture: no files, nothing to
-  license. Nothing plays until the reader presses "Play with sound", which
-  replays the intro with audio; "Mute" stops it.
+- **Sound is quiet, and stoppable at once.** The intro's effects (`sound.ts`)
+  are synthesised in the browser from the same clock as the picture: no files,
+  nothing to license. They play by themselves at a low level when the browser
+  allows a page to start sound (often only after the visitor has clicked
+  something on the site). Otherwise "Play with sound" starts them. "Mute" is on
+  screen from the first frame (WCAG 1.4.2), and a reader who mutes stays muted
+  on later visits.
 - **A real GPU, or the still.** `failIfMajorPerformanceCaveat` is not enough on
   its own: current Chromium hands SwiftShader (CPU rendering) a context even
   with it set. `src/scripts/gpu.ts` (and the About page's inline check) also

@@ -371,10 +371,12 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   skipBtn?.addEventListener('click', skip);
   replayBtn?.addEventListener('click', () => { audio?.pause(); replay(); });
 
-  // Sound: nothing plays until the reader asks. "Play with sound" replays the
-  // intro with the synthesised effects (and the voiceover, once one exists);
-  // "Mute" silences it. Captions for the voice come from the same VTT as the
-  // on-page transcript.
+  // Sound plays by itself, quietly, whenever the browser allows it, unless
+  // this reader muted it before (remembered). "Mute" stops it; "Play with
+  // sound" replays the intro with the effects (and the voiceover, once one
+  // exists). Captions for the voice come from the same VTT as the transcript.
+  const remember = (on: boolean) => { try { localStorage.setItem('intro-sound', on ? 'on' : 'off'); } catch { /* fine */ } };
+  const mutedBefore = (() => { try { return localStorage.getItem('intro-sound') === 'off'; } catch { return false; } })();
   const setSound = (on: boolean) => {
     soundOn = on;
     sound.setEnabled(on);
@@ -382,7 +384,8 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
     if (!on && voicePlaying()) audio!.pause();
   };
   soundBtn?.addEventListener('click', async () => {
-    if (soundOn) return setSound(false);
+    if (soundOn) { remember(false); return setSound(false); }
+    remember(true);
     // Audio first, then the picture: starting the audio engine can take a
     // moment, and the ignition must not play before anyone can hear it.
     await sound.start().catch(() => {});
@@ -481,6 +484,10 @@ export async function mountIntro(root: HTMLElement, opts: Options = {}): Promise
   // (KHR_parallel_shader_compile), instead of in one long block on first draw.
   await renderer.compileAsync(scene, camera);
   await step('compiled');
+
+  if (!opts.capture && !opts.settled && !mutedBefore && !reduced.matches) {
+    sound.autoplay(() => { if (!done) setSound(true); });
+  }
 
   if (opts.capture) {
     // One frame for the stills script.
