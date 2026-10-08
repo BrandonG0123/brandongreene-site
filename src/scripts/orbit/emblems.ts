@@ -208,27 +208,53 @@ export function mind(): THREE.BufferGeometry {
 }
 
 // ---- centre: a spiral staircase of light -----------------------------------------------------
-export interface Helix { steps: THREE.BufferGeometry; column: THREE.BufferGeometry; count: number; stepY(i: number): number; }
-/** Wedge-shaped treads rising round a thin column; each carries its index, so they can light in order. */
-export function helix(count = 20): Helix {
+export interface Helix {
+  steps: THREE.BufferGeometry;
+  column: THREE.BufferGeometry;
+  /** The handrail: a tube along the treads' outer ends, its uv.x running 0 → 1 bottom to top. */
+  rail: THREE.BufferGeometry;
+  count: number;
+  stepY(i: number): number;
+}
+/**
+ * A spiral staircase: wedge-shaped treads rising round a thin column, a post
+ * at each tread's outer end and a handrail over them, a little more than one
+ * turn in all, so it reads as a staircase at a glance and not a pile of
+ * wedges. Each tread (and its post) carries its index, so they can light in order.
+ */
+export function helix(count = 16): Helix {
   const parts: THREE.BufferGeometry[] = [];
-  const r0 = 0.07, r1 = 0.56, width = 0.5;
-  const stepY = (i: number) => -0.9 + (i / (count - 1)) * 1.8;
+  const r0 = 0.06, r1 = 0.56, turn = 0.46, width = 0.42, railH = 0.3;
+  const stepY = (i: number) => -0.9 + (i / (count - 1)) * 1.65;
   for (let i = 0; i < count; i++) {
     // An annular sector in the XY plane, extruded and laid flat.
     const s = new THREE.Shape();
     const n = 8;
     for (let j = 0; j <= n; j++) { const a = -width / 2 + (j / n) * width; const pt = [Math.cos(a) * r1, Math.sin(a) * r1]; if (j === 0) s.moveTo(pt[0], pt[1]); else s.lineTo(pt[0], pt[1]); }
     for (let j = n; j >= 0; j--) { const a = -width / 2 + (j / n) * width; s.lineTo(Math.cos(a) * r0, Math.sin(a) * r0); }
-    const g = new THREE.ExtrudeGeometry(s, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 4 });
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.008, bevelSegments: 1, curveSegments: 4 });
     g.rotateX(-Math.PI / 2);
-    g.rotateY(-i * 0.52);
-    g.translate(0, stepY(i), 0);
-    const plainG = plain(g);
-    plainG.setAttribute('aStep', new THREE.BufferAttribute(new Float32Array(plainG.attributes.position.count).fill(i), 1));
-    parts.push(plainG);
+    // A post up from the tread's outer end to the rail.
+    const post = new THREE.CylinderGeometry(0.009, 0.009, railH, 6, 1, true);
+    post.translate(r1 - 0.035, railH / 2, 0);
+    for (const part of [plain(g), plain(post)]) {
+      part.rotateY(-i * turn);
+      part.translate(0, stepY(i), 0);
+      part.setAttribute('aStep', new THREE.BufferAttribute(new Float32Array(part.attributes.position.count).fill(i), 1));
+      parts.push(part);
+    }
   }
   const steps = mergeGeometries(parts);
-  const column = new THREE.CylinderGeometry(0.022, 0.022, 1.95, 10, 1, true);
-  return { steps, column, count, stepY };
+  // The column runs from under the bottom tread to the rail's top.
+  const c0 = stepY(0) - 0.06, c1 = stepY(count - 1) + railH;
+  const column = new THREE.CylinderGeometry(0.022, 0.022, c1 - c0, 10, 1, true);
+  column.translate(0, (c0 + c1) / 2, 0);
+  // Tread i points along angle i·turn in the XZ plane (from +X toward +Z).
+  const pts: THREE.Vector3[] = [];
+  for (let k = 0; k <= 96; k++) {
+    const u = (k / 96) * (count - 1);
+    pts.push(new THREE.Vector3(Math.cos(u * turn) * (r1 - 0.035), stepY(0) + (u / (count - 1)) * (stepY(count - 1) - stepY(0)) + railH, Math.sin(u * turn) * (r1 - 0.035)));
+  }
+  const rail = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 192, 0.013, 6, false);
+  return { steps, column, rail, count, stepY };
 }

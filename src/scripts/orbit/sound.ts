@@ -211,7 +211,7 @@ export function createSound(): Sound {
   const add = (t: number, f: (at: number) => void) => oneShots.push([t, f]);
   add(0.06, fx.hit);
   add(0.12, (at) => fx.flight(at, 0.95));
-  add(1.22, fx.ignite);
+  add(1.12, fx.ignite);
   add(SCORE.scan[0], (at) => fx.sweep(at, SCORE.scan[1] - SCORE.scan[0]));
   add(SCORE.scan[0] + 0.05, (at) => fx.shimmer(at, 0.9, 0.06));
   add(SCORE.pullBack[0], (at) => fx.whoosh(at, 1.1, 0.16));
@@ -234,11 +234,18 @@ export function createSound(): Sound {
   for (const [t, fs] of PIANO) add(t, (at) => fs.forEach((f, i) => piano(at + i * 0.018, f, 0.9)));
   oneShots.sort((a, b) => a[0] - b[0]);
 
+  // The fire bed follows the picture: it catches at the flare and dies with the
+  // last of the ball (the film's fire fades over 3.1–3.72 s), eased so the
+  // fade is heard as a fade and not a cut.
   const fireLevel = (t: number) => {
-    const up = Math.max(0, Math.min(1, (t - 1.22) / 0.45));
-    const down = 1 - Math.max(0, Math.min(1, (t - SCORE.scan[0]) / (SCORE.scan[1] - SCORE.scan[0])));
+    const up = Math.max(0, Math.min(1, (t - 1.12) / 0.45));
+    const k = Math.max(0, Math.min(1, (t - 2.95) / (3.72 - 2.95)));
+    const down = Math.pow(1 - k * k * (3 - 2 * k), 1.6);
     return up * down;
   };
+  // Measured on the offline render: about −26 LUFS integrated, peaks near
+  // −8 dBFS. Quiet enough not to startle, loud enough to hear on a laptop.
+  const LEVEL = 0.7;
 
   const startBed = () => {
     if (!ctx || fire) return;
@@ -291,7 +298,7 @@ export function createSound(): Sound {
       const now = ctx.currentTime;
       master.gain.cancelScheduledValues(now);
       // Deliberately quiet: this is a page, not a trailer.
-      master.gain.setTargetAtTime(on ? 0.35 : 0, now, 0.05);
+      master.gain.setTargetAtTime(on ? LEVEL : 0, now, 0.05);
     },
     update(from, to) {
       if (!ctx || !enabled) return;
@@ -323,7 +330,7 @@ export function createSound(): Sound {
       const off = new OfflineAudioContext(2, Math.ceil(duration * sampleRate), sampleRate);
       build(off);
       fire = null;
-      master.gain.value = 0.35;
+      master.gain.value = LEVEL;
       startBed();
       // The fire bed follows the picture; crackles come as they would per frame.
       const curve = new Float32Array(Math.ceil(duration * 60));

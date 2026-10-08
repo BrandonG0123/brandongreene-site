@@ -96,9 +96,10 @@ void sampleFire(vec3 pw, out vec3 em, out float ext) {
   float temp = clamp(d * 1.1 + (0.85 - t * 1.3) * 0.5, 0.0, 1.0);
   temp = temp * (0.75 + 0.25 * smoothstep(0.0, 0.08, t));
   em = blackbody(temp) * d * 9.0;
-  ext = d * 9.0;
-  float sm = smoothstep(0.25, 0.9, t) * smoothstep(0.5, 0.72, fbm(flow * 0.55 + 7.0) * 0.5 + 0.5) * src * exp(-t * 0.7);
-  ext += sm * 4.0;
+  ext = d * 6.0;
+  // Smoke, well clear of the ball, so it never smears the felt.
+  float sm = smoothstep(0.45, 1.0, t) * smoothstep(0.5, 0.72, fbm(flow * 0.55 + 7.0) * 0.5 + 0.5) * src * exp(-t * 0.7);
+  ext += sm * 1.8;
   em += vec3(0.5, 0.2, 0.07) * sm * 0.5 * exp(-t * 1.8);
 }
 float h12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }

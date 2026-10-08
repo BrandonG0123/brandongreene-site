@@ -75,6 +75,8 @@ export interface Centre {
   set(draw: number, heads: number[], lit: number, turn: number): void;
   /** Where the staircase's foot is (world), for the label. */
   foot(): THREE.Vector3;
+  /** How many steps it has. */
+  count: number;
   dispose(): void;
 }
 
@@ -87,7 +89,7 @@ export function createCentre(): Centre {
   tilt.rotation.x = TILT;
   tilt.add(stair);
   group.add(tilt);
-  const h = helix(20);
+  const h = helix();
 
   const stepUniforms = { uLit: { value: 0 }, uCount: { value: h.count } };
   // Solid light: drawn opaque, so treads in front cleanly hide those behind.
@@ -108,32 +110,39 @@ export function createCentre(): Centre {
         float since = uLit - vStep;
         float flash = since > 0.0 ? exp(-since * 0.9) : 0.0;
         float rise = vStep / (uCount - 1.0);
-        // Tops catch the most light; edges glow at grazing angles.
-        float top = clamp(vN.y, 0.0, 1.0);
+        // Tops catch the light, the treads' edges fall darker, and grazing angles glow:
+        // that's what makes them read as solid steps.
+        float top = smoothstep(0.2, 0.9, vN.y);
         float rim = pow(1.0 - abs(dot(vN, vV)), 2.0);
-        vec3 deep = vec3(0.04, 0.32, 0.38), bright = vec3(0.55, 1.0, 1.0);
-        vec3 lit = mix(deep, bright, 0.25 + 0.75 * rise) * (0.55 + 0.45 * top) + vec3(0.30, 0.95, 1.0) * rim * 0.6;
+        vec3 deep = vec3(0.03, 0.26, 0.32), bright = vec3(0.6, 1.0, 1.0);
+        vec3 base = mix(deep, bright, 0.3 + 0.7 * rise);
+        vec3 lit = base * (0.42 + 0.58 * top) + vec3(0.30, 0.95, 1.0) * rim * 0.5;
         lit = mix(lit, vec3(1.0), flash * 0.6);
-        vec3 off = vec3(0.30, 0.95, 1.0) * (0.03 + rim * 0.06);
+        // Unlit, it's a faint glass outline, waiting.
+        vec3 off = vec3(0.30, 0.95, 1.0) * (0.035 + rim * 0.22);
         gl_FragColor = vec4(mix(off, lit, on), 1.0);
       }`,
   });
   const steps = new THREE.Mesh(h.steps, stepMat);
-  const columnUniforms = { uLit: stepUniforms.uLit };
-  const columnMat = glow(new THREE.ShaderMaterial({
-    uniforms: columnUniforms,
-    vertexShader: `varying float vY; void main() { vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform float uLit; varying float vY;
+  // The column and the handrail fill upward with the steps, as light.
+  const fill = (lo: number, hi: number, base: number) => glow(new THREE.ShaderMaterial({
+    uniforms: stepUniforms,
+    vertexShader: `varying float vY; varying vec2 vUv; void main() { vY = position.y; vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uLit, uCount; varying float vY; varying vec2 vUv;
       void main() {
-        // The core fills upward with the steps.
-        float k = (vY + 0.975) / 1.95;
-        float on = step(k, uLit / 20.0);
-        vec3 c = vec3(0.30, 0.95, 1.0) * (0.08 + on * 0.55);
+        float k = ${lo < 0 ? 'vUv.x' : `(vY - ${lo.toFixed(3)}) / ${(hi - lo).toFixed(3)}`};
+        float f = uLit / uCount;
+        float on = step(k, f);
+        float head = exp(-pow((f - k) / 0.03, 2.0)) * step(0.001, f) * step(f, 0.999);
+        vec3 c = vec3(0.30, 0.95, 1.0) * (${base.toFixed(2)} + on * 0.6) + vec3(1.0) * head * 0.8;
         gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
       }`,
   }));
-  const column = new THREE.Mesh(h.column, columnMat);
-  stair.add(steps, column);
+  h.column.computeBoundingBox();
+  const cb = h.column.boundingBox!;
+  const column = new THREE.Mesh(h.column, fill(cb.min.y, cb.max.y, 0.06));
+  const rail = new THREE.Mesh(h.rail, fill(-1, 1, 0.05));
+  stair.add(steps, column, rail);
 
   const threads: { mesh: THREE.Mesh; uniforms: { uHead: { value: number }; uFade: { value: number } } }[] = [];
   const threadGroup = new THREE.Group();
@@ -217,8 +226,10 @@ export function createCentre(): Centre {
       tilt.visible = lit > 0 || heads.some((u) => u > 0);
     },
     foot() { return foot.clone(); },
+    count: h.count,
     dispose() {
-      h.steps.dispose(); h.column.dispose(); stepMat.dispose(); columnMat.dispose(); orbitMat.dispose();
+      h.steps.dispose(); h.column.dispose(); h.rail.dispose(); stepMat.dispose();
+      (column.material as THREE.Material).dispose(); (rail.material as THREE.Material).dispose(); orbitMat.dispose();
       orbit?.geometry.dispose();
       for (const t of threads) { t.mesh.geometry.dispose(); (t.mesh.material as THREE.Material).dispose(); }
     },

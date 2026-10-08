@@ -25,8 +25,12 @@ import { SCORE, ORDER, printWindow } from './score';
 export interface OrbitHandle {
   skip(): void;
   replay(): void;
-  /** Hold the opening at a moment (score seconds); for the stills script and tests. */
-  seek(t: number): Promise<void>;
+  /**
+   * Hold the opening at a moment (score seconds); for the stills script and
+   * tests. With `dt`, step there from the last moment instead (frame by frame
+   * for review videos), so the open and turn ease as they do live.
+   */
+  seek(t: number, dt?: number): Promise<void>;
   /** The sound score rendered offline (review videos), as [left, right] samples. */
   soundtrack(duration: number): Promise<{ sampleRate: number; channels: Float32Array[] }>;
   dispose(): void;
@@ -412,10 +416,10 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
   return {
     skip,
     replay,
-    async seek(tt) {
+    async seek(tt, dt) {
       held = true;
       t = Math.max(0, Math.min(END, tt));
-      setOpen(-1);
+      if (dt === undefined) setOpen(-1);
       if (t >= END) { done = false; settle(); }
       else { done = false; root.classList.remove('orbit--done'); }
       // Review captures can show the film under the live scene, as a visitor sees it.
@@ -433,6 +437,7 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
         await new Promise((r) => film.addEventListener('seeked', r, { once: true }));
       }
       root.classList.toggle('orbit--film-gone', t >= SCORE.videoEnd);
+      if (dt !== undefined) { apply(t, dt); draw(); return; }
       // Settle the open/turn springs as if time had run up to here.
       apply(t, 0);
       for (let i = 0; i < 30; i++) apply(t, 1 / 30);

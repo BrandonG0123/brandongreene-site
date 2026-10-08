@@ -147,6 +147,14 @@ const transcript = voice
       <p class="orbit__lede">Tennis, school, the things I build, the mountains and the water, and the one thing they all come back to.</p>
     </div>
 
+    <!-- The controls come before the map, so a keyboard or screen reader reaches
+         Skip and Sound first (they sit bottom right on screen). -->
+    <div class="orbit__controls">
+      <button type="button" class="orbit__btn" data-orbit-skip>Skip intro</button>
+      <button type="button" class="orbit__btn" data-orbit-replay hidden>Replay</button>
+      <button type="button" class="orbit__btn" data-orbit-sound>Play with sound</button>
+    </div>
+
     <nav class="orbit__map" aria-label="Everything about me">
       <p class="orbit__hub">
         <a class="orbit__centre" href="#self-improvement" data-orbit-centre>
@@ -187,11 +195,6 @@ const transcript = voice
 
     {voice && <p class="orbit__subs" data-orbit-subs aria-hidden="true"></p>}
 
-    <div class="orbit__controls">
-      <button type="button" class="orbit__btn" data-orbit-skip>Skip intro</button>
-      <button type="button" class="orbit__btn" data-orbit-replay hidden>Replay</button>
-      <button type="button" class="orbit__btn" data-orbit-sound>Play with sound</button>
-    </div>
   </div>
 
   {
@@ -295,12 +298,25 @@ const transcript = voice
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    /* All six in a row on a wide screen, two by two on a phone. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
     gap: var(--space-4);
   }
   .orbit__cat { display: grid; align-content: start; gap: var(--space-2); }
   .orbit__still img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
   .orbit__centre .orbit__still { max-width: 12rem; }
+  /* The centre tile is full width: its still beside its words, not above an empty band. */
+  @media (min-width: 40rem) {
+    .orbit:not(.orbit--live) .orbit__centre {
+      grid-template-columns: 12rem auto;
+      justify-content: start;
+      column-gap: var(--space-6);
+      align-items: center;
+    }
+    .orbit:not(.orbit--live) .orbit__centre .orbit__still { grid-row: 1 / span 2; }
+    .orbit:not(.orbit--live) .orbit__centre-label { align-self: end; font-size: var(--step-2); }
+    .orbit:not(.orbit--live) .orbit__centre-note { align-self: start; }
+  }
   .orbit__name, .orbit__centre-label {
     font-family: var(--font-display);
     font-weight: 700;
@@ -348,9 +364,11 @@ const transcript = voice
     height: 100%;
   }
   .orbit--live .orbit__poster img { width: 100%; height: 100%; object-fit: cover; }
-  .orbit--live .orbit__film { object-fit: cover; opacity: 0; transition: opacity 0.35s linear; }
+  /* The poster is the film's first frame, so the film cuts in over it (a fade
+     would double-expose the moving camera); it fades only on the way out. */
+  .orbit--live .orbit__film { object-fit: cover; opacity: 0; }
   .orbit--film .orbit__film { opacity: 1; }
-  .orbit--film-gone .orbit__film { opacity: 0; }
+  .orbit--film-gone .orbit__film { opacity: 0; transition: opacity 0.35s linear; }
   .orbit--live .orbit__poster { transition: opacity 0.6s var(--ease-out); }
   .orbit--running .orbit__poster, .orbit--resume .orbit__poster, .orbit--film-gone .orbit__poster { opacity: 0; }
   /* Lens falloff, the same over the film and the live scene. */

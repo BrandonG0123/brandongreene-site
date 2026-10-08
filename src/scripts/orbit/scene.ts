@@ -190,7 +190,7 @@ export async function createScene(
       const [l0, l1] = SCORE.stepsLit;
       // The orbit is drawn piece to piece as they print, finishing as the last one does.
       const draw = ramp(t, SCORE.printStart, printWindow(ORDER.length - 1)[1]);
-      centre.set(draw, heads, ramp(t, l0, l1) * 20, s.turn);
+      centre.set(draw, heads, ramp(t, l0, l1) * centre.count, s.turn);
     },
     render() { renderer.render(scene, camera); },
     async compile() { await renderer.compileAsync(scene, camera); },
