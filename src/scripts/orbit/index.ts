@@ -224,9 +224,10 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
     film.preload = 'auto';
     film.load();
     filmOn = true;
-    root.classList.add('orbit--film');
     let started = false;
-    film.addEventListener('playing', () => { started = true; root.classList.add('orbit--running'); wake(); }, { once: true });
+    // Shown only once it's playing (an empty video can paint black over the
+    // poster); its first frame is the poster, so the cut is invisible.
+    film.addEventListener('playing', () => { started = true; root.classList.add('orbit--film', 'orbit--running'); wake(); }, { once: true });
     film.addEventListener('error', () => { if (!started) giveUpFilm(); }, { once: true });
     film.play().catch(() => giveUpFilm());
     // A slow connection shouldn't hold the page: if it hasn't started soon, go
