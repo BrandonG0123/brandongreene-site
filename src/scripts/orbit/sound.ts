@@ -224,6 +224,8 @@ export function createSound(): Sound {
   });
   for (let i = 0; i < 11; i++) add(SCORE.stepsLit[0] + (i / 11) * (SCORE.stepsLit[1] - SCORE.stepsLit[0]), (at) => fx.step(at, note(i + 3)));
   add(SCORE.centreLabel + 0.05, fx.chord);
+  // The ripple out to the ring: a soft rush of air under the chord.
+  add(SCORE.stepsLit[1], (at) => fx.shimmer(at, 1.1, 0.04));
   [0, 1, 2, 3].forEach((i) => add(SCORE.open + 0.15 + i * 0.12, (at) => fx.chime(at, note(5 + i))));
   // The piano stand-in: an original phrase in D, sparse, under everything.
   const PIANO: [number, number[]][] = [
