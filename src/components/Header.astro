@@ -90,7 +90,7 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
       }
     });
     // Close if the viewport grows past the phone breakpoint while open.
-    matchMedia('(min-width: 46rem)').addEventListener('change', (m) => m.matches && setOpen(false));
+    matchMedia('(min-width: 50rem)').addEventListener('change', (m) => m.matches && setOpen(false));
   }
 </script>
 
@@ -131,7 +131,9 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
   :global(.nav-open) .nav-toggle__bars { transform: translateY(0) rotate(45deg); }
   :global(.nav-open) .nav-toggle__bars::before { transform: translateY(-6px) rotate(-90deg); }
 
-  @media (max-width: 45.99rem) {
+  /* The full nav needs about 780px; below 50rem it collapses rather than wrap
+     onto a second line (which made the header taller than --header-h). */
+  @media (max-width: 49.99rem) {
     /* Only collapse when JS is present to re-open it. */
     :global(.nav-js) .nav-toggle { display: inline-flex; margin-left: auto; }
     :global(.nav-js) .site-menu {

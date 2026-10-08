@@ -50,6 +50,7 @@ const TENNIS = ORDER.indexOf('tennis');
 
 export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise<OrbitHandle | null> {
   const stage = root.querySelector<HTMLElement>('[data-orbit-stage]')!;
+  const controls = root.querySelector<HTMLElement>('.orbit__controls');
   const canvas = root.querySelector<HTMLCanvasElement>('[data-orbit-canvas]')!;
   const film = root.querySelector<HTMLVideoElement>('[data-orbit-film]');
   const cats = [...root.querySelectorAll<HTMLElement>('[data-cat]')];
@@ -113,11 +114,13 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
       c.style.setProperty('--r', `${s.r.toFixed(1)}px`);
       c.dataset.place = scene.layout.tall ? 'panel' : PLACE_WIDE[k];
       if (scene.layout.tall) {
-        // On tall screens the open list sits in a band across the stage, above
-        // the title, rather than beside a piece where there's no room.
+        // On tall screens the open list sits in a band across the stage, just
+        // above the controls (it grows upward from there, however many lines
+        // it takes), rather than beside a piece where there's no room.
         const gutter = Math.min(32, W * 0.06);
+        const above = (controls ? controls.getBoundingClientRect().top - stage.getBoundingClientRect().top : H * 0.88) - 14;
         c.style.setProperty('--px', `${(gutter - s.x).toFixed(1)}px`);
-        c.style.setProperty('--py', `${(H * 0.765 - (s.y + s.r * 1.12)).toFixed(1)}px`);
+        c.style.setProperty('--pyb', `${(above - (s.y + s.r * 1.12)).toFixed(1)}px`);
         c.style.setProperty('--pw', `${(W - gutter * 2).toFixed(1)}px`);
       }
     });

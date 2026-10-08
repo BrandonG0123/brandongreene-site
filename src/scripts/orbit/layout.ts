@@ -61,19 +61,28 @@ export function layout(W: number, H: number): Layout {
   const halfH = FAR * TAN, halfW = halfH * aspect;
   // Room for the title: above the ring on tall screens (with the open list and
   // the controls under it), to its left on wide ones.
-  const lift = tall ? 0.24 : 0.04;
-  const shift = tall ? 0 : 0.075;
-  const slots = (tall ? TALL : WIDE).map(([x, y]) => new THREE.Vector3((x + shift) * halfW, (y + lift) * halfH, 0));
-  const pxPerWorld = H / (2 * halfH);
   const radiusPx = tall ? Math.min(W * 0.1, H * 0.052) : Math.min(W * 0.05, H * 0.086);
+  let lift = 0.04, yScale = 1;
+  if (tall) {
+    // The ring has to fit between the title (about 78px at the top) and the
+    // controls with an open category's list above them (about 216px at the
+    // bottom). On a short phone it squeezes vertically to fit; then it sits
+    // with its top piece just under the title.
+    yScale = Math.max(0.6, Math.min(1, (H - 334 - 2.12 * radiusPx) / (0.44 * H)));
+    lift = Math.max(0.2, Math.min(0.34, (H / 2 - 78 - radiusPx) / (H / 2) - 0.44 * yScale));
+  }
+  const shift = tall ? 0 : 0.075;
+  const slots = (tall ? TALL : WIDE).map(([x, y]) => new THREE.Vector3((x + shift) * halfW, (y * yScale + lift) * halfH, 0));
+  const pxPerWorld = H / (2 * halfH);
   return {
     tall, aspect, videoAspect: videoAspect(aspect), far: FAR, slots,
     size: radiusPx / pxPerWorld,
     centre: new THREE.Vector3(shift * halfW, lift * halfH, 0),
-    centreScale: (tall ? Math.min(W * 0.15, H * 0.075) : H * 0.15) / pxPerWorld,
+    // The staircase shrinks with a squeezed ring, so it and its label stay clear of the pieces.
+    centreScale: (tall ? Math.min(W * 0.15, H * 0.075) * Math.pow(yScale, 1.5) : H * 0.15) / pxPerWorld,
     pxPerWorld,
     // The hexagon's corners lie on this ellipse (see WIDE and TALL).
-    orbit: tall ? { rx: 0.716 * halfW, ry: 0.44 * halfH } : { rx: 0.62 * halfW, ry: 0.543 * halfH },
+    orbit: tall ? { rx: 0.716 * halfW, ry: 0.44 * halfH * yScale } : { rx: 0.62 * halfW, ry: 0.543 * halfH },
   };
 }
 
