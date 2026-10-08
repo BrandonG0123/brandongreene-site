@@ -421,8 +421,8 @@ const transcript = voice
   }
   .orbit--live .orbit__centre.is-on { opacity: 1; visibility: visible; transform: none; transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out), visibility 0s; }
   .orbit--live .orbit__centre-label { font-size: var(--step-1); }
-  /* Small phones: the ring is tight, so the centre's name steps down a size. */
-  @media (max-width: 24rem) { .orbit--live .orbit__centre-label { font-size: var(--step-0); } }
+  /* Phones: the ring is tight, so the centre's name steps down a size to clear the pieces beside it. */
+  @media (max-width: 27rem) { .orbit--live .orbit__centre-label { font-size: var(--step-0); } }
   .orbit--live .orbit__cat {
     position: absolute;
     left: var(--x, 50%);
