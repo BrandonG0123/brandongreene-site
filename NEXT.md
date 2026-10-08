@@ -86,7 +86,13 @@ then merged to main.
   Reduced motion, no capable GPU, or no JS: the same map as tiles with stills
   (`npm run render:about`). The film: `npm run render:film` (Remotion; minutes
   on the Mac). The brief, interview and treatment are in the claude-learning
-  repo (`about-animation/`).
+  repo (`about-animation/`), with the overnight review log
+  (`about-animation/review-log.md`) and the tools that recorded it
+  (`tools/review.mjs` records the built page frame by frame with its sound,
+  `tools/sound.mjs` measures the sound's loudness, `tools/film.mjs` renders
+  the film without a GPU). While the film is on screen a small credit says
+  "Illustration · rendered, not filmed". When a ripple runs out to the ring
+  (8.05 s), the staircase is done.
 - **Phones (7 Oct)**: top-level pages are pictures and short labels; the
   paragraphs live one tap down (folding sections on About and the Build log,
   `src/scripts/phone-collapse.ts`), and the articles use a smaller phone type
@@ -172,6 +178,13 @@ then merged to main.
     the pieces' item lists (and his serve can cut into the film's opening).
   - **Item labels** are drafts from his words; **GPA** and **course names** for
     the School section are his to give (TO CONFIRM; nothing published until he does).
+- **Home: hero button contrast (pre-existing, also on main).** `npm run
+  test:a11y` fails on `/` at the tablet viewport, both themes: axe says the
+  "See the work" `.btn--primary` (src/components/Hero.astro, styles in
+  src/styles/global.css) is under 4.5:1, flakily (1–3 violations between runs),
+  so it may be an animation mid-flight when axe samples it. Because `npm test`
+  chains the checks, it stops the link and budget checks from running (run
+  them on their own meanwhile). Needs its own fix; never by disabling the rule.
 - **About opening links** — Tennis, School, Coding, Hobbies, Mind and
   Self-improvement go to their sections on /about until their own pages exist;
   Projects and its items go to /projects, the foot scanner and the log.
