@@ -188,10 +188,12 @@ each project's real viewer.
 - The About opening, "Orbit" (`src/scripts/orbit/`), is the other exception to
   "nothing moves on its own": about 12 seconds, once per visit (`score.ts`
   holds every time in it, sound included). A real tennis ball takes the hit,
-  catches fire and is scanned into points (a 4-second film, `video/`); the
+  catches fire and is scanned into points (a 3.8-second film, `video/`); the
   points print the six things on the ring; threads of light carry them back
-  to the centre, self-improvement. **Skip intro** comes first in the tab
-  order, and any key, wheel, touch or click on the stage skips it. Once it
+  to the centre, self-improvement. While the film is on screen a small credit
+  says "Illustration · rendered, not filmed": it looks real enough to need
+  one. **Skip intro** comes first in the tab order (the controls precede the
+  map in the page), and any key, wheel, touch or click on the stage skips it. Once it
   settles, the only thing moving by itself is the staircase at the centre,
   turning slowly so the page never looks frozen; everything else answers the
   reader (lean, hover, focus, tap). Its setup runs in short steps that yield to
@@ -206,6 +208,9 @@ each project's real viewer.
   start sound (often only after the visitor has clicked something on the
   site). Otherwise "Play with sound" starts them. "Mute" is on screen from the
   first frame (WCAG 1.4.2), and a reader who mutes stays muted on later visits.
+  Level: about −26 LUFS integrated, peaks near −8 dBFS (`LEVEL` in `sound.ts`).
+  Re-measure after changing the mix: the claude-learning repo's
+  `about-animation/tools/sound.mjs` renders the score offline and prints both.
 - **A real GPU, or the still.** `failIfMajorPerformanceCaveat` is not enough on
   its own: current Chromium hands SwiftShader (CPU rendering) a context even
   with it set. `src/scripts/gpu.ts` (and the About page's inline check) also
