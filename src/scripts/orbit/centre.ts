@@ -70,9 +70,10 @@ export interface Centre {
   place(centre: THREE.Vector3, scale: number, from: THREE.Vector3[], pieceSize: number, orbit: { rx: number; ry: number; start: number }): void;
   /**
    * The orbit drawn so far (0 → 1), each thread's head (0 → 1 along it; past
-   * 1 it has landed and fades), steps lit (0 → count), and the staircase's turn.
+   * 1 it has landed and fades), steps lit (0 → count), the staircase's turn,
+   * and the ripple that answers the last step (0 → 1 as it runs out; 0 or 1 is off).
    */
-  set(draw: number, heads: number[], lit: number, turn: number): void;
+  set(draw: number, heads: number[], lit: number, turn: number, pulse?: number): void;
   /** Where the staircase's foot is (world), for the label. */
   foot(): THREE.Vector3;
   /** How many steps it has. */
@@ -156,6 +157,24 @@ export function createCentre(): Centre {
   orbitMat.depthTest = true;
   let orbit: THREE.Line | null = null;
 
+  // The answer to the last step: one ripple of light from the staircase out to
+  // the ring, as if everything round it had been reached.
+  const pulseUniforms = { uK: { value: 0 } };
+  const pulse = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.0, 256, 1), glow(new THREE.ShaderMaterial({
+    uniforms: pulseUniforms,
+    vertexShader: `void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform float uK;
+      void main() {
+        float a = pow(1.0 - uK, 2.0) * smoothstep(0.0, 0.08, uK) * 0.9;
+        vec3 c = vec3(0.30, 0.95, 1.0) * a;
+        gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
+      }`,
+  })));
+  pulse.visible = false;
+  pulse.frustumCulled = false;
+  group.add(pulse);
+  let pulseCentre = new THREE.Vector3(), pulseRadii = { rx: 1, ry: 1 };
+
   let foot = new THREE.Vector3();
 
   return {
@@ -209,9 +228,20 @@ export function createCentre(): Centre {
       orbit.frustumCulled = false;
       group.add(orbit);
       from.forEach((p, k) => (orbitUniforms.uSlots.value as THREE.Vector3[])[k].copy(p));
+      pulseCentre = c.clone();
+      pulseRadii = { rx: o.rx, ry: o.ry };
       orbitUniforms.uGap.value = pieceSize;
     },
-    set(draw, heads, lit, turn) {
+    set(draw, heads, lit, turn, k = 0) {
+      pulse.visible = k > 0 && k < 1;
+      if (pulse.visible) {
+        // It eases out from the staircase to just past the ring.
+        const e = 1 - Math.pow(1 - k, 3);
+        const grow = 0.08 + e * 1.0;
+        pulse.position.set(pulseCentre.x, pulseCentre.y, 0);
+        pulse.scale.set(pulseRadii.rx * grow, pulseRadii.ry * grow, 1);
+        pulseUniforms.uK.value = k;
+      }
       orbitUniforms.uDraw.value = draw;
       if (orbit) orbit.visible = draw > 0;
       heads.forEach((u, k) => {
@@ -229,6 +259,7 @@ export function createCentre(): Centre {
     count: h.count,
     dispose() {
       h.steps.dispose(); h.column.dispose(); h.rail.dispose(); stepMat.dispose();
+      pulse.geometry.dispose(); (pulse.material as THREE.Material).dispose();
       (column.material as THREE.Material).dispose(); (rail.material as THREE.Material).dispose(); orbitMat.dispose();
       orbit?.geometry.dispose();
       for (const t of threads) { t.mesh.geometry.dispose(); (t.mesh.material as THREE.Material).dispose(); }

@@ -190,7 +190,7 @@ export async function createScene(
       const [l0, l1] = SCORE.stepsLit;
       // The orbit is drawn piece to piece as they print, finishing as the last one does.
       const draw = ramp(t, SCORE.printStart, printWindow(ORDER.length - 1)[1]);
-      centre.set(draw, heads, ramp(t, l0, l1) * centre.count, s.turn);
+      centre.set(draw, heads, ramp(t, l0, l1) * centre.count, s.turn, ramp(t, l1, l1 + 1.1));
     },
     render() { renderer.render(scene, camera); },
     async compile() { await renderer.compileAsync(scene, camera); },
@@ -205,7 +205,7 @@ export async function createScene(
         p.inner.rotation.y = POSE[p.key][0];
       });
       if (which === 'centre') {
-        centre.set(0, ORDER.map(() => 2), 20, 0.6);
+        centre.set(0, ORDER.map(() => 2), centre.count, 0.6);
         centre.group.visible = true;
         target = L.centre.clone();
         size = L.centreScale * 1.4;
