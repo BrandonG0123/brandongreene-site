@@ -23,20 +23,26 @@ export interface Sound {
   open(): void;
   /** Silence the continuous beds (the stage went off screen). */
   hush(): void;
+  /**
+   * The whole score rendered offline, exactly as it would play: for review
+   * videos and checks, never for the page itself.
+   */
+  offline(duration: number, sampleRate?: number): Promise<AudioBuffer>;
   suspend(): void;
   resume(): void;
   dispose(): void;
 }
 
 export function createSound(): Sound {
-  let ctx: AudioContext | null = null;
+  // The live context, or an offline one while offline() renders.
+  let ctx: BaseAudioContext | null = null;
   let master: GainNode, wet: GainNode, dry: GainNode;
   let noise: AudioBuffer;
   let fire: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   let enabled = false;
 
-  const build = () => {
-    ctx = new AudioContext();
+  const build = (into?: BaseAudioContext) => {
+    ctx = into ?? new AudioContext();
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -16;
     comp.ratio.value = 4;
@@ -267,15 +273,16 @@ export function createSound(): Sound {
       if (!ctx) build();
       const check = () => { if (ctx?.state === 'running') { startBed(); onRunning(); return true; } return false; };
       if (check()) return;
-      ctx!.addEventListener('statechange', function once() {
-        if (check()) ctx?.removeEventListener('statechange', once);
+      const live = ctx as AudioContext;
+      live.addEventListener('statechange', function once() {
+        if (check()) live.removeEventListener('statechange', once);
       });
-      ctx!.resume().catch(() => { /* blocked until the reader interacts */ });
+      live.resume().catch(() => { /* blocked until the reader interacts */ });
     },
     async start() {
       session();
       if (!ctx) build();
-      if (ctx!.state !== 'running') await ctx!.resume();
+      if (ctx!.state !== 'running') await (ctx as AudioContext).resume();
       startBed();
     },
     setEnabled(on) {
@@ -308,8 +315,28 @@ export function createSound(): Sound {
     hush() {
       if (ctx) fire?.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05);
     },
-    suspend() { ctx?.suspend(); },
-    resume() { if (enabled) ctx?.resume(); },
-    dispose() { fire?.src.stop(); fire = null; ctx?.close(); ctx = null; },
+    suspend() { (ctx as AudioContext | null)?.suspend(); },
+    resume() { if (enabled) (ctx as AudioContext | null)?.resume(); },
+    dispose() { fire?.src.stop(); fire = null; (ctx as AudioContext | null)?.close(); ctx = null; },
+    async offline(duration, sampleRate = 48000) {
+      const live = ctx, liveFire = fire;
+      const off = new OfflineAudioContext(2, Math.ceil(duration * sampleRate), sampleRate);
+      build(off);
+      fire = null;
+      master.gain.value = 0.35;
+      startBed();
+      // The fire bed follows the picture; crackles come as they would per frame.
+      const curve = new Float32Array(Math.ceil(duration * 60));
+      for (let i = 0; i < curve.length; i++) curve[i] = fireLevel(i / 60) * 0.4 + 1e-4;
+      fire!.gain.gain.setValueCurveAtTime(curve, 0, duration);
+      for (let t = 0; t < duration; t += 1 / 60) {
+        const a = fireLevel(t);
+        if (a > 0.05 && Math.random() < a * (1 / 60) * 38) fx.crackle(t + Math.random() * 0.015, a);
+      }
+      for (const [t, f] of oneShots) if (t < duration) f(t + 0.005);
+      const buf = await off.startRendering();
+      ctx = live; fire = liveFire;
+      return buf;
+    },
   };
 }

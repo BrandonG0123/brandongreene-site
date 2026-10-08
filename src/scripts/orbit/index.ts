@@ -27,14 +27,19 @@ export interface OrbitHandle {
   replay(): void;
   /** Hold the opening at a moment (score seconds); for the stills script and tests. */
   seek(t: number): Promise<void>;
+  /** The sound score rendered offline (review videos), as [left, right] samples. */
+  soundtrack(duration: number): Promise<{ sampleRate: number; channels: Float32Array[] }>;
   dispose(): void;
 }
 
 interface Options {
   /** Start already settled (a return visit within the session). */
   settled?: boolean;
-  /** Offline capture: keep the drawing buffer, never start the clock. */
-  capture?: boolean;
+  /**
+   * Offline capture: keep the drawing buffer, never start the clock. With
+   * `isolate`, draw one piece (or the centre) alone for the stills.
+   */
+  capture?: boolean | { isolate?: 'tennis' | 'school' | 'projects' | 'coding' | 'hobbies' | 'mind' | 'centre'; film?: boolean };
 }
 
 const TENNIS = ORDER.indexOf('tennis');
@@ -173,7 +178,6 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
     if (film) { film.pause(); root.classList.add('orbit--film-gone'); }
   };
 
-  const moving = () => !done || !held || Math.abs(lean.tx - lean.x) + Math.abs(lean.ty - lean.y) > 0.002;
 
   const frame = (now: number) => {
     const dt = Math.min(0.1, (now - last) / 1000);
@@ -188,12 +192,14 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
       if (t >= END) settle();
     }
     sound.update(prevT, t);
+    // The voice comes in on its cue, from the same clock as everything else.
+    if (voice && soundOn && prevT < SCORE.voice && t >= SCORE.voice) { voice.currentTime = 0; voice.play().catch(() => {}); }
     prevT = t;
     apply(t, held ? 0 : dt);
     draw();
-    // Settled, it keeps drawing only for the staircase's slow turn; that stops
-    // with reduced motion, off screen, or in a hidden tab.
-    raf = visible && !document.hidden && !reduced.matches && moving() ? requestAnimationFrame(frame) : 0;
+    // Settled, it keeps drawing for the staircase's slow turn (so the page never
+    // looks frozen); that stops with reduced motion, off screen, or in a hidden tab.
+    raf = visible && !document.hidden && !reduced.matches && !held ? requestAnimationFrame(frame) : 0;
   };
   const wake = () => {
     if (raf || !visible || document.hidden || held) return;
@@ -254,7 +260,7 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
     } else if (!startFilm()) {
       t = SCORE.scan[1];
     }
-    if (voice && soundOn) { voice.currentTime = 0; voice.play().catch(() => {}); }
+    if (voice) { voice.pause(); voice.currentTime = 0; }
     wake();
   };
   skipBtn?.addEventListener('click', skip);
@@ -371,7 +377,9 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
   io.observe(stage);
   const onVisibility = () => { if (document.hidden) sound.suspend(); else sound.resume(); wake(); };
   document.addEventListener('visibilitychange', onVisibility);
-  const ro = new ResizeObserver(() => { resize(); apply(t, 0); draw(); });
+  // (An isolated still is drawn once and must not be redrawn as the full scene.)
+  let isolated = false;
+  const ro = new ResizeObserver(() => { if (isolated) return; resize(); apply(t, 0); draw(); });
   ro.observe(stage);
 
   resize();
@@ -386,6 +394,8 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
   }
 
   if (opts.capture) {
+    const iso = typeof opts.capture === 'object' ? opts.capture.isolate : undefined;
+    if (iso) { isolated = true; scene.isolate(iso); }
     root.dataset.captured = 'true';
   } else if (done) {
     settle();
@@ -408,8 +418,18 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
       setOpen(-1);
       if (t >= END) { done = false; settle(); }
       else { done = false; root.classList.remove('orbit--done'); }
+      // Review captures can show the film under the live scene, as a visitor sees it.
+      const withFilm = typeof opts.capture === 'object' && opts.capture.film;
+      if (film && withFilm && !film.querySelector('source')) {
+        const base = `/about/orbit/opening-${W / H < 1 ? '9x16' : '16x9'}`;
+        film.innerHTML = `<source src="${base}.webm" type="video/webm"><source src="${base}.mp4" type="video/mp4">`;
+        film.preload = 'auto';
+        film.load();
+        await new Promise((r) => film.addEventListener('loadeddata', r, { once: true }));
+        root.classList.add('orbit--film');
+      }
       if (film && film.querySelector('source') && t < SCORE.videoEnd) {
-        film.currentTime = t;
+        film.currentTime = Math.min(t, film.duration - 0.001);
         await new Promise((r) => film.addEventListener('seeked', r, { once: true }));
       }
       root.classList.toggle('orbit--film-gone', t >= SCORE.videoEnd);
@@ -417,6 +437,10 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
       apply(t, 0);
       for (let i = 0; i < 30; i++) apply(t, 1 / 30);
       draw();
+    },
+    async soundtrack(duration) {
+      const b = await sound.offline(duration);
+      return { sampleRate: b.sampleRate, channels: [b.getChannelData(0), b.getChannelData(1)] };
     },
     dispose() {
       cancelAnimationFrame(raf);

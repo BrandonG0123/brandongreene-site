@@ -17,7 +17,8 @@
     "render:still": "node scripts/render-still.mjs",
     "render:models": "node scripts/render-model-stills.mjs",
     "render:icons": "node scripts/render-icons.mjs",
-    "render:about": "node scripts/sample-intro-points.mjs && astro build && node scripts/render-about-stills.mjs"
+    "render:about": "node scripts/orbit-assets.mjs && astro build && node scripts/render-about-stills.mjs",
+    "render:film": "cd video && npm install && npm run render"
   },
   "dependencies": {
     "@astrojs/mdx": "^8.0.1",

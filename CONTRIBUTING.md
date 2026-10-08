@@ -149,10 +149,19 @@ work:
 npm run render:still     # hero gyroid still — rerun after changing gyroid.ts
 npm run build && npm run render:models   # card stills of each project's 3D model
 npm run render:icons     # iPhone home-screen icon — rerun after changing favicon.svg
-npm run render:about     # About intro: poster, the five piece stills, and the
-                         # calibration object's points — rerun after changing
-                         # anything in src/scripts/intro/
+npm run render:about     # About opening: the simplified calibration mesh and the
+                         # seven piece stills — rerun after changing anything in
+                         # src/scripts/orbit/
+npm run render:film      # About opening film (video/, Remotion): both cuts and
+                         # their posters — rerun after changing src/scripts/orbit/film/,
+                         # ball.ts, layout.ts or score.ts. Minutes on a Mac's GPU;
+                         # hours in software
 ```
+
+The About opening's film is the same scene code as the live page, rendered
+frame by frame (`video/README.md`), so the page can hand over from the film to
+the live scene without a seam. Licences for everything the site uses are in
+[docs/licences.md](docs/licences.md).
 
 The hero still is the same shader with the same uniforms as the live hero's first
 frame, so the swap from still to live is seamless. Model stills are captured from
@@ -176,20 +185,27 @@ each project's real viewer.
   element can never be met on a short screen.
 - Nothing heavy runs at load: the hero shader waits for first interaction; the
   three.js viewer loads by dynamic import near the viewport.
-- The About intro (`src/scripts/intro/`) is the other exception to "nothing
-  moves on its own": about 10 seconds, once per visit (`PACE` at the top of
-  `index.ts` sets the speed of the whole score, sound included). **Skip intro** comes first
-  in the tab order, and any key, wheel, touch or click on the stage skips it.
-  Once the pieces settle, nothing moves unless the reader is pointing at it.
-  Its setup runs in short steps that yield to the browser (each leaves an
-  `intro:<step>` performance mark), so it never blocks the page.
-- **Sound is quiet, and stoppable at once.** The intro's effects (`sound.ts`)
-  are synthesised in the browser from the same clock as the picture: no files,
-  nothing to license. They play by themselves at a low level when the browser
-  allows a page to start sound (often only after the visitor has clicked
-  something on the site). Otherwise "Play with sound" starts them. "Mute" is on
-  screen from the first frame (WCAG 1.4.2), and a reader who mutes stays muted
-  on later visits.
+- The About opening, "Orbit" (`src/scripts/orbit/`), is the other exception to
+  "nothing moves on its own": about 12 seconds, once per visit (`score.ts`
+  holds every time in it, sound included). A real tennis ball takes the hit,
+  catches fire and is scanned into points (a 4-second film, `video/`); the
+  points print the six things on the ring; threads of light carry them back
+  to the centre, self-improvement. **Skip intro** comes first in the tab
+  order, and any key, wheel, touch or click on the stage skips it. Once it
+  settles, the only thing moving by itself is the staircase at the centre,
+  turning slowly so the page never looks frozen; everything else answers the
+  reader (lean, hover, focus, tap). Its setup runs in short steps that yield to
+  the browser (each leaves an `orbit:<step>` performance mark), so it never
+  blocks the page. While the film plays, its `currentTime` is the clock, so the
+  live points peel off exactly where the film's scan line is.
+- **Sound is quiet, and stoppable at once.** The opening's effects
+  (`orbit/sound.ts`) are synthesised in the browser from the same clock as the
+  picture: no files, nothing to license. Until Brandon records his own, the
+  piano under them is a stand-in: an original phrase on a synthesised piano.
+  They play by themselves at a low level when the browser allows a page to
+  start sound (often only after the visitor has clicked something on the
+  site). Otherwise "Play with sound" starts them. "Mute" is on screen from the
+  first frame (WCAG 1.4.2), and a reader who mutes stays muted on later visits.
 - **A real GPU, or the still.** `failIfMajorPerformanceCaveat` is not enough on
   its own: current Chromium hands SwiftShader (CPU rendering) a context even
   with it set. `src/scripts/gpu.ts` (and the About page's inline check) also

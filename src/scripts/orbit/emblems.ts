@@ -14,7 +14,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
-import { seamPoint } from '../intro/shapes';
+import { seamPoint } from './util';
 
 export type Key = 'tennis' | 'school' | 'projects' | 'coding' | 'hobbies' | 'mind';
 export const KEYS: Key[] = ['tennis', 'school', 'projects', 'coding', 'hobbies', 'mind'];

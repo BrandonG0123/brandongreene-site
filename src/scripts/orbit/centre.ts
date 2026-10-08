@@ -10,7 +10,11 @@
 import * as THREE from 'three';
 import { helix } from './emblems';
 
-/** Add-only light: colour adds, opacity only grows with it (see shapes.ts glowBlending). */
+/**
+ * Light that only adds: colour adds and opacity grows only with it. Plain
+ * additive blending writes full opacity, which on a transparent canvas paints
+ * faint dark marks over the page behind.
+ */
 function glow<T extends THREE.Material>(m: T): T {
   m.blending = THREE.CustomBlending;
   m.blendSrc = m.blendDst = m.blendSrcAlpha = m.blendDstAlpha = THREE.OneFactor;

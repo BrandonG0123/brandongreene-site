@@ -51,6 +51,8 @@ export interface OrbitScene {
   render(): void;
   /** Compile every shader up front, off the main thread where the browser can. */
   compile(): Promise<void>;
+  /** For the stills: show one piece (or the centre) alone, whole, filling the frame. */
+  isolate(which: E.Key | 'centre'): void;
   /** Screen position (px) of piece k's centre, its radius in px, and the staircase's foot. */
   pieceScreen(k: number): { x: number; y: number; r: number };
   centreScreen(): { x: number; y: number };
@@ -192,6 +194,37 @@ export async function createScene(
     },
     render() { renderer.render(scene, camera); },
     async compile() { await renderer.compileAsync(scene, camera); },
+    isolate(which) {
+      points.points.visible = false;
+      scan.group.visible = false;
+      let target: THREE.Vector3, size: number;
+      pieces.forEach((p) => {
+        const on = p.key === which;
+        p.group.visible = on;
+        p.print.set(1, 0);
+        p.inner.rotation.y = POSE[p.key][0];
+      });
+      if (which === 'centre') {
+        centre.set(0, ORDER.map(() => 2), 20, 0.6);
+        centre.group.visible = true;
+        target = L.centre.clone();
+        size = L.centreScale * 1.4;
+      } else {
+        centre.group.visible = false;
+        const k = ORDER.indexOf(which);
+        target = L.slots[k].clone();
+        size = L.size * 1.45;
+        pieces[k].group.position.copy(target);
+        pieces[k].group.scale.setScalar(L.size);
+      }
+      camera.fov = 30;
+      camera.aspect = W / H;
+      camera.updateProjectionMatrix();
+      camera.position.copy(target).add(v.set(0, size * 0.35, size / Math.tan((15 * Math.PI) / 180)));
+      camera.lookAt(target);
+      camera.updateMatrixWorld();
+      renderer.render(scene, camera);
+    },
     pieceScreen(k) {
       const p = screen(pieces[k].group.position);
       return { ...p, r: L.size * L.pxPerWorld * (pieces[k].group.scale.x / L.size) };

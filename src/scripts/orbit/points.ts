@@ -12,7 +12,7 @@
  */
 import * as THREE from 'three';
 import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
-import { rng } from '../intro/shapes';
+import { rng } from './util';
 import { BALL_R } from './layout';
 import { orientationAt, scanTime, BASE } from './ball';
 
@@ -143,7 +143,8 @@ export function createPoints(n: number, pieces: PieceTarget[]): Points {
   const mat = new THREE.ShaderMaterial({
     vertexShader: VERT, fragmentShader: FRAG, uniforms,
     transparent: true, depthWrite: false,
-    // Light that only adds (see shapes.ts glowBlending): opacity never paints dark marks.
+    // Light that only adds: plain additive blending also writes opacity, which
+    // on a transparent canvas paints faint dark marks over the page behind.
     blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
     blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor,
   });

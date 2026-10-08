@@ -1,4 +1,4 @@
-# Where we stopped — 7 Oct 2026
+# Where we stopped — 8 Oct 2026
 
 Picking this back up: read this file first, then `CONTRIBUTING.md` and
 `DEPLOY.md`.
@@ -74,23 +74,25 @@ then merged to main.
   loaded, follows the mouse, keyboard-operable. Card stills via
   `npm run render:models`.
 - **Motion** (motion.dev) drives scroll-linked and spring animation.
-- **About intro, "Ignition" (7 Oct)**: `src/components/AboutIntro.astro` and
-  `src/scripts/intro/`. A real-looking tennis ball catches fire; its embers cool
-  into scan points that become a chess knight, the scanner's calibration object
-  (printed in layers, then scanned), a neural network and the gyroid (its
-  equation typed out), then explode into five pieces that are links. About 10 s,
-  once per visit, skippable, Replay afterwards. Synthesised sound effects
-  (ignition, fire, transitions, explosion, landing chimes; no words) play
-  quietly by themselves when the browser allows it. Mute is always on screen
-  and remembered. Reduced motion, no capable GPU,
-  or no JS: the same five links as tiles with stills (`npm run render:about`).
+- **About opening, "Orbit" (8 Oct, on branch `claude/confident-curie-7t6jj7`,
+  not merged)**: replaces "Ignition". `src/components/AboutIntro.astro`,
+  `src/scripts/orbit/`, the film in `video/`. A real tennis ball takes the hit,
+  catches fire and is scanned into points (a 3.8 s film, rendered from the same
+  scene code as the page); the points print six pieces round a ring (Tennis,
+  School, Projects, Coding, Hobbies, Mind); threads of light carry them back to
+  the centre, a spiral staircase: self-improvement. Then the ring is the
+  navigation: each category opens into its items on hover, focus or tap, Tennis
+  open by default. About 12 s, once per visit, skippable, Replay afterwards.
+  Reduced motion, no capable GPU, or no JS: the same map as tiles with stills
+  (`npm run render:about`). The film: `npm run render:film` (Remotion; minutes
+  on the Mac). The brief, interview and treatment are in the claude-learning
+  repo (`about-animation/`).
 - **Phones (7 Oct)**: top-level pages are pictures and short labels; the
   paragraphs live one tap down (folding sections on About and the Build log,
   `src/scripts/phone-collapse.ts`), and the articles use a smaller phone type
   scale. Checked in mobile Safari on the iPhone simulator.
-- **The About film** is its own project: `~/code/about-film` (brief in
-  `PROMPT.md`), meant to run as a cloud session on Fable. It produces a
-  `handoff/` package; putting it on the About page is a separate step here.
+- **The About film** now lives in this repo (`video/`), rendered from the
+  page's own scene code; `~/code/about-film` is superseded.
 - **Details, self-review round (7 Oct)**: chapter rail on wide screens (Origin /
   Work / Build log / Elsewhere, scroll-spy); case studies get "On this page", a
   reading time and a pinned 3D viewer beside the text; a tape measure runs
@@ -150,20 +152,29 @@ then merged to main.
   illustration is live until then.
 - **footscan portfolio export** — the prompt is at `~/code/footscan-portfolio-prompt.md`;
   the case study's phase table is now out of date (Phases 2–3 are built).
-- **About intro voiceover (optional)** — the slot is built and invisible until
-  two files exist:
-  - `public/about/voiceover.m4a` (straight from Voice Memos) or `.mp3`
-  - `public/about/voiceover.vtt`: captions, which also become the on-page
-    transcript
-
-  The picture runs about 10 s: tennis 0–1.0, fire 1.0–2.4, chess 2.6, the
-  scanner 4.2, machine learning 5.8, maths 7.2, everything 8.9–10.2. The voice
-  can run longer over the settled pieces, and it plays together with the
-  effects. Sound never plays unless someone presses "Play with
-  sound". Keep it free of school, location or schedule details; parents review it
-  before launch. After adding the files, rebuild.
-- **About intro links** — Mathematics currently goes to /projects ("Under every
-  project"). Change the target or wording in `AboutIntro.astro` if he'd rather.
+- **About opening: what's still a stand-in** (Brandon to provide; nothing waits on it):
+  - **Voiceover**, drafted from his words: "I'm Brandon. Tennis, school, the
+    things I build, the mountains and the water. All of it comes back to one
+    thing: getting better." The slot appears once two files exist:
+    `public/about/voiceover.m4a` (Voice Memos is fine) or `.mp3`, and
+    `public/about/voiceover.vtt` (captions, which also become the transcript).
+    It starts 0.4 s in (`SCORE.voice`). The picture: hit 0–1.1, fire 1.1–2.7,
+    scan 2.7–3.8, the ring printing 4.2–6.5, threads to the centre 6.4–8.0,
+    Tennis opens 8.5, title 9.9, settled 11.6. Keep it free of school, location
+    or schedule details; parents review it before launch.
+  - **Piano**: the music under it is a synthesised stand-in. Four to eight bars
+    of his own playing replace it; it must be his own music or out of copyright.
+  - **Sounds**: all synthesised. His recordings (racquet hits, ball bounces)
+    can replace the hit; CC0 library sounds need kenney.nl or freesound.org
+    allowed in the cloud environment's network settings.
+  - **Footage**: tennis, skiing, surfing, hiking, biking clips and photos, via a
+    shared Google Drive folder. Each frame gets the privacy check. They go into
+    the pieces' item lists (and his serve can cut into the film's opening).
+  - **Item labels** are drafts from his words; **GPA** and **course names** for
+    the School section are his to give (TO CONFIRM; nothing published until he does).
+- **About opening links** — Tennis, School, Coding, Hobbies, Mind and
+  Self-improvement go to their sections on /about until their own pages exist;
+  Projects and its items go to /projects, the foot scanner and the log.
 
 - Contact method — leaning an alias on the domain. Personal email must never
   appear in plain text.

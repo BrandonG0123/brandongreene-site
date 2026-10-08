@@ -6,6 +6,8 @@
 import type { Key } from './emblems';
 
 export const SCORE = {
+  /** Brandon's voiceover starts here, when sound is on (NEXT.md: the voiceover slot). */
+  voice: 0.4,
   /** The ball's flight and ignition: video only. */
   flight: [0, 1.1],
   ignition: [1.1, 2.7],

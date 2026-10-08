@@ -216,7 +216,7 @@ const transcript = voice
   if (root) {
     const settled = root.classList.contains('orbit--resume');
     import('../scripts/orbit')
-      .then((m) => m.mountOrbit(root, { settled, capture: !!(window as any).__orbitCapture }))
+      .then((m) => m.mountOrbit(root, { settled, capture: (window as any).__orbitCapture }))
       .then((h) => {
         if (!h) throw new Error('no renderer');
         (root as any).__orbit = h; // for the stills script and tests: seek(), skip()
@@ -323,7 +323,8 @@ const transcript = voice
     gap: 0.15rem;
     font-size: var(--step--1);
   }
-  .orbit__items a { color: var(--fg-muted); text-decoration: none; }
+  /* At least 24px tall, so each is a comfortable target (WCAG 2.5.8). */
+  .orbit__items a { display: inline-flex; align-items: center; min-height: 1.5rem; color: var(--fg-muted); text-decoration: none; }
   .orbit__items a:hover { color: var(--accent); }
 
   .orbit__transcript {
@@ -428,7 +429,7 @@ const transcript = voice
     width: max-content;
     max-width: 16rem;
     padding: 0;
-    gap: 0.3rem;
+    gap: 0.1rem;
     pointer-events: auto;
     opacity: 0;
     visibility: hidden;
@@ -450,8 +451,9 @@ const transcript = voice
   .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(4) { transition-delay: 0.18s; }
   .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(n + 5) { transition-delay: 0.24s; }
   .orbit--live .orbit__items a {
-    display: block;
-    padding: 0.15rem 0;
+    display: flex;
+    align-items: center;
+    min-height: 1.5rem;
     font-family: var(--font-mono);
     font-size: 0.74rem;
     letter-spacing: 0.04em;
@@ -462,6 +464,7 @@ const transcript = voice
   .orbit--live .orbit__cat[data-place='left'] .orbit__items {
     right: calc(50% + var(--r, 40px) * 1.35);
     text-align: right;
+    justify-items: end;
     --shift: 0.6rem;
     border-right: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
     padding-right: var(--space-3);
@@ -479,6 +482,7 @@ const transcript = voice
     translate: -50% 0;
     margin-top: var(--space-2);
     text-align: center;
+    justify-items: center;
     border-top: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
     padding-top: var(--space-2);
   }
