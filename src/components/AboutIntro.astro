@@ -141,6 +141,8 @@ const transcript = voice
     {film && <video class="orbit__film" data-orbit-film muted playsinline preload="none" disablepictureinpicture aria-hidden="true" tabindex="-1"></video>}
     <canvas class="orbit__canvas" data-orbit-canvas aria-hidden="true"></canvas>
     <div class="orbit__vignette" aria-hidden="true"></div>
+    <!-- The opening's ball is drawn, not filmed: say so while it's on screen. -->
+    {(poster || film) && <p class="orbit__credit" aria-hidden="true">Illustration · rendered, not filmed</p>}
 
     <div class="orbit__head">
       <h1 id="about-title">About me</h1>
@@ -521,6 +523,26 @@ const transcript = voice
   }
   .orbit--live .orbit__subs:empty { display: none; }
 
+  .orbit__credit { display: none; }
+  .orbit--live .orbit__credit {
+    display: block;
+    position: absolute;
+    left: clamp(var(--space-5), 4vw, var(--space-7));
+    bottom: calc(clamp(var(--space-5), 5vh, var(--space-7)) + 1.375rem - 0.95em);
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.45em 0.6em;
+    background: color-mix(in srgb, var(--void) 62%, transparent);
+    color: color-mix(in srgb, var(--frost) 82%, var(--mist));
+    pointer-events: none;
+    transition: opacity 0.5s var(--ease-out);
+  }
+  /* Gone once the film is: the title takes its place. */
+  .orbit--revealed .orbit__credit, .orbit--film-gone .orbit__credit, .orbit--resume .orbit__credit { opacity: 0; }
   .orbit--live .orbit__controls {
     display: flex;
     gap: var(--space-2);
@@ -550,6 +572,7 @@ const transcript = voice
   .orbit--live.orbit--tall .orbit__head { max-width: none; right: clamp(var(--space-5), 4vw, var(--space-7)); bottom: auto; top: var(--space-4); }
   .orbit--live.orbit--tall .orbit__head h1 { font-size: clamp(1.7rem, 8vw, 2.4rem); }
   .orbit--live.orbit--tall .orbit__lede { display: none; }
+  .orbit--live.orbit--tall .orbit__credit { bottom: auto; top: var(--space-4); }
   .orbit--live.orbit--tall .orbit__controls { left: clamp(var(--space-5), 4vw, var(--space-7)); right: auto; bottom: var(--space-5); }
   .orbit--live .orbit__cat[data-place='panel'] .orbit__items {
     left: calc(50% + var(--px, 0px));
