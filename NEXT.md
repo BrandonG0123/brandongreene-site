@@ -124,15 +124,13 @@ then merged to main.
    - Résumé facts.
 2. **Fill the `[To fill in: ...]` markers** on `/about` and `/resume`. These are
    real page content and would be publicly visible.
-3. **Deploy** — self-hosted on Brandon's own machine (the one running his
-   Minecraft server), fronted by a Cloudflare Tunnel so his home IP stays out
-   of public DNS. `DEPLOY.md` is the full walkthrough; `npm run deploy` builds,
-   verifies and rsyncs. Still needs from Brandon: the domain (one line in
-   `astro.config.mjs`), and the server prepared per DEPLOY.md steps 2-3.
-   The site is hidden from search by default. Launch = build with
-   `PUBLIC_ALLOW_INDEXING=true`, only after the fill-in markers are gone.
-   Known and accepted: the machine goes down roughly weekly. Brandon plans to
-   fix that; until then the URL should not go anywhere that gets one shot.
+3. **Launch.** Deploying is done: brandongreene.dev is live from tank (it pulls
+   `main` and rebuilds automatically) and hidden from search on purpose. Launch
+   means building with `PUBLIC_ALLOW_INDEXING=true` on tank, and only after: the
+   fill-in markers are gone, Brandon has approved the footer's AI-disclosure
+   wording, and his parents have reviewed the site. Known and accepted: the
+   machine goes down roughly weekly; until that's fixed, the URL shouldn't go
+   anywhere that gets one shot.
 4. **Manual accessibility pass** — `docs/manual-a11y-test.md`. Automated tooling
    catches about a third of real issues; this is the part that matters.
 5. Delete unused `slot-*.md` files once real projects replace them.
