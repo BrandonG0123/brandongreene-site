@@ -185,6 +185,11 @@ then merged to main.
   so it may be an animation mid-flight when axe samples it. Because `npm test`
   chains the checks, it stops the link and budget checks from running (run
   them on their own meanwhile). Needs its own fix; never by disabling the rule.
+- **Lighthouse (pre-existing, same on main, 8 Oct):** the home page scores 0.84
+  for performance with a layout shift of 0.31 (budget 0.1), and the foot
+  scanner case study 0.92–0.94 with about 210 ms of blocking time. /about
+  scores 100 / 100 / 100 (LCP 0.43 s, no shift, no blocking time); every page's
+  SEO is 0.66 only because unlaunched builds are `noindex`.
 - **About opening links** — Tennis, School, Coding, Hobbies, Mind and
   Self-improvement go to their sections on /about until their own pages exist;
   Projects and its items go to /projects, the foot scanner and the log.
