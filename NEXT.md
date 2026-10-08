@@ -6,7 +6,10 @@ Picking this back up: read this file first, then `CONTRIBUTING.md` and
 ## State
 
 Site is built, verified, and pushed to github.com/BrandonG0123/brandongreene-site
-(main). It deploys from tank: `git pull; npm ci; npm run build` (see `DEPLOY.md`).
+(main). **Deploys are automatic:** tank pulls `main` every few seconds and
+rebuilds, so a push is live on brandongreene.dev almost at once, before CI has
+finished. Verify locally before pushing. (Manual steps, if ever needed, are in
+`DEPLOY.md`.)
 For the latest state run `git log --oneline`.
 
 ```bash
