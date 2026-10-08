@@ -99,7 +99,10 @@ export async function mountOrbit(root: HTMLElement, opts: Options = {}): Promise
   const resize = () => {
     const r = stage.getBoundingClientRect();
     W = Math.max(1, r.width); H = Math.max(1, r.height);
-    scene.resize(W, H, Math.min(devicePixelRatio || 1, small ? 1.75 : 2));
+    // Sharp, within a pixel budget: a big screen at 2x is 10+ million pixels a
+    // frame, more than a laptop's graphics can draw smoothly.
+    const budget = small ? 2.6e6 : 4.2e6;
+    scene.resize(W, H, Math.max(1, Math.min(devicePixelRatio || 1, small ? 1.75 : 2, Math.sqrt(budget / (W * H)))));
     root.classList.toggle('orbit--tall', scene.layout.tall);
   };
 
