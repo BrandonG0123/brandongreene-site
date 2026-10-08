@@ -13,7 +13,7 @@ const jsonLd = {
 
 <Base
   title="About"
-  description="Brandon Greene — high school student working on AI, mathematics and hardware, plus tennis and competitive chess."
+  description="Brandon Greene: tennis, school, the things he builds, the mountains and the water, and self-improvement at the centre of it."
   jsonLd={jsonLd}
 >
   <AboutIntro />
@@ -23,54 +23,79 @@ const jsonLd = {
       <dl>
         <dt>Class of</dt>
         <dd>2029</dd>
-        <dt>Focus</dt>
-        <dd>AI/ML, mathematics, hardware</dd>
+        <dt>Right now</dt>
+        <dd>Tennis and school</dd>
         <dt>Also</dt>
-        <dd>Tennis, chess</dd>
+        <dd>Building things, the mountains and the water, piano</dd>
       </dl>
     </div>
 
     <div class="column" data-about-text>
-      <!-- DRAFT: Brandon, this is a skeleton built from the interview. Rewrite in
-           your own words and add the specifics marked below. -->
+      <!-- DRAFT: Brandon, every sentence below is built from what you told me
+           (about-animation/interview.md in claude-learning). Rewrite anything
+           in your own words; fill the marked gaps. The sections run in the
+           same order as the ring above. -->
 
       <p class="lede" style="font-size:var(--step-1);line-height:1.5">
-        I'm a high school student in the class of 2029, working on software, machine learning and
-        hardware.
+        I'm a high school sophomore, class of 2029. Right now school and tennis are the big two.
+        Around them: the things I build, the mountains and the water, and a lot of thinking.
       </p>
 
+      <h2 id="self-improvement">Self-improvement</h2>
       <p>
-        Most of what I do sits somewhere between software and physical objects — writing code,
-        working through the maths behind it, and then printing something that has to actually fit.
-      </p>
-
-      <h2 id="now">What I'm working on</h2>
-      <p>
-        I'm a few weeks into a year-long independent study in AI and machine learning, supervised by
-        my computer science teacher. The idea came out of a conversation with my college advisor and
-        lined up with things I already wanted to build.
-      </p>
-      <p>
-        The main project is a foot scanner aimed at making custom orthopedic insoles cheaper to
-        produce. It is early. The <a href="/log">build log</a> is where the actual week-to-week work
-        lives, including the parts that don't work yet.
+        I'm very big on self-improvement, and my values circle around it. <em>[To fill in: what that
+        looks like for you, in your own words. A short video of you talking about it can go here.]</em>
       </p>
 
       <h2 id="tennis">Tennis</h2>
-      <!-- TODO Brandon: how long, what level, team or club, time per week, any results.
-           No invented numbers — write what's true. -->
       <p>
-        I play tennis. <em>[To fill in: how long you've played, where you play, how much time it
-        takes each week, and any results worth naming.]</em>
+        Tennis is a big part of me. I train with a private coach for at least twelve hours a week,
+        play tournaments twice a month, and play on my high school team. I want to play in college.
+      </p>
+      <p>
+        It's also where the <a href="/projects/foot-scanner">foot scanner</a> started: I play tennis
+        and I have flat feet.
       </p>
 
-      <h2 id="chess">Chess</h2>
-      <!-- TODO Brandon: rated? federation? peak rating? tournaments? team?
-           Say if you'd rather not publish a rating and it stays off. -->
+      <h2 id="school">School</h2>
       <p>
-        I played chess competitively. <em>[To fill in: how long, which federation or club, the
-        format of the competition, and any results. If you'd rather not publish a rating, say so and
-        it stays off.]</em>
+        School is the other half of my week, and I take a rigorous course load. <em>[To fill in: the
+        courses, and your GPA if you want it here.]</em>
+      </p>
+      <p>
+        I'm also a few weeks into a year-long independent study in AI and machine learning, supervised
+        by my computer science teacher. The idea came out of a conversation with my college advisor
+        and lined up with things I already wanted to build.
+      </p>
+
+      <h2 id="projects">Projects</h2>
+      <p>
+        The main project is a foot scanner for custom orthotics: a phone-based scanning pipeline. It's
+        in progress, not finished. The <a href="/log">build log</a> is where the week-to-week work
+        lives, including the parts that don't work yet. Around it I work on machine learning and
+        mathematics, and I 3D print. Everything is on the <a href="/projects">projects page</a>.
+      </p>
+
+      <h2 id="coding">Coding</h2>
+      <p>
+        I've spent at least three years learning to program: HTML, CSS and JavaScript for the web,
+        plus C++ and Python.
+      </p>
+
+      <h2 id="hobbies">Hobbies</h2>
+      <p>
+        Skiing is my favourite thing to do. I love biking, hiking in the mountains and the hills, and
+        the water: I surf. I box and train three days a week.
+      </p>
+      <p>
+        I grew up playing piano and taking swim lessons, and I still play piano now and then. I played
+        chess competitively until high school.
+      </p>
+
+      <h2 id="mind">Mind</h2>
+      <p>
+        I'm a very psychological person. I have deep conversations with my friends, and I spend time
+        thinking about myself and everything I have going on in life.
       </p>
 
       <h2 id="contact">Contact</h2>
@@ -85,15 +110,15 @@ const jsonLd = {
 </Base>
 
 <script>
-  // Phones: the sections fold behind their headings. The intro's pieces link
-  // to #tennis and #chess, which open the matching section.
+  // Phones: the sections fold behind their headings. The opening's pieces
+  // link to #tennis, #hobbies and the rest, which open the matching section.
   import { collapseOnPhone, sectionsFrom } from '../scripts/phone-collapse';
   const text = document.querySelector('[data-about-text]');
   if (text) collapseOnPhone(sectionsFrom(text, 'h2'));
 </script>
 
 <style>
-  /* Phones: the facts rail repeats what the intro's pieces already say. */
+  /* Phones: the facts rail repeats what the opening's ring already says. */
   @media (max-width: 40rem) {
     .rail { display: none; }
   }

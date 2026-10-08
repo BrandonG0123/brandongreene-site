@@ -1,31 +1,86 @@
 ---
 /**
- * The About page's opening: "Ignition" (src/scripts/intro). A tennis ball burns;
- * its embers become scan points that pass through the other things Brandon does
- * and settle as five pieces, each a link.
+ * The About page's opening: "Orbit" (src/scripts/orbit). A real tennis ball
+ * takes the hit, catches fire and is scanned into points (an opening video,
+ * rendered offline: video/README.md); the points print the six things
+ * Brandon is about round a ring; threads of light carry them back to the
+ * centre, self-improvement; then the ring is the navigation.
  *
- * Three states, built up rather than torn down (the same pattern as the serve):
- *   default        no JavaScript: the title and the five links as tiles
- *   .intro--still  reduced motion, or no capable GPU: the same tiles, with a
- *                  still of each piece rendered from the real scene
- *   .intro--live   the full intro; the same links are laid over their pieces
+ * Three states, built up rather than torn down:
+ *   default         no JavaScript: the centre and the six categories as tiles,
+ *                   every item listed as a link
+ *   .orbit--still   reduced motion, or no capable GPU: the same tiles, with a
+ *                   still of each piece rendered from the real scene
+ *   .orbit--live    the full opening; the same links laid over their pieces
  *
- * Every piece is something Brandon does. The voiceover slot appears only once
- * public/about/voiceover.m4a (or .mp3) and voiceover.vtt exist (see NEXT.md).
+ * Every word here is something Brandon said about himself (see the
+ * interview notes). The voiceover slot appears only once
+ * public/about/voiceover.m4a (or .mp3) and voiceover.vtt exist (NEXT.md).
  */
 import fs from 'node:fs';
 
 const has = (p: string) => fs.existsSync(`public${p}`);
 
-const pieces = [
-  { key: 'ball', label: 'Tennis', note: 'Where the scanner started', href: '#tennis' },
-  { key: 'knight', label: 'Chess', note: 'Played competitively', href: '#chess' },
-  { key: 'calibration', label: 'Foot scanner', note: 'The main project', href: '/projects/foot-scanner' },
-  { key: 'network', label: 'Machine learning', note: 'Independent study · build log', href: '/log' },
-  { key: 'gyroid', label: 'Mathematics', note: 'Under every project', href: '/projects' },
-].map((p) => ({ ...p, still: has(`/about/pieces/${p.key}.webp`) }));
+const cats = [
+  {
+    key: 'tennis', label: 'Tennis', href: '#tennis',
+    items: [
+      { label: 'Coach · 12+ hours a week', href: '#tennis' },
+      { label: 'Tournaments · twice a month', href: '#tennis' },
+      { label: 'High school team', href: '#tennis' },
+      { label: 'Goal: play in college', href: '#tennis' },
+    ],
+  },
+  {
+    key: 'school', label: 'School', href: '#school',
+    items: [
+      { label: 'Course rigor', href: '#school' },
+      { label: 'Independent study · AI and machine learning', href: '/log' },
+    ],
+  },
+  {
+    key: 'projects', label: 'Projects', href: '/projects',
+    items: [
+      { label: 'Foot scanner', href: '/projects/foot-scanner' },
+      { label: 'Machine learning', href: '/log' },
+      { label: 'Mathematics', href: '/projects' },
+      { label: '3D printing', href: '/projects/foot-scanner' },
+    ],
+  },
+  {
+    key: 'coding', label: 'Coding', href: '#coding', note: '3+ years',
+    items: [
+      { label: 'HTML · CSS · JavaScript', href: '#coding' },
+      { label: 'C++', href: '#coding' },
+      { label: 'Python', href: '#coding' },
+    ],
+  },
+  {
+    key: 'hobbies', label: 'Hobbies', href: '#hobbies',
+    items: [
+      { label: 'Skiing · my favourite', href: '#hobbies' },
+      { label: 'Surfing', href: '#hobbies' },
+      { label: 'Hiking', href: '#hobbies' },
+      { label: 'Biking', href: '#hobbies' },
+      { label: 'Boxing', href: '#hobbies' },
+      { label: 'Piano', href: '#hobbies' },
+      { label: 'Chess', href: '#hobbies' },
+      { label: 'Swimming', href: '#hobbies' },
+    ],
+  },
+  {
+    key: 'mind', label: 'Mind', href: '#mind',
+    items: [
+      { label: 'Psychology', href: '#mind' },
+      { label: 'Deep conversations', href: '#mind' },
+      { label: 'Thinking it through', href: '#mind' },
+    ],
+  },
+].map((c) => ({ ...c, still: has(`/about/orbit/pieces/${c.key}.webp`) }));
 
-const poster = has('/about/poster.webp');
+const centreStill = has('/about/orbit/pieces/centre.webp');
+const poster = has('/about/orbit/opening-16x9.webp');
+const film = has('/about/orbit/opening-16x9.mp4') && has('/about/orbit/opening-9x16.mp4');
 
 // The voiceover: mp3, or m4a straight from an iPhone's Voice Memos.
 const voiceSrc = ['/about/voiceover.m4a', '/about/voiceover.mp3'].find(has);
@@ -39,21 +94,21 @@ const transcript = voice
   : [];
 ---
 
-<section class="intro" data-intro aria-labelledby="about-title">
+<section class="orbit" data-orbit aria-labelledby="about-title">
   <script is:inline>
     // Decide live or still BEFORE any of the section is parsed or painted.
     // This is its first child on purpose: on a slow connection the browser
     // paints HTML as it arrives, and a check at the end let the no-JS tiles
     // flash and then jump.
     //
-    // A real GPU, or nothing. Software rendering (headless CI browsers among
-    // them) gets the stills and never downloads three.js. The renderer-name
-    // test matches src/scripts/gpu.ts: Chromium's SwiftShader passes
+    // A real GPU, or the stills. Software rendering (headless CI browsers
+    // among them) never downloads three.js or the film. The renderer-name test
+    // matches src/scripts/gpu.ts: Chromium's SwiftShader passes
     // failIfMajorPerformanceCaveat, so the flag alone isn't enough.
     (() => {
-      const root = document.currentScript.closest('[data-intro]');
-      const still = () => root.classList.add('intro--still');
-      if (window.__introCapture) return root.classList.add('intro--live');
+      const root = document.currentScript.closest('[data-orbit]');
+      const still = () => root.classList.add('orbit--still');
+      if (window.__orbitCapture) return root.classList.add('orbit--live');
       if (matchMedia('(prefers-reduced-motion: reduce)').matches) return still();
       try {
         const gl = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true });
@@ -68,65 +123,84 @@ const transcript = voice
       }
       let seen = false;
       try { seen = sessionStorage.getItem('about-intro-seen') === '1'; } catch (e) { /* plays again */ }
-      root.classList.add('intro--live');
-      if (seen) root.classList.add('intro--resume');
+      root.classList.add('orbit--live');
+      if (seen) root.classList.add('orbit--resume');
     })();
   </script>
-  <div class="intro__stage" data-intro-stage>
+  <div class="orbit__stage" data-orbit-stage>
     {
       poster && (
-        <picture class="intro__poster" aria-hidden="true">
-          <source srcset="/about/poster.avif" type="image/avif" />
-          <img src="/about/poster.webp" alt="" width="1600" height="900" fetchpriority="high" />
+        <picture class="orbit__poster" aria-hidden="true">
+          <source media="(max-aspect-ratio: 1/1)" srcset="/about/orbit/opening-9x16.avif" type="image/avif" />
+          <source media="(max-aspect-ratio: 1/1)" srcset="/about/orbit/opening-9x16.webp" type="image/webp" />
+          <source srcset="/about/orbit/opening-16x9.avif" type="image/avif" />
+          <img src="/about/orbit/opening-16x9.webp" alt="" width="1920" height="1080" fetchpriority="high" />
         </picture>
       )
     }
-    <canvas class="intro__canvas" data-intro-canvas aria-hidden="true"></canvas>
+    {film && <video class="orbit__film" data-orbit-film muted playsinline preload="none" disablepictureinpicture aria-hidden="true" tabindex="-1"></video>}
+    <canvas class="orbit__canvas" data-orbit-canvas aria-hidden="true"></canvas>
+    <div class="orbit__vignette" aria-hidden="true"></div>
 
-    <div class="intro__head">
+    <div class="orbit__head">
       <h1 id="about-title">About me</h1>
-      <p class="intro__lede">Tennis, chess, a foot scanner, machine learning, and the maths under all of it. Pick one.</p>
+      <p class="orbit__lede">Tennis, school, the things I build, the mountains and the water, and the one thing they all come back to.</p>
     </div>
 
-    <nav class="intro__nav" aria-label="Everything about me">
-      <ul>
+    <nav class="orbit__map" aria-label="Everything about me">
+      <p class="orbit__hub">
+        <a class="orbit__centre" href="#self-improvement" data-orbit-centre>
+          {centreStill && (
+            <picture class="orbit__still" aria-hidden="true">
+              <source srcset="/about/orbit/pieces/centre.avif" type="image/avif" />
+              <img src="/about/orbit/pieces/centre.webp" alt="" width="480" height="480" loading="lazy" />
+            </picture>
+          )}
+          <span class="orbit__centre-label">Self-improvement</span>
+          <span class="orbit__centre-note">What it all comes back to</span>
+        </a>
+      </p>
+      <ul class="orbit__cats">
         {
-          pieces.map((p, i) => (
-            <li>
-              <a href={p.href} data-piece={i} style={`--i:${i}`}>
-                {p.still && (
-                  <picture class="intro__still" aria-hidden="true">
-                    <source srcset={`/about/pieces/${p.key}.avif`} type="image/avif" />
-                    <img src={`/about/pieces/${p.key}.webp`} alt="" width="480" height="480" loading="lazy" />
+          cats.map((c, i) => (
+            <li class="orbit__cat" data-cat={i} style={`--i:${i}`}>
+              <a class="orbit__label" href={c.href} data-cat-link>
+                {c.still && (
+                  <picture class="orbit__still" aria-hidden="true">
+                    <source srcset={`/about/orbit/pieces/${c.key}.avif`} type="image/avif" />
+                    <img src={`/about/orbit/pieces/${c.key}.webp`} alt="" width="480" height="480" loading="lazy" />
                   </picture>
                 )}
-                <span class="intro__label">{p.label}</span>
-                <span class="intro__note">{p.note}</span>
+                <span class="orbit__name">{c.label}</span>
+                {c.note && <span class="orbit__note">{c.note}</span>}
               </a>
+              <ul class="orbit__items" aria-label={`${c.label}, in more detail`}>
+                {c.items.map((it) => (
+                  <li><a href={it.href}>{it.label}</a></li>
+                ))}
+              </ul>
             </li>
           ))
         }
       </ul>
     </nav>
 
-    <p class="intro__caption" data-intro-caption aria-hidden="true"></p>
-    <p class="intro__eq" data-intro-eq aria-hidden="true"></p>
-    {voice && <p class="intro__subs" data-intro-subs aria-hidden="true"></p>}
+    {voice && <p class="orbit__subs" data-orbit-subs aria-hidden="true"></p>}
 
-    <div class="intro__controls">
-      <button type="button" class="intro__btn" data-intro-skip>Skip intro</button>
-      <button type="button" class="intro__btn" data-intro-replay hidden>Replay</button>
-      <button type="button" class="intro__btn" data-intro-sound>Play with sound</button>
+    <div class="orbit__controls">
+      <button type="button" class="orbit__btn" data-orbit-skip>Skip intro</button>
+      <button type="button" class="orbit__btn" data-orbit-replay hidden>Replay</button>
+      <button type="button" class="orbit__btn" data-orbit-sound>Play with sound</button>
     </div>
   </div>
 
   {
     voice && (
       <>
-        <audio data-intro-audio preload="none" src={voiceSrc}>
+        <audio data-orbit-voice preload="none" src={voiceSrc}>
           <track kind="captions" src="/about/voiceover.vtt" srclang="en" label="English" default />
         </audio>
-        <details class="intro__transcript wrap">
+        <details class="orbit__transcript wrap">
           <summary>Transcript of the intro</summary>
           {transcript.map((line) => <p>{line}</p>)}
         </details>
@@ -136,20 +210,20 @@ const transcript = voice
 </section>
 
 <script>
-  // The live intro itself: three.js and the scene, loaded only when the inline
-  // check (inside the section, above) chose it.
-  const root = document.querySelector<HTMLElement>('[data-intro].intro--live');
+  // The live opening itself: three.js and the scene, loaded only when the
+  // inline check (inside the section, above) chose it.
+  const root = document.querySelector<HTMLElement>('[data-orbit].orbit--live');
   if (root) {
-    const settled = root.classList.contains('intro--resume');
-    import('../scripts/intro')
-      .then((m) => m.mountIntro(root, { settled, capture: (window as any).__introCapture }))
+    const settled = root.classList.contains('orbit--resume');
+    import('../scripts/orbit')
+      .then((m) => m.mountOrbit(root, { settled, capture: !!(window as any).__orbitCapture }))
       .then((h) => {
         if (!h) throw new Error('no renderer');
-        (root as any).__intro = h; // for the stills script and tests: seek(), skip()
+        (root as any).__orbit = h; // for the stills script and tests: seek(), skip()
       })
       .catch(() => {
-        root.classList.remove('intro--live', 'intro--resume', 'intro--running');
-        root.classList.add('intro--still');
+        root.classList.remove('orbit--live', 'orbit--resume', 'orbit--running', 'orbit--film');
+        root.classList.add('orbit--still');
       });
   }
 </script>
@@ -158,7 +232,7 @@ const transcript = voice
   /* The stage is a screen: dark in both themes. Reading mode redefines the
      surface, rule and ball tokens for paper, so the dark values are pinned here
      (they match :root's defaults in global.css). */
-  .intro {
+  .orbit {
     --fg: var(--frost);
     --fg-muted: var(--mist);
     --accent: var(--ice);
@@ -170,46 +244,39 @@ const transcript = voice
     position: relative;
     background: var(--void);
     background:
-      radial-gradient(60% 55% at 50% 48%, color-mix(in srgb, var(--ice) 7%, transparent), transparent 70%),
+      radial-gradient(60% 55% at 50% 50%, color-mix(in srgb, var(--violet) 6%, transparent), transparent 70%),
       var(--void);
     color: var(--fg);
     border-bottom: 1px solid var(--hairline);
   }
 
-  .intro__stage {
+  .orbit__stage {
     position: relative;
     max-width: var(--wrap);
     margin-inline: auto;
     padding: var(--space-7) clamp(var(--space-5), 4vw, var(--space-7)) var(--space-7);
   }
 
-  .intro__poster, .intro__canvas, .intro__caption, .intro__eq, .intro__subs, .intro__controls { display: none; }
+  .orbit__poster, .orbit__film, .orbit__canvas, .orbit__vignette, .orbit__subs, .orbit__controls { display: none; }
 
-  .intro__head h1 {
+  .orbit__head h1 {
     margin: 0;
     font-size: clamp(2.6rem, 1.4rem + 5vw, 6rem);
     letter-spacing: -0.04em;
     line-height: 0.95;
   }
-  .intro__lede {
+  .orbit__lede {
     max-width: 30rem;
     margin: var(--space-4) 0 0;
     color: var(--fg-muted);
   }
 
-  /* Tiles: the no-JS and still layout. */
-  .intro__nav ul {
-    list-style: none;
-    margin: var(--space-6) 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
-    gap: var(--space-4);
-  }
-  .intro__nav a {
+  /* ---- tiles: the no-JS and still layout ------------------------------------------- */
+  .orbit__map { margin-top: var(--space-6); display: grid; gap: var(--space-4); }
+  .orbit__hub { margin: 0; }
+  .orbit__centre, .orbit__label {
     display: grid;
     gap: var(--space-1);
-    height: 100%;
     padding: var(--space-4);
     border: 1px solid var(--hairline);
     background: var(--surface);
@@ -218,132 +285,205 @@ const transcript = voice
     text-decoration: none;
     transition: border-color 0.25s, background 0.25s;
   }
-  .intro__nav a:hover, .intro__nav a.is-hot {
+  .orbit__centre { border-color: color-mix(in srgb, var(--ice) 40%, var(--hairline)); }
+  .orbit__centre:hover, .orbit__label:hover {
     border-color: var(--accent);
-    background: var(--surface);
     background: color-mix(in srgb, var(--ice) 6%, var(--surface));
   }
-  .intro__still img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
-  .intro__label {
+  .orbit__cats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+    gap: var(--space-4);
+  }
+  .orbit__cat { display: grid; align-content: start; gap: var(--space-2); }
+  .orbit__still img { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+  .orbit__centre .orbit__still { max-width: 12rem; }
+  .orbit__name, .orbit__centre-label {
     font-family: var(--font-display);
     font-weight: 700;
     font-size: var(--step-0);
     letter-spacing: -0.01em;
   }
-  .intro__note {
+  .orbit__centre-label { color: var(--ice); font-size: var(--step-1); }
+  .orbit__note, .orbit__centre-note {
     font-family: var(--font-mono);
     font-size: 0.72rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--fg-muted);
   }
+  .orbit__items {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 var(--space-4);
+    display: grid;
+    gap: 0.15rem;
+    font-size: var(--step--1);
+  }
+  .orbit__items a { color: var(--fg-muted); text-decoration: none; }
+  .orbit__items a:hover { color: var(--accent); }
 
-  .intro__transcript {
+  .orbit__transcript {
     padding-block: var(--space-4) var(--space-6);
     color: var(--fg-muted);
   }
-  .intro__transcript summary { cursor: pointer; color: var(--fg); }
+  .orbit__transcript summary { cursor: pointer; color: var(--fg); }
 
-  /* ---- live ------------------------------------------------------------------ */
-  .intro.intro--live .intro__stage {
+  /* ---- live ---------------------------------------------------------------------------- */
+  .orbit.orbit--live .orbit__stage {
     max-width: none;
     min-height: calc(100svh - var(--header-h));
     padding: 0;
     overflow: hidden;
   }
-  .intro--live .intro__canvas {
+  .orbit--live .orbit__poster, .orbit--live .orbit__film, .orbit--live .orbit__canvas, .orbit--live .orbit__vignette {
     display: block;
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
   }
-  .intro--live .intro__poster {
-    display: block;
-    position: absolute;
-    inset: 0;
-    transition: opacity 0.9s var(--ease-out);
+  .orbit--live .orbit__poster img { width: 100%; height: 100%; object-fit: cover; }
+  .orbit--live .orbit__film { object-fit: cover; opacity: 0; transition: opacity 0.35s linear; }
+  .orbit--film .orbit__film { opacity: 1; }
+  .orbit--film-gone .orbit__film { opacity: 0; }
+  .orbit--live .orbit__poster { transition: opacity 0.6s var(--ease-out); }
+  .orbit--running .orbit__poster, .orbit--resume .orbit__poster, .orbit--film-gone .orbit__poster { opacity: 0; }
+  /* Lens falloff, the same over the film and the live scene. */
+  .orbit--live .orbit__vignette {
+    pointer-events: none;
+    background: radial-gradient(120% 95% at 50% 50%, transparent 55%, color-mix(in srgb, var(--void) 70%, transparent) 100%);
   }
-  .intro--live .intro__poster img { width: 100%; height: 100%; object-fit: cover; }
-  .intro--running .intro__poster, .intro--resume .intro__poster { opacity: 0; }
 
-  /* Title bottom-left, arriving with the pieces. Still read by screen readers
-     throughout: only its opacity changes. */
-  .intro--live .intro__head {
+  /* Title top left, arriving last. Still read by screen readers throughout:
+     only its opacity changes. */
+  .orbit--live .orbit__head {
     position: absolute;
     left: clamp(var(--space-5), 4vw, var(--space-7));
     bottom: clamp(var(--space-5), 5vh, var(--space-7));
-    max-width: min(34rem, 60%);
+    max-width: min(24rem, 27%);
     opacity: 0;
     transform: translateY(0.6rem);
     transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    pointer-events: none;
   }
-  .intro--revealed .intro__head { opacity: 1; transform: none; }
+  .orbit--live .orbit__head h1 { font-size: clamp(2rem, 0.8rem + 3vw, 3.8rem); white-space: nowrap; }
+  .orbit--live .orbit__lede { font-size: var(--step--1); }
+  .orbit--revealed .orbit__head { opacity: 1; transform: none; }
 
-  /* Links laid over their pieces. Hidden (not just transparent) until they
-     arrive, so nobody can tab to something they can't see. */
-  .intro--live .intro__nav { position: absolute; inset: 0; pointer-events: none; }
-  .intro--live .intro__nav ul { display: block; margin: 0; }
-  .intro--live .intro__nav a {
-    position: absolute;
-    left: var(--x, 50%);
-    top: var(--y, 50%);
+  /* The map laid over the scene. Labels are hidden (not just transparent)
+     until their piece has printed, so nobody can tab to what they can't see. */
+  .orbit--live .orbit__map { position: absolute; inset: 0; margin: 0; pointer-events: none; display: block; }
+  .orbit--live .orbit__cats { display: block; }
+  .orbit--live .orbit__still { display: none; }
+  .orbit--live .orbit__hub { position: absolute; left: var(--x, 50%); top: var(--y, 60%); transform: translateX(-50%); margin: 0; }
+  .orbit--live .orbit__centre,
+  .orbit--live .orbit__label {
     display: grid;
     justify-items: center;
-    gap: 0.15rem;
-    height: auto;
+    gap: 0.1rem;
     padding: var(--space-1) var(--space-2);
     border: 0;
     background: none;
     text-align: center;
+    pointer-events: auto;
+    text-shadow: 0 0 0.6em var(--void), 0 0 1.2em var(--void);
+  }
+  .orbit--live .orbit__centre {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(0.4rem);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out), visibility 0s linear 0.7s;
+  }
+  .orbit--live .orbit__centre.is-on { opacity: 1; visibility: visible; transform: none; transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out), visibility 0s; }
+  .orbit--live .orbit__centre-label { font-size: var(--step-1); }
+  .orbit--live .orbit__cat {
+    position: absolute;
+    left: var(--x, 50%);
+    top: var(--y, 50%);
+    display: block;
     transform: translate(-50%, 0.4rem);
     opacity: 0;
     visibility: hidden;
-    pointer-events: auto;
-    transition: opacity 0.6s var(--ease-out) calc(var(--i) * 0.07s), transform 0.6s var(--ease-out) calc(var(--i) * 0.07s), visibility 0s linear 0.6s;
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out), visibility 0s linear 0.6s;
   }
-  .intro--revealed .intro__nav a {
+  .orbit--live .orbit__cat.is-on {
     opacity: 1;
     visibility: visible;
     transform: translate(-50%, 0);
-    transition: opacity 0.6s var(--ease-out) calc(var(--i) * 0.07s), transform 0.6s var(--ease-out) calc(var(--i) * 0.07s), visibility 0s;
+    transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out), visibility 0s;
   }
-  .intro--live .intro__still { display: none; }
-  .intro--live .intro__label { text-shadow: 0 0 0.6em var(--void), 0 0 1.2em var(--void); }
-  .intro--live .intro__nav a:hover .intro__label,
-  .intro--live .intro__nav a.is-hot .intro__label { color: var(--accent); }
-  .intro--live .intro__nav a:hover, .intro--live .intro__nav a.is-hot { background: none; }
+  .orbit--live .orbit__label:hover .orbit__name,
+  .orbit--live .orbit__cat.is-open .orbit__name,
+  .orbit--live .orbit__label:focus-visible .orbit__name { color: var(--accent); }
+  .orbit--live .orbit__label:hover, .orbit--live .orbit__centre:hover { background: none; }
 
-  .intro--live .intro__caption,
-  .intro--live .intro__eq {
-    display: block;
+  /* An open category's items: a short list beside its piece, on hairlines. */
+  .orbit--live .orbit__items {
     position: absolute;
-    left: clamp(var(--space-5), 4vw, var(--space-7));
-    margin: 0;
-    font-family: var(--font-mono);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    pointer-events: none;
-  }
-  .intro--live .intro__caption {
-    bottom: calc(clamp(var(--space-5), 5vh, var(--space-7)) + 1.8rem);
-    font-size: 0.8rem;
-    color: var(--fg);
+    top: calc(-1 * var(--r, 40px) * 1.12 - 0.2rem);
+    width: max-content;
+    max-width: 16rem;
+    padding: 0;
+    gap: 0.3rem;
+    pointer-events: auto;
     opacity: 0;
-    transform: translateY(0.4rem);
-    transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+    visibility: hidden;
+    transition: opacity 0.35s var(--ease-out), visibility 0s linear 0.35s;
   }
-  .intro--live .intro__caption.is-on { opacity: 1; transform: none; }
-  .intro--live .intro__eq {
-    bottom: clamp(var(--space-5), 5vh, var(--space-7));
-    font-size: 0.85rem;
+  .orbit--live .orbit__cat.is-open .orbit__items {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s var(--ease-out) 0.1s, visibility 0s;
+  }
+  .orbit--live .orbit__items li {
+    transform: translateX(var(--shift, 0));
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+  }
+  .orbit--live .orbit__cat.is-open .orbit__items li { opacity: 1; transform: none; }
+  .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(2) { transition-delay: 0.06s; }
+  .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(3) { transition-delay: 0.12s; }
+  .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(4) { transition-delay: 0.18s; }
+  .orbit--live .orbit__cat.is-open .orbit__items li:nth-child(n + 5) { transition-delay: 0.24s; }
+  .orbit--live .orbit__items a {
+    display: block;
+    padding: 0.15rem 0;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
     letter-spacing: 0.04em;
-    text-transform: none;
-    color: var(--ball);
+    color: var(--fg);
+    text-shadow: 0 0 0.6em var(--void), 0 0 1.2em var(--void);
   }
-  .intro--revealed .intro__caption, .intro--revealed .intro__eq { opacity: 0; }
+  .orbit--live .orbit__items a:hover, .orbit--live .orbit__items a:focus-visible { color: var(--accent); }
+  .orbit--live .orbit__cat[data-place='left'] .orbit__items {
+    right: calc(50% + var(--r, 40px) * 1.35);
+    text-align: right;
+    --shift: 0.6rem;
+    border-right: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
+    padding-right: var(--space-3);
+  }
+  .orbit--live .orbit__cat[data-place='right'] .orbit__items {
+    left: calc(50% + var(--r, 40px) * 1.35);
+    text-align: left;
+    --shift: -0.6rem;
+    border-left: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
+    padding-left: var(--space-3);
+  }
+  .orbit--live .orbit__cat[data-place='below'] .orbit__items {
+    top: 100%;
+    left: 50%;
+    translate: -50% 0;
+    margin-top: var(--space-2);
+    text-align: center;
+    border-top: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
+    padding-top: var(--space-2);
+  }
 
-  .intro--live .intro__subs {
+  .orbit--live .orbit__subs {
     display: block;
     position: absolute;
     left: 50%;
@@ -357,16 +497,16 @@ const transcript = voice
     text-align: center;
     font-size: var(--step-0);
   }
-  .intro--live .intro__subs:empty { display: none; }
+  .orbit--live .orbit__subs:empty { display: none; }
 
-  .intro--live .intro__controls {
+  .orbit--live .orbit__controls {
     display: flex;
     gap: var(--space-2);
     position: absolute;
     right: clamp(var(--space-5), 4vw, var(--space-7));
     bottom: clamp(var(--space-5), 5vh, var(--space-7));
   }
-  .intro__btn {
+  .orbit__btn {
     min-height: 2.75rem;
     padding: 0 var(--space-4);
     border: 1px solid var(--rule);
@@ -380,24 +520,32 @@ const transcript = voice
     text-transform: uppercase;
     cursor: pointer;
   }
-  .intro__btn:hover { border-color: var(--ice); color: var(--ice); }
-  .intro__btn[hidden] { display: none; }
+  .orbit__btn:hover { border-color: var(--ice); color: var(--ice); }
+  .orbit__btn[hidden] { display: none; }
 
-  /* Tall screens: title and controls stack at the bottom, under the pieces. */
-  @media (max-aspect-ratio: 23/20) {
-    .intro--live .intro__head { max-width: none; right: clamp(var(--space-5), 4vw, var(--space-7)); bottom: 5.5rem; }
-    .intro--live .intro__head h1 { font-size: clamp(2.2rem, 10vw, 3.4rem); }
-    .intro--live .intro__lede { font-size: var(--step--1); }
-    .intro--live .intro__controls { left: clamp(var(--space-5), 4vw, var(--space-7)); right: auto; bottom: var(--space-5); }
-    .intro--live .intro__caption { bottom: 7rem; }
-    .intro--live .intro__eq { bottom: 5.5rem; font-size: 0.72rem; }
+  /* Tall screens: the ring is taller than wide; title and controls stack at the
+     bottom; an open category's items sit in a band above them. */
+  .orbit--live.orbit--tall .orbit__head { max-width: none; right: clamp(var(--space-5), 4vw, var(--space-7)); bottom: auto; top: var(--space-4); }
+  .orbit--live.orbit--tall .orbit__head h1 { font-size: clamp(1.7rem, 8vw, 2.4rem); }
+  .orbit--live.orbit--tall .orbit__lede { display: none; }
+  .orbit--live.orbit--tall .orbit__controls { left: clamp(var(--space-5), 4vw, var(--space-7)); right: auto; bottom: var(--space-5); }
+  .orbit--live .orbit__cat[data-place='panel'] .orbit__items {
+    left: calc(50% + var(--px, 0px));
+    top: var(--py, 0px);
+    width: var(--pw, 20rem);
+    max-width: none;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.1rem 1rem;
+    border-top: 1px solid color-mix(in srgb, var(--ice) 45%, transparent);
+    padding-top: var(--space-2);
   }
 
-  /* Phones: each piece is just its name, and the title stands alone. The notes
-     stay in each link's accessible name (visually hidden, not removed), and the
-     detail is one tap away in the section below. */
+  /* Phones: names only on the ring; the notes stay in each link's accessible
+     name (visually hidden, not removed), and the detail is one tap away. */
   @media (max-width: 40rem) {
-    .intro--live .intro__note {
+    .orbit--live .orbit__note, .orbit--live .orbit__centre-note {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -405,12 +553,11 @@ const transcript = voice
       clip-path: inset(50%);
       white-space: nowrap;
     }
-    .intro--live .intro__label { font-size: 0.95rem; }
-    .intro--live .intro__lede { display: none; }
-    .intro--live .intro__head { bottom: 5rem; }
+    .orbit--live .orbit__name { font-size: 0.88rem; }
+    .orbit--live .orbit__centre-label { font-size: 0.92rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .intro__nav a, .intro--live .intro__head, .intro--live .intro__poster { transition: none; }
+    .orbit__centre, .orbit__label, .orbit--live .orbit__head, .orbit--live .orbit__poster, .orbit--live .orbit__film { transition: none; }
   }
 </style>
