@@ -26,6 +26,7 @@
  *    after the page has loaded, so the headline never waits on the GPU.
  */
 import { onRealGpu } from './gpu';
+import { motionPaused, onMotionChange, setMotionPaused } from './motion-pref';
 
 const VERT = `
 attribute vec2 a;
@@ -281,8 +282,7 @@ export function initGyroid(section: HTMLElement) {
     setColours();
 
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-    let userPaused = false;
-    try { userPaused = localStorage.getItem('motion') === 'paused'; } catch { /* storage blocked */ }
+    let userPaused = motionPaused();
 
     // Start at full device resolution; adapt down if the GPU can't keep up.
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -370,12 +370,10 @@ export function initGyroid(section: HTMLElement) {
       pauseBtn.textContent = userPaused ? 'Play motion' : 'Pause motion';
     };
 
-    pauseBtn?.addEventListener('click', () => {
-      userPaused = !userPaused;
-      try { localStorage.setItem('motion', userPaused ? 'paused' : 'playing'); } catch { /* blocked */ }
-      syncButton();
-      userPaused ? stop() : play();
-    });
+    // One choice for the whole site: this button, the header's switch and the
+    // ambient drift all follow it.
+    onMotionChange((p) => { userPaused = p; syncButton(); p ? stop() : play(); });
+    pauseBtn?.addEventListener('click', () => setMotionPaused(!userPaused));
 
     new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;

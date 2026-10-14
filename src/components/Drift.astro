@@ -1,0 +1,130 @@
+---
+/**
+ * Ambient drift: a few tiny scan points crossing the screen very slowly, and
+ * now and then a faint streak of light gliding through. It sits behind the
+ * content and shows only where a section has no background of its own.
+ *
+ * Calm by design, because an earlier pass cut background motion that competed
+ * with the content:
+ *  - each point takes 35–80 s to cross; at most about a dozen are ever on
+ *    screen, faint, and fewer on phones
+ *  - streaks are rare (one every 15–25 s) and gone in about 2 s
+ *  - only on the browsing pages (Home, Projects, Build log, About). Articles
+ *    stay still for reading.
+ *  - pure CSS on transform and opacity, so it costs the page almost nothing
+ *
+ * It moves on its own for more than 5 seconds, so WCAG 2.2.2 applies: the
+ * header's "Pause motion" switch stops it (and the hero), and the choice is
+ * remembered. Reduced motion: not drawn at all.
+ */
+
+// Deterministic "random" so every build draws the same field.
+let seed = 7;
+const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+
+const points = Array.from({ length: 18 }, () => ({
+  top: (4 + rand() * 92).toFixed(1),
+  dur: (35 + rand() * 45).toFixed(1),
+  delay: (-rand() * 80).toFixed(1),
+  dy: ((rand() - 0.5) * 18).toFixed(1),
+  size: (1.5 + rand() * 1.6).toFixed(2),
+  alpha: (0.22 + rand() * 0.3).toFixed(2),
+}));
+
+const streaks = [
+  { top: 22, period: 17, delay: -6, tone: 'ice' },
+  { top: 64, period: 23, delay: -15, tone: 'ball' },
+];
+---
+
+{/* Points float in front of everything (tiny and faint, so they never get in
+    the way of reading); streaks pass behind the content, so they never cross
+    text. */}
+<div class="drift drift--front" aria-hidden="true">
+  {
+    points.map((p) => (
+      <span
+        class="drift__point"
+        style={`--top:${p.top}%;--dur:${p.dur}s;--delay:${p.delay}s;--dy:${p.dy}vh;--size:${p.size}px;--alpha:${p.alpha}`}
+      />
+    ))
+  }
+</div>
+<div class="drift drift--back" aria-hidden="true">
+  {
+    streaks.map((s) => (
+      <span
+        class={`drift__streak drift__streak--${s.tone}`}
+        style={`--top:${s.top}%;--period:${s.period}s;--delay:${s.delay}s`}
+      />
+    ))
+  }
+</div>
+
+<style>
+  /* Only with JavaScript: without it the header's Pause motion switch can't
+     work, and moving content needs a way to stop it. */
+  .drift { display: none; }
+  :global(:root.js) .drift {
+    display: block;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .drift--back { z-index: -1; }
+  /* Above the page, below the sticky header and the chapter rail. */
+  .drift--front { z-index: 25; transition: opacity 1.2s; }
+  /* The About intro has the screen to itself while it plays. */
+  :global(:root:has(.intro--live:not(.intro--done))) .drift--front { opacity: 0; }
+
+  .drift__point {
+    position: absolute;
+    left: 0;
+    top: var(--top);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: var(--ice);
+    box-shadow: 0 0 calc(var(--size) * 3) var(--ice);
+    opacity: var(--alpha);
+    will-change: transform;
+    animation: drift-across var(--dur) linear var(--delay) infinite;
+  }
+  @keyframes drift-across {
+    from { transform: translate3d(-4vw, 0, 0); }
+    to { transform: translate3d(104vw, var(--dy), 0); }
+  }
+
+  .drift__streak {
+    position: absolute;
+    left: 0;
+    top: var(--top);
+    width: 26vw;
+    height: 1px;
+    opacity: 0;
+    will-change: transform, opacity;
+    animation: streak var(--period) linear var(--delay) infinite;
+  }
+  .drift__streak--ice { background: linear-gradient(90deg, transparent, var(--ice) 70%, transparent); }
+  .drift__streak--ball { background: linear-gradient(90deg, transparent, var(--ball) 70%, transparent); }
+  @keyframes streak {
+    0%, 88% { transform: translate3d(-30vw, 0, 0) rotate(-7deg); opacity: 0; }
+    90% { opacity: 0.3; }
+    100% { transform: translate3d(110vw, -10vh, 0) rotate(-7deg); opacity: 0; }
+  }
+
+  /* Phones: half the points. */
+  @media (max-width: 40rem) {
+    .drift__point:nth-child(2n) { display: none; }
+  }
+
+  /* Reading mode: the points would be pale specks on paper; leave paper still. */
+  :global(:root.js[data-theme='light']) .drift { display: none; }
+
+  :global(:root[data-motion='paused']) .drift * { animation-play-state: paused; }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(:root.js) .drift { display: none; }
+  }
+</style>

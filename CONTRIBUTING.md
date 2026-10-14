@@ -165,7 +165,15 @@ each project's real viewer.
   actually started. Test with JavaScript disabled after any change.
 - **prefers-reduced-motion** gets still frames, never animation.
 - Anything that moves on its own for more than 5 seconds has a visible pause
-  control (WCAG 2.2.2).
+  control (WCAG 2.2.2). Site-wide that's the header's **Pause motion** switch
+  (`src/scripts/motion-pref.ts`): one remembered choice that pauses the hero
+  and the ambient drift together.
+- **Ambient drift** (`src/components/Drift.astro`, `ambient` on `Base`): faint
+  scan points crossing very slowly in front of the page, rare light streaks
+  behind it. Browsing pages only (Home, Projects, Build log, About); articles
+  stay still for reading. Hidden during the About intro, in reading mode, with
+  reduced motion, and without JavaScript (the switch needs it). Keep it this
+  quiet: an earlier pass cut background motion that competed with the content.
 - The one exception is the reader's own request: "See the work" walks down
   through the serve at reading pace (`src/scripts/tour.ts`). The reader started
   it, and any scroll, tap or click stops it on the spot; a key skips to the end.

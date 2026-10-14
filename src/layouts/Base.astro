@@ -2,6 +2,7 @@
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import Drift from '../components/Drift.astro';
 
 interface Props {
   title: string;
@@ -9,12 +10,14 @@ interface Props {
   noindex?: boolean;
   jsonLd?: Record<string, unknown>;
   ogSlug?: string;
+  /** Ambient drift behind the content (browsing pages only; articles stay still). */
+  ambient?: boolean;
 }
-const { title, description, noindex, jsonLd, ogSlug } = Astro.props;
+const { title, description, noindex, jsonLd, ogSlug, ambient = false } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class:list={[{ 'has-ambient': ambient }]}>
   <head>
     <BaseHead
       title={title}
@@ -31,6 +34,7 @@ const { title, description, noindex, jsonLd, ogSlug } = Astro.props;
       <slot />
     </main>
     <Footer />
+    {ambient && <Drift />}
     <div class="cursor-glow" aria-hidden="true" data-cursor-glow></div>
     <script>
       import { initReveals } from '../scripts/reveal';

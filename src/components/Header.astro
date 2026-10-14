@@ -43,11 +43,27 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
       <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false">
         Reading mode
       </button>
+      {/* Only on pages with ambient motion (Base's `ambient`); see Drift.astro. */}
+      <button class="theme-toggle motion-toggle" type="button" data-motion-switch aria-pressed="false">
+        <span class="motion-toggle__icon" aria-hidden="true"></span>
+        Pause motion
+      </button>
     </div>
   </div>
 </header>
 
 <script>
+  import { motionPaused, onMotionChange, setMotionPaused } from '../scripts/motion-pref';
+
+  // ---- Pause motion -------------------------------------------------------
+  // One switch for everything that moves on its own (the hero, the drift); the
+  // choice is remembered. WCAG 2.2.2.
+  const motionBtn = document.querySelector<HTMLButtonElement>('[data-motion-switch]');
+  const syncMotion = () => motionBtn?.setAttribute('aria-pressed', String(motionPaused()));
+  motionBtn?.addEventListener('click', () => setMotionPaused(!motionPaused()));
+  onMotionChange(syncMotion);
+  syncMotion();
+
   // ---- Reading mode -------------------------------------------------------
   // Dark is the design. "Reading mode" switches to the light vellum theme for
   // anyone who finds light-on-dark harder to read; the choice is remembered.
@@ -160,4 +176,31 @@ const isCurrent = (href: string) => path === href || path.startsWith(href + '/')
   @media (prefers-reduced-motion: reduce) {
     .nav-toggle__bars, .nav-toggle__bars::before { transition: none; }
   }
+</style>
+
+<style>
+  .motion-toggle { display: none; align-items: center; gap: var(--space-2); }
+  :global(:root.has-ambient.js) .motion-toggle { display: inline-flex; }
+  /* Reading mode is still, and so is reduced motion: nothing to pause. */
+  :global(:root[data-theme='light']) .motion-toggle { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    :global(:root.has-ambient.js) .motion-toggle { display: none; }
+  }
+
+  /* Pause bars while things move; a play triangle once paused. */
+  .motion-toggle__icon {
+    width: 0.6rem;
+    height: 0.7rem;
+    border-inline: 0.18rem solid currentColor;
+    box-sizing: border-box;
+  }
+  .motion-toggle[aria-pressed='true'] .motion-toggle__icon {
+    width: 0;
+    height: 0;
+    border-inline: 0;
+    border-top: 0.35rem solid transparent;
+    border-bottom: 0.35rem solid transparent;
+    border-left: 0.55rem solid currentColor;
+  }
+  .motion-toggle[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); }
 </style>
