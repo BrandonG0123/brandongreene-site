@@ -170,7 +170,10 @@ each project's real viewer.
   through the serve at reading pace (`src/scripts/tour.ts`). The reader started
   it, and any scroll, tap or click stops it on the spot; a key skips to the end.
   Tune the pace with the constants at the top of that file, not by shortening
-  the holds until the sentences can't be read.
+  the holds until the sentences can't be read. After changing it, run
+  `npm run build && npm run test:tour`, and try it in Safari (the iOS
+  Simulator): Safari reports scroll positions a frame late, and a too-strict
+  check once stopped the tour on its first frame there.
 - Content is never hidden behind a reveal that might not fire. Reveals trigger
   when *any* part of the element is in view; a percentage threshold on a tall
   element can never be met on a short screen.

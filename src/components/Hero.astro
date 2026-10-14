@@ -72,13 +72,28 @@ const words = title.split(' ');
   // up the GPU process, which costs ~200 ms on a cold machine; until then the
   // still (the same image) is already showing. Reduced-motion visitors keep the
   // still and never pay for WebGL at all.
+  //
+  // On touch screens it starts a moment AFTER the touch. iOS Safari watches
+  // what a tap changes on screen; if something new appears (here, the Pause
+  // motion button), it treats the tap as a hover and swallows the click, so
+  // the first tap on any button on this page did nothing. And while the guided
+  // scroll ("See the work") is running it waits, so building the shader can't
+  // stutter the scroll; the hero is leaving the screen anyway.
   if (hero && !reduced) {
     const events = ['pointermove', 'pointerdown', 'wheel', 'touchstart', 'keydown', 'scroll'] as const;
-    const go = () => {
-      events.forEach((e) => window.removeEventListener(e, go));
+    const start = () => {
+      if ('touring' in document.documentElement.dataset) {
+        window.addEventListener('tourend', start, { once: true });
+        return;
+      }
       requestAnimationFrame(() => initGyroid(hero));
     };
-    events.forEach((e) => window.addEventListener(e, go, { passive: true, once: true }));
+    const go = (e: Event) => {
+      events.forEach((name) => window.removeEventListener(name, go));
+      const touch = e.type === 'touchstart' || (e as PointerEvent).pointerType === 'touch';
+      touch ? setTimeout(start, 700) : start();
+    };
+    events.forEach((name) => window.addEventListener(name, go, { passive: true, once: true }));
   }
 </script>
 

@@ -78,7 +78,9 @@ export function initTour() {
     const margin = parseFloat(getComputedStyle(target).scrollMarginTop) || 0;
     return Math.min(maxY(), target.getBoundingClientRect().top + scrollY - margin);
   };
-  const jump = (y: number) => window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior });
+  // Plain two-argument scrollTo, with the page's smooth scrolling switched off
+  // for the tour (see run), so no browser animates between our frames.
+  const jump = (y: number) => window.scrollTo(0, y);
 
   // Arrive the way the link would have: address bar updated, focus moved to the
   // section's heading (without scrolling), so Tab carries on from there.
@@ -100,6 +102,8 @@ export function initTour() {
 
     running = true;
     root.dataset.touring = '';
+    const behavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'auto';
 
     let t = 0, last = 0, set = scrollY, raf = 0;
 
@@ -109,15 +113,20 @@ export function initTour() {
       cancelAnimationFrame(raf);
       off();
       delete root.dataset.touring;
-      if (how === 'skip') jump(workY());
+      if (how === 'skip') jump(workY()); // still instant: smooth scrolling comes back after
+      root.style.scrollBehavior = behavior;
       if (how !== 'stop') arrive();
       window.dispatchEvent(new Event('tourend'));
     };
 
     const frame = (now: number) => {
-      // Something else moved the page (a scrollbar drag, find-in-page): the
-      // reader has taken over.
-      if (Math.abs(scrollY - set) > 4) return end('stop');
+      // Something else moved the page a long way (a scrollbar drag,
+      // find-in-page): the reader has taken over. Small mismatches are not the
+      // reader: Safari reports the scroll position a frame late (about 30 px
+      // behind at full speed), which a tight check here mistook for the reader
+      // and stopped the tour at once. Their wheel, touch, click and key presses
+      // stop it directly (below).
+      if (t > 200 && Math.abs(scrollY - set) > 48) return end('stop');
 
       // Real elapsed time, so a slow device keeps the same pace rather than
       // playing in slow motion. One long hitch is allowed to catch up; a hidden
