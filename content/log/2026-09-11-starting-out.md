@@ -4,10 +4,6 @@ date: 2026-09-11
 project: foot-scanner
 ---
 
-<!-- Brandon: check this date. You said "last week" on 18 Sep, so I put the 11th.
-     Correct it if it was a different day — the log is only worth anything if the
-     dates are real. -->
-
 Started a year-long independent study in AI and machine learning, supervised by
 my CS teacher. The subject came out of a conversation with my college advisor and
 lined up with things I already wanted to work on.

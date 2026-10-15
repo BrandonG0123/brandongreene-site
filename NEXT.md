@@ -139,6 +139,21 @@ then merged to main.
 
 ## Open questions for Brandon
 
+- **Four build-log drafts are waiting for him** (`content/log/2026-10-0*` and
+  `2026-10-1*`, all `draft: true`, so not public). Written from the footscan git
+  history; each asks him to check it, say how much an AI agent wrote, and then
+  remove `draft: true`.
+- **Contact is off for now** (15 Oct: no preference given, and an address that
+  bounces is worse than none). To add it: set up Cloudflare Email Routing for
+  hello@brandongreene.dev, then add a Contact section to /about and a "Get in
+  touch" link to the footer. Never his personal address.
+- Résumé still needs: coursework worth naming, maths competitions, and the
+  languages and tools he'd be comfortable being asked about.
+- Decided 15 Oct: tennis since childhood (school team, tournaments, lessons);
+  chess in rated over-the-board tournaments and online, no rating shown; the
+  study started 11 Sept 2026 (confirmed); the teacher stays unnamed; only the
+  shoe and calibration-object scans may appear on the site, not his foot.
+
 - **The AI disclosure line in the footer** — drafted, not approved. It reads:
   "Designed and coded with substantial help from Claude, an AI model. The
   projects are mine, and every claim on this site is checked against them."
