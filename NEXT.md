@@ -141,14 +141,18 @@ then merged to main.
 
 - **Four build-log drafts are waiting for him** (`content/log/2026-10-0*` and
   `2026-10-1*`, all `draft: true`, so not public). Written from the footscan git
-  history; each asks him to check it, say how much an AI agent wrote, and then
-  remove `draft: true`.
+  history, each ending "Built with Claude Code, which wrote most of the code
+  while I directed it" (his answer, 16 Oct). He wants to read them before they
+  go public; publishing = deleting the comment and `draft: true`.
+- **AI disclosure on the foot scanner:** Claude Code wrote most of its code,
+  with Brandon directing (16 Oct). The case study must say so when it's
+  rewritten.
 - **Contact is off for now** (15 Oct: no preference given, and an address that
   bounces is worse than none). To add it: set up Cloudflare Email Routing for
   hello@brandongreene.dev, then add a Contact section to /about and a "Get in
   touch" link to the footer. Never his personal address.
-- Résumé still needs: coursework worth naming, maths competitions, and the
-  languages and tools he'd be comfortable being asked about.
+- Résumé still needs: coursework worth naming and maths competitions (skills
+  done 16 Oct, with the AI-agent qualifier).
 - Decided 15 Oct: tennis since childhood (school team, tournaments, lessons);
   chess in rated over-the-board tournaments and online, no rating shown; the
   study started 11 Sept 2026 (confirmed); the teacher stays unnamed; only the
