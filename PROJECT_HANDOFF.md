@@ -366,3 +366,101 @@ How to run this:
 - Tasks that wait on me: ask me what you need, with multiple-choice questions and your recommendation marked, rather than starting them.
 - If a thread can't reach something it needs, it reports exactly what's missing and stops.
 ```
+
+## I. Where the work stands
+
+Reconstructed on 27 Oct 2026 from `git log`, the code, `NEXT.md` and the files on disk.
+
+### Done (on main, live on brandongreene.dev, hidden from search)
+
+- **Pages**: home, `/projects`, `/projects/<slug>`, `/about`, `/log`, `/resume`, the 404 ("Out." line call). Also RSS, sitemap, a generated robots.txt and per-project social cards.
+- **The futuristic redesign** (7 Oct, merged from `redesign/futuristic`):
+  - the gyroid hero (still first, live shader on first interaction);
+  - the scroll-scrubbed serve (an illustration, labelled);
+  - the 3D model viewer on cards and case studies;
+  - the kinetic band with a tape measure;
+  - the build-log timeline, the chapter rail, and the optic-yellow ball favicon.
+- **"See the work"** guided scroll (`src/scripts/tour.ts`), 7 and 14 Oct. It walks through the serve at reading pace on a continuous path, any input stops it and a key skips it. It was fixed for iPhone and Safari on 14 Oct (`22d7056`).
+- **About intro "Ignition"** (7 Oct):
+  - the sequence: a burning ball, embers, chess knight, calibration object, network, gyroid, then five link pieces;
+  - 25% faster;
+  - synthesised sound that plays quietly by itself when the browser allows, with Mute remembered, Replay playing sound, and the iOS silent switch handled;
+  - the voiceover slot is built and stays invisible until the files exist.
+- **Phones** (7 Oct): pictures and short labels; paragraphs fold one tap down on About and the Build log; a smaller type scale in articles.
+- **Ambient drift** on the browsing pages (14 Oct), under the header's Pause motion switch.
+- **Content** (15–16 Oct):
+  - tennis and chess on `/about` and `/resume`;
+  - résumé skills;
+  - four build-log drafts with the AI line;
+  - Contact removed until a working alias exists.
+- **CI**: green on `main` for every commit through `248eb5a` (16 Oct), checked through GitHub's public API.
+
+### Checked again today on this branch
+
+These ran locally on the Mac (Node 24), not yet in a cloud environment:
+
+| Check | Result |
+|---|---|
+| `npm run check` | 0 errors, 0 warnings |
+| `npm run build` | 7 pages built |
+| `npm run test:a11y` | 0 violations |
+| `check-links.mjs --skip-external` | 42 internal links, all resolve |
+| `npm run test:budget` | within budget (heaviest page CSS well under 60 KB) |
+| `npm run test:tour` | 9 of 9 pass (desktop, phone, wheel stop, key skip, reduced motion) |
+
+### Half done
+
+- **The footer's AI-disclosure line** is live but not approved. It reads: "Designed and coded with substantial help from Claude, an AI model. The projects are mine, and every claim on this site is checked against them." Brandon approves or rewords it.
+- **The foot-scanner case study** is out of date: its phase table predates Phases 2–3, the iPhone app and the first-fit insole, and it doesn't carry the AI disclosure yet (F2).
+- **The four build-log drafts** are written and waiting for Brandon to read them (F3).
+- **The résumé** still has a `TODO Brandon` comment for coursework and maths competitions (F7).
+- **The serve** is still the illustration; real mode waits on footage (F9).
+- **NEXT.md** is partly stale (F1).
+- **The About film**: brief written (`~/code/about-film`); its Remotion work is local only (see below).
+
+### Left for Brandon (no thread can do these)
+
+- Read the drafts.
+- Approve the footer wording.
+- Answer the résumé questions.
+- Set up Cloudflare Email Routing for the contact alias.
+- Film the serve.
+- Record the voiceover (optional).
+- Have his parents review the site, then decide on launch (F12).
+- Also known and accepted: tank goes down roughly weekly (per NEXT.md). Until that's fixed, the URL shouldn't go anywhere that gets one shot.
+
+### Decisions, dead ends and pitfalls
+
+All in D. The ones that cost the most:
+
+- main deploys at once;
+- SwiftShader passes the GPU flag;
+- Safari's late scrollY;
+- halts read as freezes.
+
+### Not in this project, and left untouched
+
+- **`forge-ios` branch in `~/code/brandongreene-site`**:
+  - 10 unpushed commits (`a940b71`..`64fb086`, "Forge iPhone app and the workout log web app" onwards);
+  - uncommitted edits to `apps/forge-ios/CLAUDE.md` and `ROADMAP.md`, and an untracked `apps/forge-ios/PROJECT-BRIEF.md`.
+
+  That's another session's Forge work. It's **not pushed anywhere**, so it exists only on this Mac. The Forge session that owns it should push it, or Brandon can decide. That checkout's working tree wasn't changed: this branch was made in a separate worktree at `~/code/brandongreene-site-handoff`, which can be removed with `git worktree remove` once this branch is merged.
+- **footscan** (`~/code/footscan`) has its own Project handoff on `project-handoff/footscan`:
+  - Its uncommitted `project.pbxproj` change is the kind its rules keep out of git (the Apple team ID).
+  - The shoe converted for Bambu Studio on 14 Oct (`reports/shoe-print/`: full size and a 71% version that fits the X1C, as 3MF and STL, 1.6 MB together) is gitignored by that repo's rules, so it stays on the Mac.
+- **about-film** (`~/code/about-film`):
+  - no GitHub remote;
+  - one commit (`cff681e`, the brief), plus a lot of untracked Remotion work from the film session and a Claude worktree.
+
+  It isn't pushed, because there's nowhere on github.com to push it. Create `BrandonG0123/about-film` if you want it in a project.
+- **The `~/code` prompt files** go to the Library, not into git.
+- **Stale remote branch `claude/confident-curie-7t6jj7`**: left alone (F5 reports on it).
+
+### UNVERIFIED
+
+1. The Claude GitHub App is installed on `BrandonG0123/brandongreene-site`. There was no GitHub CLI or sign-in to check with.
+2. **Require trusted devices** is off on Brandon's account (it's off by default).
+3. Which host Playwright 1.63 downloads Chromium from, whether the setup script finishes inside the cache window, and whether thread users can read `/opt/ms-playwright`. The pilot shows all three.
+4. The checks above passing on Linux and Node 22 in a cloud thread. They passed on macOS with Node 24, and CI (Linux, Node 22) passed on `main`.
+5. Whether anything on `claude/confident-curie-7t6jj7` is still wanted.
+6. Why Brandon heard no sound from the intro in the desktop app's browser pane (7 Oct). The headless test browser allowed autoplay, so a blocked start couldn't be reproduced; the pane may mute audio.
