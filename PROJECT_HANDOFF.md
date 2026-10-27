@@ -106,3 +106,42 @@ NEEDS BRANDON'S GO-AHEAD (ask in the thread and wait for a clear yes)
 - Anything touching the server (tank), DNS, Cloudflare, email routing or the deploy files.
 - Adding a dependency.
 ```
+
+## D. Memory seed
+
+Send this as one message in the project conversation. It's also included in the first
+message (H), so you only need to send it separately if you skip H.
+
+```text
+Remember these for this project:
+- main is the live site: tank pulls it every few seconds, so a merge is public before CI runs. Branch, PR, and merge only on Brandon's go-ahead.
+- The site stays noindex (fail-closed) until launch; launch = PUBLIC_ALLOW_INDEXING=true on tank, only after Brandon approves the footer AI-disclosure wording and his parents review the site.
+- Never publish a number Brandon didn't give; every decorative word must be something he does; AI help is disclosed.
+- Privacy: he's a minor under his real name. No address, phone, school name, schedule, routine or location; contact only via a domain alias, never his personal email.
+- Only the shoe and calibration-object scans may appear on the site, never his foot (decided 15 Oct 2026).
+- The foot scanner is not a medical device and is never presented as one.
+- Decided 15 Oct 2026: tennis since he was little (school team, tournaments, lessons, for fun); chess in rated over-the-board tournaments and online, no rating shown; the study started 11 Sept 2026 (confirmed); his CS teacher stays unnamed.
+- Decided 16 Oct 2026: build-log drafts end "Built with Claude Code, which wrote most of the code while I directed it." The foot-scanner case study must say the same when rewritten.
+- Contact is off until hello@ works through Cloudflare Email Routing: a bouncing address is worse than none.
+- The four build-log drafts (draft: true) stay unpublished until Brandon has read them.
+- The serve stays a hand-keyframed illustration labelled "Illustration · not footage" until public/serve/pose.json exists from his own footage (decided 7 Oct 2026).
+- The About intro ("Ignition") is live three.js, not a video, so its five pieces are real links and it stays sharp and small. A professional About film is a separate project (about-film) that may replace it later.
+- Phones: top-level pages are animation and short labels; paragraphs live one tap down (phone-collapse.ts); articles use a smaller type scale.
+- Ambient drift runs only on the browsing pages (Home, Projects, Build log, About); articles stay still for reading. One Pause motion switch pauses the hero and the drift together.
+- Pitfall: Chromium gives SwiftShader a WebGL context even with failIfMajorPerformanceCaveat, so gpu.ts also rejects software renderers by name. CI and cloud browsers get the stills.
+- Pitfall: Safari reports scrollY a frame late. The tour's divergence check is 48 px after 200 ms; a 4 px check stopped it on its first frame there.
+- Pitfall: iOS swallows a tap when it makes content appear (its hover heuristic), so the hero's touch start waits 700 ms before revealing the Pause button.
+- Pitfall: a stop in an animation reads to Brandon as the page freezing. Hold moments with a slow drift, never a dead halt.
+- Pitfall: the tour steps on real elapsed time capped at 250 ms; a 50 ms cap made slow frames play in slow motion. A hidden tab pauses it.
+- Pitfall: additive point blending wrote alpha and left dark marks; the intro uses a glow blend (alpha = max(rgb)).
+- Pitfall: the About intro's live/still decision must be an inline script that is the section's first child, or the stills flash and the layout shifts.
+- Pitfall: the intro's setup yields between short steps and uses renderer.compileAsync. Without that, Lighthouse fell to 70 on blocking time.
+- Pitfall: new three.js addons need adding to optimizeDeps in astro.config.mjs, or dev shows "504 Outdated Optimize Dep".
+- Pitfall: reveals trigger when any part is in view ('some'); a percentage threshold on a tall element never fires on a short screen.
+- Pitfall: drift points sit in front (z-index 25) and streaks behind (z-index -1); behind everything they vanished under the cards.
+- Pitfall: intro audio starts before the picture so the ignition isn't missed; navigator.audioSession 'playback' lets it play past the iOS silent switch.
+- Decision: the CSS budget is 60 KB render-blocking per page, not one site-wide total (which charged every page for the intro's styles).
+- Dead end: jumping natively through the pinned serve looked frozen; replaced by the guided tour on a continuous path.
+- Brandon's preferences: interview him first with multiple-choice questions and a marked recommendation; show screenshots, don't describe; plain words; push back on anything inflated.
+- Brandon's preferences: professional, creative, futuristic, never templated; calm but crafted, and he loves the animations. Run the self-review questions (viewer experience, uniqueness, details, casual viewer) before showing work.
+```
