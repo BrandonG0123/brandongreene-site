@@ -145,3 +145,72 @@ Remember these for this project:
 - Brandon's preferences: interview him first with multiple-choice questions and a marked recommendation; show screenshots, don't describe; plain words; push back on anything inflated.
 - Brandon's preferences: professional, creative, futuristic, never templated; calm but crafted, and he loves the animations. Run the self-review questions (viewer experience, uniqueness, details, casual viewer) before showing work.
 ```
+
+## E. Setup migration
+
+Cloud threads load only the root `CLAUDE.md`, `.claude/CLAUDE.md` and `.claude/rules/`
+from the repo. They ignore subfolder `CLAUDE.md` files, the repo's skills, agents,
+commands, `.mcp.json` and `.claude/settings.json`, and they get nothing from this Mac's
+Claude Code setup.
+
+| Local piece | Where it is today | New home |
+|---|---|---|
+| Repo rules | No `CLAUDE.md` anywhere on `main`; the rules lived in `NEXT.md`, `CONTRIBUTING.md` and this session's memory | **Root `CLAUDE.md`**, added on this branch |
+| Subfolder `CLAUDE.md` | Only `apps/forge-ios/CLAUDE.md`, on the unpushed local branch `forge-ios`. That's another session's Forge work, not this project | Not part of this project |
+| Path-specific rules (`.claude/rules/`) | None | Nothing to move |
+| `.claude/launch.json` (repo), `~/code/.claude/launch.json`, `apps/footscan/.claude/launch.json` | Desktop-app preview configs (site dev server; footscan studio) | **Local threads only** |
+| Skills, agents, commands | None in the repo; none at user level that this work used | Nothing to move |
+| MCP servers | No `.mcp.json`; no user-level MCP servers | Nothing to move |
+| Desktop browser pane, iOS Simulator tools, Claude in Chrome | Built into the desktop app | **Local threads only** |
+| claude.ai connectors | None used by this work | None needed |
+| Plugins | User-level only: codex, claude-obsidian, cache-keeper, recording-mode, goal-meter, collision-guard, next-steps-desktop (desktop UI mods and helpers) | **Local threads only**; nothing needed in Project settings > Plugins |
+| Hooks | Only those the plugins above bring; none in the repo | **Local threads only** |
+| Permission rules | None (`settings.local.json` holds only skill overrides) | Nothing to move; threads run in auto mode |
+| This session's local memory (`brandongreene-site.md`, `design-self-review-questions.md`) | `~/.claude/projects/-Users-bgreene-code/memory/` | **Memory seed (D)** and root `CLAUDE.md` |
+| `~/.claude/CLAUDE.md` (notes about the desktop mods) | User level | **Local threads only**; not relevant to the site |
+| Prompt and brief files | `~/code/*.md`, not in git | **Library** (see B) |
+| `PUBLIC_ALLOW_INDEXING` | Build flag; tank sets it at launch; CI sets it only for its Lighthouse build | **Tank only.** Never set it in the cloud environment |
+| `PLAYWRIGHT_BROWSERS_PATH` | New | **Cloud environment variable**, `/opt/ms-playwright` (not a secret). It keeps Chromium where both the setup script and the threads look |
+| `LHCI_GITHUB_APP_TOKEN` | GitHub Actions secret | **Stays in GitHub Actions**; threads don't need it |
+| `deploy/deploy.env`: `SSH_USER`, `SSH_HOST`, `SSH_PORT`, `REMOTE_DIR`, `SITE_DOMAIN` | Gitignored, on the Mac | **Local only**; never in the cloud |
+| Cloudflare Tunnel credentials | On tank | **Tank only** |
+| Network secrets | None needed | Nothing to add |
+| Node 22, npm, git, gh | Mac (Node 24 locally) | Already in the cloud image (Node 22 on PATH, as in CI) |
+| Playwright 1.63.0 Chromium (axe, the tour check, stills) | Installed by npm on the Mac | **Setup script** below |
+| Real-GPU Playwright (`--use-angle=metal`), `npm run render:about`, live 3D checks | Mac GPU | **Local threads only** |
+| iOS Simulator mobile Safari checks | Xcode on the Mac | **Local threads only** |
+| Deploys | tank pulls `main` by itself | Nothing to do; merging to `main` deploys |
+| Extra domains | Playwright downloads its browsers from hosts the Trusted list doesn't include | **Cloud environment**: Network access **Custom**, tick **Also include default list of common package managers**, and add `cdn.playwright.dev`, `playwright.download.prss.microsoft.com` and `playwright.azureedge.net`. Which one Playwright 1.63 uses is **UNVERIFIED**; the first setup run's log shows it, and you can drop the unused ones afterwards |
+| External link checks | `npm run test:links` fetches every external link | **CI only.** Threads run `check-links.mjs --skip-external`, so no extra domains are needed |
+
+### Draft setup script
+
+For **Project settings > Environment** (a new Anthropic-hosted environment), with the
+environment variable `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` and the Custom network
+list above.
+
+```bash
+#!/usr/bin/env bash
+# brandongreene-site: cloud environment setup. It runs as root on Ubuntu 24.04 before
+# Claude starts, and is cached when it finishes in about five minutes. Tools only: each
+# thread runs `npm ci` in its own clone.
+set -euo pipefail
+
+export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-/opt/ms-playwright}"
+
+# Node 22 is already on PATH, the same major version CI uses.
+node --version
+
+# Chromium and its system libraries for Playwright, at the version package-lock.json
+# pins. Bump this line when the lockfile's playwright version changes.
+npx -y playwright@1.63.0 install --with-deps chromium
+chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
+```
+
+**UNVERIFIED** (nothing here has run in a cloud environment yet):
+
+- that the script finishes inside the cache window;
+- that threads run as a user who can read `/opt/ms-playwright` (the `chmod` covers a non-root user);
+- that `npm ci` and `npm run test:a11y` work in a thread afterwards.
+
+The pilot (F1) proves all three.
