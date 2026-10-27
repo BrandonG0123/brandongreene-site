@@ -303,3 +303,66 @@ These tasks need your Mac: F11, F12, and the GPU and Safari checks in F8–F10.
 
 - They run through Remote Control. In the desktop app, turning on **Keep this computer awake for Remote Control** (Settings > Code) keeps them going.
 - **Local threads don't get project memory**, only the instructions. When you start one, paste the D lines that matter for it into the task.
+
+
+## H. First message for the project conversation
+
+Send this as the first message. It stands on its own: it doesn't rely on Claude opening
+any file.
+
+```text
+This project finishes and launches brandongreene.dev: my portfolio and the dated build log of my AI/ML independent study, with every claim on it true and checked, going public only when my parents and I approve. The repo is BrandonG0123/brandongreene-site; base branch main, which is the live site (the server pulls it every few seconds), so threads work on site/<topic> branches and open pull requests, and nothing merges without my go-ahead. The full handoff is in PROJECT_HANDOFF.md at the repo root and in the Library (/mnt/project-files/PROJECT_HANDOFF.md); the repo's CLAUDE.md, NEXT.md and CONTRIBUTING.md hold the rules. footscan (BrandonG0123/footscan) and about-film are separate projects.
+
+Remember these for this project:
+- main is the live site: tank pulls it every few seconds, so a merge is public before CI runs. Branch, PR, and merge only on Brandon's go-ahead.
+- The site stays noindex (fail-closed) until launch; launch = PUBLIC_ALLOW_INDEXING=true on tank, only after Brandon approves the footer AI-disclosure wording and his parents review the site.
+- Never publish a number Brandon didn't give; every decorative word must be something he does; AI help is disclosed.
+- Privacy: he's a minor under his real name. No address, phone, school name, schedule, routine or location; contact only via a domain alias, never his personal email.
+- Only the shoe and calibration-object scans may appear on the site, never his foot (decided 15 Oct 2026).
+- The foot scanner is not a medical device and is never presented as one.
+- Decided 15 Oct 2026: tennis since he was little (school team, tournaments, lessons, for fun); chess in rated over-the-board tournaments and online, no rating shown; the study started 11 Sept 2026 (confirmed); his CS teacher stays unnamed.
+- Decided 16 Oct 2026: build-log drafts end "Built with Claude Code, which wrote most of the code while I directed it." The foot-scanner case study must say the same when rewritten.
+- Contact is off until hello@ works through Cloudflare Email Routing: a bouncing address is worse than none.
+- The four build-log drafts (draft: true) stay unpublished until Brandon has read them.
+- The serve stays a hand-keyframed illustration labelled "Illustration · not footage" until public/serve/pose.json exists from his own footage (decided 7 Oct 2026).
+- The About intro ("Ignition") is live three.js, not a video, so its five pieces are real links and it stays sharp and small. A professional About film is a separate project (about-film) that may replace it later.
+- Phones: top-level pages are animation and short labels; paragraphs live one tap down (phone-collapse.ts); articles use a smaller type scale.
+- Ambient drift runs only on the browsing pages (Home, Projects, Build log, About); articles stay still for reading. One Pause motion switch pauses the hero and the drift together.
+- Pitfall: Chromium gives SwiftShader a WebGL context even with failIfMajorPerformanceCaveat, so gpu.ts also rejects software renderers by name. CI and cloud browsers get the stills.
+- Pitfall: Safari reports scrollY a frame late. The tour's divergence check is 48 px after 200 ms; a 4 px check stopped it on its first frame there.
+- Pitfall: iOS swallows a tap when it makes content appear (its hover heuristic), so the hero's touch start waits 700 ms before revealing the Pause button.
+- Pitfall: a stop in an animation reads to Brandon as the page freezing. Hold moments with a slow drift, never a dead halt.
+- Pitfall: the tour steps on real elapsed time capped at 250 ms; a 50 ms cap made slow frames play in slow motion. A hidden tab pauses it.
+- Pitfall: additive point blending wrote alpha and left dark marks; the intro uses a glow blend (alpha = max(rgb)).
+- Pitfall: the About intro's live/still decision must be an inline script that is the section's first child, or the stills flash and the layout shifts.
+- Pitfall: the intro's setup yields between short steps and uses renderer.compileAsync. Without that, Lighthouse fell to 70 on blocking time.
+- Pitfall: new three.js addons need adding to optimizeDeps in astro.config.mjs, or dev shows "504 Outdated Optimize Dep".
+- Pitfall: reveals trigger when any part is in view ('some'); a percentage threshold on a tall element never fires on a short screen.
+- Pitfall: drift points sit in front (z-index 25) and streaks behind (z-index -1); behind everything they vanished under the cards.
+- Pitfall: intro audio starts before the picture so the ignition isn't missed; navigator.audioSession 'playback' lets it play past the iOS silent switch.
+- Decision: the CSS budget is 60 KB render-blocking per page, not one site-wide total (which charged every page for the intro's styles).
+- Dead end: jumping natively through the pinned serve looked frozen; replaced by the guided tour on a continuous path.
+- Brandon's preferences: interview him first with multiple-choice questions and a marked recommendation; show screenshots, don't describe; plain words; push back on anything inflated.
+- Brandon's preferences: professional, creative, futuristic, never templated; calm but crafted, and he loves the animations. Run the self-review questions (viewer experience, uniqueness, details, casual viewer) before showing work.
+
+Backlog (details, files and done-checks are in section F of the handoff):
+F1 PILOT: bring NEXT.md up to date (docs only; also proves the cloud environment)
+F2 Refresh the foot-scanner case study from the footscan repo
+F3 Publish the four build-log drafts (waits on me reading them)
+F4 Refresh the About-me brief in the Library
+F5 Report on the stale branch claude/confident-curie-7t6jj7 (read-only, delete nothing)
+F6 Contact section (waits on me setting up email routing)
+F7 Résumé coursework and competitions (waits on my answers)
+F8 Wire up the About-intro voiceover (waits on my recording)
+F9 Real serve from my footage (waits on my filming)
+F10 Put the About film on the About page (waits on the about-film project)
+F11 Manual accessibility pass (local, on my Mac)
+F12 Launch: PUBLIC_ALLOW_INDEXING on tank (local, my go-ahead only)
+
+How to run this:
+- Propose threads before starting any, and wait for my go-ahead.
+- Run at most two threads at a time.
+- Start with the pilot, F1, on its own, using Sonnet 5.5. When it comes back, tell me what worked and what didn't in the setup (setup script, Playwright, npm ci, the checks), and fix the instructions or environment before anything else runs.
+- Tasks that wait on me: ask me what you need, with multiple-choice questions and your recommendation marked, rather than starting them.
+- If a thread can't reach something it needs, it reports exactly what's missing and stops.
+```
