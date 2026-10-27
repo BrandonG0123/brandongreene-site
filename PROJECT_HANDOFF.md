@@ -242,3 +242,64 @@ part.
 
 F2 and F10 shouldn't edit `NEXT.md`; whoever finishes later asks for a NEXT.md update
 as a separate small task.
+
+## G. Your transfer steps
+
+This session is a **local session** in the desktop app's Code tab on your Mac (Claude
+Code 2.1.293, newer than the 2.1.280 that Projects need for local threads).
+
+### 1. Merge this branch into main first
+
+Threads start from the repo's default branch, and right now `main` has no `CLAUDE.md`,
+so they'd begin without the site's rules. Merge `project-handoff/site` into `main`.
+
+- On GitHub, open a pull request from `project-handoff/site` to `main`, let CI pass, and merge it. Or tell Claude "merge the handoff branch" and it will.
+- It only adds `CLAUDE.md` and `PROJECT_HANDOFF.md` at the repo root. The build ignores both, so **brandongreene.dev doesn't change**, though tank will rebuild once.
+- The instructions in C then say base branch `main`, which is what threads use anyway.
+- If you'd rather not merge yet, change the instructions' "Base branch: main" to `project-handoff/site`. But tank deploys only `main`, so that's only worth it for a short time.
+
+### 2. Move this session into a new project
+
+1. Check that **Require trusted devices** is off. It's off by default; on Pro and Max it's on the Account (or Cowork) page of your claude.ai settings. While it's on, a project can't read this session or run local threads.
+2. In this session's prompt box, type `/remote-control` (or `/rc`) and select **Enable Remote Control** if asked. Or ask Claude here to turn it on for you.
+3. In a browser, open [claude.ai/code](https://claude.ai/code), find this session's row in the sidebar, open its menu, and choose **Move to project > Continue as new project**.
+4. The project opens and Claude posts **Setup recommendations**:
+   - keep `BrandonG0123/brandongreene-site` on;
+   - switch off anything for footscan, Forge or about-film (separate projects);
+   - click **Update setup**.
+5. This local session stays in your list. Stop it once the project is running, so the two don't work at once.
+
+**Fallback** (if Move to project fails, or trusted devices must stay on):
+
+1. **Projects > New project**.
+2. Add the repository `BrandonG0123/brandongreene-site`.
+3. In **Context**, add the files from B.
+4. Carry on with step 3 below and send the message in H.
+
+### 3. Set the project up
+
+1. **GitHub access.** Make sure the Claude GitHub App can see the repo: [github.com/settings/installations](https://github.com/settings/installations) > Claude > Repository access includes `brandongreene-site`. Whether it's installed is **UNVERIFIED** from here.
+2. **Library.** On Overview > Library, click **Add** and upload:
+   - `PROJECT_HANDOFF.md` (from the repo root);
+   - `~/code/about-me-brief.md`;
+   - `~/code/footscan-portfolio-prompt.md`;
+   - optionally the two About animation and film prompts.
+
+   All are small, so every thread can read them under `/mnt/project-files/`.
+3. **Instructions.** Paste the block from C into **Project settings > Memory > Project instructions** (4,932 characters, under the 16,000 limit).
+4. **Environment.** Under **Project settings > Environment**, add an environment:
+   - Network access **Custom**, with **Also include default list of common package managers** ticked, plus the three Playwright hosts;
+   - the environment variable `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`;
+   - the setup script from E;
+   - no network secrets.
+5. **Models** (Project settings > General):
+   - **Coordinator:** Opus 5.5, **low** effort (the default). It routes and tracks; it doesn't write code.
+   - **Threads:** Opus 5.5 at **medium** as the default instead of high, because most of this backlog is careful content and docs work. Ask for **high** in the task for design, 3D or motion work (F9, F10), and ask for **Sonnet 5.5** for doc-only tasks (F1, F4, F5) to save your plan limits.
+6. Send the message in **H** as the project's first message.
+
+### Local threads
+
+These tasks need your Mac: F11, F12, and the GPU and Safari checks in F8–F10.
+
+- They run through Remote Control. In the desktop app, turning on **Keep this computer awake for Remote Control** (Settings > Code) keeps them going.
+- **Local threads don't get project memory**, only the instructions. When you start one, paste the D lines that matter for it into the task.
