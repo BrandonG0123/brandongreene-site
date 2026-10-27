@@ -38,7 +38,7 @@ folders to upload.
 
 | File | Size | Why |
 |---|---|---|
-| `PROJECT_HANDOFF.md` (this file) | ~25 KB | Every thread can read it at `/mnt/project-files/`. |
+| `PROJECT_HANDOFF.md` (this file) | ~42 KB | Every thread can read it at `/mnt/project-files/`. |
 | `~/code/about-me-brief.md` | 4.7 KB | Facts about Brandon for any content or animation task. **Partly stale**: it says tennis, chess and the study's start date aren't on record yet. Those were settled on 15 Oct (see D). Backlog task F4 refreshes it. |
 | `~/code/footscan-portfolio-prompt.md` | 7.4 KB | The brief for refreshing the foot-scanner case study (F2). |
 | `~/code/about-animation-prompt.md` | 17 KB | Optional: the brief for the next About animation, if this project integrates it (F10). |
