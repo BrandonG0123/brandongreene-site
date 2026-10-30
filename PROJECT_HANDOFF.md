@@ -271,7 +271,7 @@ so they'd begin without the site's rules. Merge `project-handoff/site` into `mai
 
 1. Check that **Require trusted devices** is off. It's off by default; on Pro and Max it's on the Account (or Cowork) page of your claude.ai settings. While it's on, a project can't read this session or run local threads.
 2. In this session's prompt box, type `/remote-control` (or `/rc`) and select **Enable Remote Control** if asked. Or ask Claude here to turn it on for you.
-3. In a browser, open [claude.ai/code](https://claude.ai/code), find this session's row in the sidebar, open its menu, and choose **Continue in project > Continue as new project**. (The docs called this menu item **Move to project** until about 28 Oct; if your menu still shows that name, it's the same thing.)
+3. In a browser, open [claude.ai/code](https://claude.ai/code), find this session's row in the sidebar, open its menu, and choose **Continue in project > Continue as new project**. (On 27 Oct the docs called this menu item **Move to project**; if your menu still shows that name, it's the same thing.)
 4. The project opens and Claude posts **Setup recommendations**:
    - keep `BrandonG0123/brandongreene-site` on;
    - switch off anything for footscan, Forge or about-film (separate projects);
