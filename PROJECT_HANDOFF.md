@@ -10,6 +10,15 @@ Branch: `project-handoff/site` (based on `main` at `248eb5a`). It adds two files
 repo root, this one and `CLAUDE.md`. The site build reads only `src/`,
 `content/projects/` and `content/log/`, so neither file can reach brandongreene.dev.
 
+**Rechecked 30 Oct 2026:**
+
+- `main` is still `248eb5a`, and this branch isn't merged.
+- No pull requests are open.
+- The Forge checkout is unchanged.
+- about-film still isn't on GitHub.
+- The Projects docs now call the session-menu item **Continue in project** (it was **Move to project**); G is updated.
+- footscan's `main` on GitHub has moved 22 commits ahead of the local copy on this Mac. That's footscan's own work and is left alone here; F2 should read footscan's current `main`, not the local copy.
+
 ## A. Project
 
 **Name:** brandongreene-site
@@ -262,14 +271,14 @@ so they'd begin without the site's rules. Merge `project-handoff/site` into `mai
 
 1. Check that **Require trusted devices** is off. It's off by default; on Pro and Max it's on the Account (or Cowork) page of your claude.ai settings. While it's on, a project can't read this session or run local threads.
 2. In this session's prompt box, type `/remote-control` (or `/rc`) and select **Enable Remote Control** if asked. Or ask Claude here to turn it on for you.
-3. In a browser, open [claude.ai/code](https://claude.ai/code), find this session's row in the sidebar, open its menu, and choose **Move to project > Continue as new project**.
+3. In a browser, open [claude.ai/code](https://claude.ai/code), find this session's row in the sidebar, open its menu, and choose **Continue in project > Continue as new project**. (The docs called this menu item **Move to project** until about 28 Oct; if your menu still shows that name, it's the same thing.)
 4. The project opens and Claude posts **Setup recommendations**:
    - keep `BrandonG0123/brandongreene-site` on;
    - switch off anything for footscan, Forge or about-film (separate projects);
    - click **Update setup**.
 5. This local session stays in your list. Stop it once the project is running, so the two don't work at once.
 
-**Fallback** (if Move to project fails, or trusted devices must stay on):
+**Fallback** (if Continue in project fails, or trusted devices must stay on):
 
 1. **Projects > New project**.
 2. Add the repository `BrandonG0123/brandongreene-site`.
