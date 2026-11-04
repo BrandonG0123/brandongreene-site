@@ -1,0 +1,96 @@
+---
+import Base from '../../layouts/Base.astro';
+
+// Contact address for Forge users (Brandon's choice, 8 Nov 2026).
+const CONTACT = 'brandon.pgreene@gmail.com';
+---
+
+<Base
+  title="Forge privacy policy"
+  description="How the Forge fitness app handles your information: it stays on your iPhone."
+>
+  <div class="wrap">
+    <div class="resume">
+      <header class="resume-head">
+        <h1>Forge privacy policy</h1>
+        <p class="mono-label">Last updated November 2026</p>
+      </header>
+
+      <section>
+        <p>
+          Forge is a fitness app for iPhone made by Brandon Greene. The short version: your data stays on your
+          iPhone. Forge has no accounts, no ads, no analytics and no tracking, and we don't collect, sell or share
+          your information.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-stores">
+        <h2 id="p-stores">What Forge stores</h2>
+        <p>
+          Your workouts, cardio routes, food log, body measurements, progress photos, sleep and settings are saved
+          on your iPhone. Backups are saved on your iPhone and, if you choose, in a folder you pick, such as your own
+          iCloud Drive. We can't see any of it.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-health">
+        <h2 id="p-health">Apple Health</h2>
+        <p>
+          If you connect Apple Health, Forge reads the types you allow (such as sleep, steps, heart rate, weight and
+          nutrition) and saves the workouts, weight and sleep you log. Health data is used only to show your
+          training, recovery and progress inside Forge. It is never sent to us or anyone else, never used for
+          advertising, and never stored in iCloud by Forge. You can change access at any time in the Health app.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-device">
+        <h2 id="p-device">Location, camera, photos and Bluetooth</h2>
+        <p>
+          Forge uses your location only while you record a run, walk or ride you started, to map the route and
+          measure distance and pace. Routes stay on your iPhone.
+        </p>
+        <p>
+          The camera scans barcodes and nutrition labels and takes meal and progress photos. Meal photos are
+          analyzed on your iPhone and are not kept. Progress photos stay in Forge and its backups.
+        </p>
+        <p>Bluetooth connects only to fitness sensors you pair, such as heart rate straps and power meters.</p>
+      </section>
+
+      <section aria-labelledby="p-online">
+        <h2 id="p-online">Online lookups</h2>
+        <p>
+          When you search for a food or scan a barcode, the words you type or the barcode number are sent to the
+          U.S. Department of Agriculture's FoodData Central and to Open Food Facts to find the food. Nothing that
+          identifies you is sent with them. When you tap Video on an exercise, the clip plays from YouTube in
+          privacy-enhanced mode, and YouTube's privacy policy applies to that playback.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-delete">
+        <h2 id="p-delete">Deleting your data</h2>
+        <p>
+          Erase all data in Forge's Settings, or deleting the app, removes everything Forge stored on your iPhone.
+          Backups in a folder you chose stay there until you delete them.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-children">
+        <h2 id="p-children">Children</h2>
+        <p>Forge doesn't collect information from anyone, including children.</p>
+      </section>
+
+      <section aria-labelledby="p-changes">
+        <h2 id="p-changes">Changes</h2>
+        <p>
+          If Forge adds features that send data off your iPhone, such as optional AI features or accounts, this
+          policy will be updated before they ship, and the app will ask you first.
+        </p>
+      </section>
+
+      <section aria-labelledby="p-contact">
+        <h2 id="p-contact">Contact</h2>
+        <p>Questions about this policy: <a href={`mailto:${CONTACT}`}>{CONTACT}</a></p>
+      </section>
+    </div>
+  </div>
+</Base>

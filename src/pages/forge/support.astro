@@ -1,0 +1,55 @@
+---
+import Base from '../../layouts/Base.astro';
+
+// Same address as the privacy page.
+const CONTACT = 'brandon.pgreene@gmail.com';
+---
+
+<Base title="Forge support" description="Help with the Forge fitness app.">
+  <div class="wrap">
+    <div class="resume">
+      <header class="resume-head">
+        <h1>Forge support</h1>
+        <p class="mono-label">Help with the Forge app for iPhone</p>
+      </header>
+
+      <section aria-labelledby="s-contact">
+        <h2 id="s-contact">Get in touch</h2>
+        <p>
+          Email <a href={`mailto:${CONTACT}`}>{CONTACT}</a> with what happened and which screen you were on. A
+          screenshot helps.
+        </p>
+      </section>
+
+      <section aria-labelledby="s-start">
+        <h2 id="s-start">Learning the app</h2>
+        <p>
+          Forge has a built-in tutorial: tap the graduation cap at the top of Home to walk
+          through any part of the app on the real screens.
+        </p>
+      </section>
+
+      <section aria-labelledby="s-backup">
+        <h2 id="s-backup">Backups and a new phone</h2>
+        <p>
+          Forge backs up once a day. In Settings › Backup and restore, pick a folder in iCloud Drive so your
+          backups survive losing or replacing your phone. On a new phone, install Forge and choose Restore from a
+          backup.
+        </p>
+      </section>
+
+      <section aria-labelledby="s-notes">
+        <h2 id="s-notes">Notes while you use it</h2>
+        <p>
+          Shake your iPhone on any screen to jot down a bug or an idea with a screenshot. Notes are saved in
+          Settings › Feedback.
+        </p>
+      </section>
+
+      <section aria-labelledby="s-privacy">
+        <h2 id="s-privacy">Privacy</h2>
+        <p>Your data stays on your iPhone. Read the <a href="/forge/privacy">privacy policy</a>.</p>
+      </section>
+    </div>
+  </div>
+</Base>
