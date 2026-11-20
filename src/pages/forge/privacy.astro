@@ -7,7 +7,7 @@ const CONTACT = 'brandon.pgreene@gmail.com';
 
 <Base
   title="Forge privacy policy"
-  description="How the Forge fitness app handles your information: it stays on your iPhone."
+  description="How the Forge fitness app handles your information: it stays on your device unless you turn on AI with your own key."
 >
   <div class="wrap">
     <div class="resume">
@@ -18,9 +18,10 @@ const CONTACT = 'brandon.pgreene@gmail.com';
 
       <section>
         <p>
-          Forge is a fitness app for iPhone made by Brandon Greene. The short version: your data stays on your
-          iPhone. Forge has no accounts, no ads, no analytics and no tracking, and we don't collect, sell or share
-          your information.
+          Forge is a fitness app for iPhone and iPad made by Brandon Greene. The short version: your data stays on your
+          device. Forge has no accounts, no ads, no analytics and no tracking, and we don't collect, sell or share
+          your information. The one exception is optional AI, which you turn on with your own Anthropic key; it's
+          explained below.
         </p>
       </section>
 
@@ -28,7 +29,7 @@ const CONTACT = 'brandon.pgreene@gmail.com';
         <h2 id="p-stores">What Forge stores</h2>
         <p>
           Your workouts, cardio routes, food log, body measurements, progress photos, sleep and settings are saved
-          on your iPhone. Backups are saved on your iPhone and, if you choose, in a folder you pick, such as your own
+          on your device. Backups are saved on your device and, if you choose, in a folder you pick, such as your own
           iCloud Drive. We can't see any of it.
         </p>
       </section>
@@ -47,11 +48,11 @@ const CONTACT = 'brandon.pgreene@gmail.com';
         <h2 id="p-device">Location, camera, photos and Bluetooth</h2>
         <p>
           Forge uses your location only while you record a run, walk or ride you started, to map the route and
-          measure distance and pace. Routes stay on your iPhone.
+          measure distance and pace. Routes stay on your device.
         </p>
         <p>
           The camera scans barcodes and nutrition labels and takes meal and progress photos. Meal photos are
-          analyzed on your iPhone and are not kept. Progress photos stay in Forge and its backups.
+          analyzed on your device, or by Anthropic's AI if you've turned AI on, and are not kept by Forge. Progress photos stay in Forge and its backups.
         </p>
         <p>Bluetooth connects only to fitness sensors you pair, such as heart rate straps and power meters.</p>
       </section>
@@ -66,10 +67,23 @@ const CONTACT = 'brandon.pgreene@gmail.com';
         </p>
       </section>
 
+      <section aria-labelledby="p-ai">
+        <h2 id="p-ai">Optional AI with your own key</h2>
+        <p>
+          AI is off unless you add your own Anthropic API key in Forge's Settings. The key is saved in your device's
+          Keychain and never leaves it except to talk to Anthropic. With AI on, Forge sends Anthropic only what each
+          feature needs: meal, nutrition-label and kitchen photos to recognize food; your questions to Ask Forge,
+          along with the parts of your log it needs to answer (such as foods, workouts, sleep or weight); and the
+          numbers behind Insights and coach reminders. These requests go straight from your device to Anthropic
+          under your key, never through us, and Anthropic's privacy policy and API terms apply to them. Turn AI off
+          or delete the key in Settings and nothing more is sent.
+        </p>
+      </section>
+
       <section aria-labelledby="p-delete">
         <h2 id="p-delete">Deleting your data</h2>
         <p>
-          Erase all data in Forge's Settings, or deleting the app, removes everything Forge stored on your iPhone.
+          Erase all data in Forge's Settings, or deleting the app, removes everything Forge stored on your device.
           Backups in a folder you chose stay there until you delete them.
         </p>
       </section>
@@ -82,7 +96,7 @@ const CONTACT = 'brandon.pgreene@gmail.com';
       <section aria-labelledby="p-changes">
         <h2 id="p-changes">Changes</h2>
         <p>
-          If Forge adds features that send data off your iPhone, such as optional AI features or accounts, this
+          If Forge adds more features that send data off your device, such as accounts or a subscription, this
           policy will be updated before they ship, and the app will ask you first.
         </p>
       </section>
